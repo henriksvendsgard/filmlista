@@ -1,10 +1,9 @@
 import SearchBar from "./SearchBar";
 
-export default function SearchBox() {
+export default function SearchBox({ inHeader }: { inHeader?: boolean }) {
 	return (
 		<>
-			<div className="mx-auto lg:max-w-[500px]">
-				<h2 className="mb-4">Søk etter en film...</h2>
+			<div className={`mx-auto w-full px-10 ${inHeader && "w-96 px-0"}`}>
 				<SearchBar />
 			</div>
 		</>

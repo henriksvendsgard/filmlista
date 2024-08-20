@@ -18,7 +18,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 				/>
 				<div className="flex flex-col gap-4">
 					<h1 className="text-4xl">{movie.title}</h1>
-					<div className="text-slate-600 dark:text-slate-400">
+					<div className="text-slate-600 dark:text-slate-400 flex flex-col gap-2">
 						<div>
 							<span>{movie.genres.map((genre) => genre.name).join(", ")}</span>
 						</div>

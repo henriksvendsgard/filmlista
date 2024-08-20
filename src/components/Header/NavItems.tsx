@@ -1,23 +1,8 @@
 "use client";
 
-import {
-	NavigationMenu,
-	NavigationMenuContent,
-	NavigationMenuItem,
-	NavigationMenuLink,
-	NavigationMenuList,
-	NavigationMenuTrigger,
-	navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { User, CircleCheckBig, Popcorn } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
+import { CircleCheckBig, Popcorn } from "lucide-react";
 import Link from "next/link";
 import { ModeToggle } from "./ModeToggle";
 
@@ -51,19 +36,10 @@ export default function NavItems() {
 							<DropdownMenuLabel>Min profil</DropdownMenuLabel>
 							<DropdownMenuSeparator />
 							<Link href="/profile" className="w-full" legacyBehavior passHref>
-								<DropdownMenuItem className="cursor-pointer">
-									Info
-								</DropdownMenuItem>
+								<DropdownMenuItem className="cursor-pointer">Info</DropdownMenuItem>
 							</Link>
-							<Link
-								href="/profile/watchlist"
-								className="w-full"
-								legacyBehavior
-								passHref
-							>
-								<DropdownMenuItem className="cursor-pointer">
-									Logg ut
-								</DropdownMenuItem>
+							<Link href="/profile/watchlist" className="w-full" legacyBehavior passHref>
+								<DropdownMenuItem className="cursor-pointer">Logg ut</DropdownMenuItem>
 							</Link>
 						</DropdownMenuContent>
 					</DropdownMenu>

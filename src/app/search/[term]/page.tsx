@@ -20,22 +20,13 @@ async function SearchPage({ params: { term } }: SearchPageProps) {
 
 	return (
 		<>
-			<div className="flex w-full lg:max-w-[1000px] px-10 min-h-screen flex-col items-center">
+			<div className="px-10">
 				<section className="movie-list w-full h-full">
-					<SearchBox />
-					<MovieList
-						title={`Resultater for "${termToUse}"`}
-						movies={searchedMovies}
-						isVertical
-					/>
+					<MovieList title={`Resultater for "${termToUse}"`} movies={searchedMovies} isVertical />
 					{searchedMovies.length === 0 && (
 						<>
 							<h3>Finner ikke filmen i databasen...</h3>
-							<MovieList
-								isVertical={true}
-								title="Sjekk ut populære filmer i steden!"
-								movies={popularMovies}
-							/>
+							<MovieList isVertical={true} title="Sjekk ut populære filmer i steden!" movies={popularMovies} />
 						</>
 					)}
 				</section>

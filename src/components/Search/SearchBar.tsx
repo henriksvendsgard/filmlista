@@ -14,7 +14,6 @@ const SearchInputSchema = z.object({
 function SearchInput() {
 	const router = useRouter();
 
-	// 1. Define your form schema
 	const form = useForm<z.infer<typeof SearchInputSchema>>({
 		resolver: zodResolver(SearchInputSchema),
 		defaultValues: {
@@ -22,7 +21,6 @@ function SearchInput() {
 		},
 	});
 
-	// 2. Define a submit handler.
 	function onSubmit(values: z.infer<typeof SearchInputSchema>) {
 		router.push(`/search/${values.search}`);
 		console.log(values);
@@ -37,7 +35,7 @@ function SearchInput() {
 					render={({ field }: any) => (
 						<FormItem>
 							<FormControl>
-								<Input placeholder="Søk..." {...field} />
+								<Input placeholder="Søk etter en film..." {...field} />
 							</FormControl>
 						</FormItem>
 					)}
