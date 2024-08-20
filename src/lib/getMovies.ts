@@ -24,6 +24,30 @@ async function fetchFromTMDB(url: URL) {
 	return data;
 }
 
+async function fetchMovieFromTMDB(url: URL) {
+	url.searchParams.set("include_adult", "false");
+	url.searchParams.set("include_video", "false");
+	url.searchParams.set("sort_by", "popularity.desc");
+	url.searchParams.set("language", "en-US");
+	url.searchParams.set("page", "1");
+
+	const options: RequestInit = {
+		method: "GET",
+		headers: {
+			accept: "application/json",
+			Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+		},
+		next: {
+			revalidate: 60 * 60 * 24,
+		},
+	};
+
+	const response = await fetch(url.toString(), options);
+	const movie = await response.json();
+
+	return movie;
+}
+
 export async function getUpcomingMovies() {
 	const url = new URL("https://api.themoviedb.org/3/movie/upcoming");
 	const data = await fetchFromTMDB(url);
@@ -63,4 +87,11 @@ export async function getSearchedMovies(term: string) {
 	const data = await fetchFromTMDB(url);
 
 	return data.results;
+}
+
+export async function getMovieDetails(id: string) {
+	const url = new URL(`https://api.themoviedb.org/3/movie/${id}`);
+	const movie = await fetchMovieFromTMDB(url);
+
+	return movie;
 }

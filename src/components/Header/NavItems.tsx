@@ -43,7 +43,8 @@ export default function NavItems() {
 				</NavigationMenuItem>
 				<NavigationMenuItem>
 					<DropdownMenu>
-						<DropdownMenuTrigger className={navigationMenuTriggerStyle()}>
+						{/* Profil er skrudd av for nå */}
+						<DropdownMenuTrigger disabled className={navigationMenuTriggerStyle()}>
 							Profil
 						</DropdownMenuTrigger>
 						<DropdownMenuContent>
