@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Rethink_Sans } from "next/font/google";
+import { Fraunces } from "next/font/google";
 import { Inter as FontSans } from "next/font/google";
 import "./globals.css";
 
@@ -12,7 +12,7 @@ const fontSans = FontSans({
 	variable: "--font-sans",
 });
 
-const fontHeading = Rethink_Sans({
+const fontHeading = Fraunces({
 	subsets: ["latin"],
 	variable: "--font-heading",
 });

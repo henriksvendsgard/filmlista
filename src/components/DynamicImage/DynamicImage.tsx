@@ -6,8 +6,8 @@ import { getImage } from "@/lib/getImage";
 type DynamicImageProps = {
 	url: string;
 	alt: string;
-	containerClass: string;
-	imageClass: string;
+	containerClass?: string;
+	imageClass?: string;
 };
 
 export default async function DynamicImage({ url, alt, containerClass, imageClass }: DynamicImageProps) {

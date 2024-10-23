@@ -1,8 +1,6 @@
-import { cn } from "@/lib/utils";
 import { Movie } from "@/lib/typings";
-import Image from "next/image";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Button } from "../ui/button";
 import DynamicImage from "../DynamicImage/DynamicImage";
 
 type MovieItemProps = {
@@ -15,7 +13,7 @@ function MovieList({ title, movies, isVertical }: MovieItemProps) {
 	return (
 		<>
 			<div className="mx-auto w-full">
-				{title && <h2 className="text-3xl  w-full mb-10 mt-20 font-heading">{title}</h2>}
+				{title && <h2 className="text-3xl  w-full mb-10 mt-20 font-semibold font-heading">{title}</h2>}
 				<div className={cn("gap-10 flex flex-row overflow-y-hidden overflow-x-scroll p-2", isVertical && "flex-col overflow-x-hidden")}>
 					{movies.map(
 						(movie) =>
@@ -53,9 +51,6 @@ function MovieList({ title, movies, isVertical }: MovieItemProps) {
 													<h3 className={cn("text-l font-heading", isVertical && "text-xl")}>
 														{movie.title} ({movie.release_date.split("-")[0]})
 													</h3>
-													<Button className="text-xl p-2" variant={"outline"}>
-														+
-													</Button>
 												</div>
 												<p className={cn("text-xs", isVertical && "hidden lg:block")}>Noe kommer her</p>
 												<p className={cn("hidden group-hover:block text-s mt-2", isVertical && "block max-w-2xl")}>{movie.overview}</p>

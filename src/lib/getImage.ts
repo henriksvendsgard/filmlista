@@ -1,3 +1,5 @@
+"use server";
+
 import { getPlaiceholder } from "plaiceholder";
 
 export async function getImage(src: string) {
@@ -6,7 +8,7 @@ export async function getImage(src: string) {
 	const {
 		metadata: { width, height },
 		...plaiceholder
-	} = await getPlaiceholder(buffer, { size: 20 });
+	} = await getPlaiceholder(buffer, { size: 10 });
 
 	return {
 		...plaiceholder,
