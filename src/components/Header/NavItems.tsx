@@ -10,14 +10,14 @@ export default function NavItems() {
 	return (
 		<NavigationMenu className="">
 			<NavigationMenuList>
-				<NavigationMenuItem>
+				{/* <NavigationMenuItem>
 					<Link href="/" legacyBehavior passHref>
 						<NavigationMenuLink className={navigationMenuTriggerStyle()}>
 							<Popcorn className="w-5 h-5 pr-1" />
 							<span>Explore</span>
 						</NavigationMenuLink>
 					</Link>
-				</NavigationMenuItem>
+				</NavigationMenuItem> */}
 				<NavigationMenuItem>
 					<Link href="/watchlist" legacyBehavior passHref>
 						<NavigationMenuLink className={navigationMenuTriggerStyle()}>

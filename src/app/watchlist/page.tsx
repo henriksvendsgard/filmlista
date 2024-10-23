@@ -1,5 +1,5 @@
 import React from "react";
 
 export default function Watchlist() {
-	return <div>Watchlist</div>;
+	return <div>Her kommer din watchlist</div>;
 }

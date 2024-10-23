@@ -4,21 +4,27 @@ import { getPopularMovies, getSearchedMovies } from "@/lib/getMovies";
 import SearchBox from "@/components/Search/SearchBox";
 
 type SearchPageProps = {
-	params: {
+	params: Promise<{
 		term: string;
-	};
+	}>;
 };
 
-async function SearchPage({ params: { term } }: SearchPageProps) {
-	if (!term) notFound();
+async function SearchPage(props: SearchPageProps) {
+    const params = await props.params;
 
-	// Removes spaces from the search term
-	const termToUse = decodeURI(term);
+    const {
+        term
+    } = params;
 
-	const searchedMovies = await getSearchedMovies(termToUse);
-	const popularMovies = await getPopularMovies();
+    if (!term) notFound();
 
-	return (
+    // Removes spaces from the search term
+    const termToUse = decodeURI(term);
+
+    const searchedMovies = await getSearchedMovies(termToUse);
+    const popularMovies = await getPopularMovies();
+
+    return (
 		<>
 			<div className="px-10">
 				<section className="movie-list w-full h-full">
