@@ -14,6 +14,7 @@ const config = {
 		},
 		fontFamily: {
 			heading: ["var(--font-heading)", "sans-serif"],
+			body: ["var(--font-body)", "sans-serif"],
 		},
 		extend: {
 			backgroundImage: {
