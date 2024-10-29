@@ -28,7 +28,7 @@ function SearchInput() {
 
 	return (
 		<Form {...form}>
-			<form role="search" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+			<form action={"."} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 				<FormField
 					control={form.control}
 					name="search"
