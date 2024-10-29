@@ -4,7 +4,7 @@ import { addToWatchlist, checkWatchlistStatus, removeFromWatchlist } from "@/app
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Movie } from "@/lib/typings";
-import { BookmarkMinus, BookmarkPlus, Loader2, StarIcon } from "lucide-react";
+import { BookmarkMinus, BookmarkPlus, InfoIcon, Loader2, StarIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -71,7 +71,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 				await addToWatchlist(formData);
 				setIsInWatchlist(true);
 				toast({
-					title: "Lagt til i Watchlist",
+					title: "Lagt til i listen din",
 					description: `${movie.title} har blitt lagt til i din liste.`,
 					variant: "default",
 				});
@@ -79,7 +79,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 				await removeFromWatchlist(formData);
 				setIsInWatchlist(false);
 				toast({
-					title: "Fjernet fra Watchlist",
+					title: "Fjernet fra listen din",
 					description: `${movie.title} har blitt fjernet fra din liste.`,
 					variant: "destructive",
 				});
@@ -87,8 +87,8 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 		} catch (error) {
 			console.error("Error updating watchlist:", error);
 			toast({
-				title: "Error",
-				description: "Failed to update watchlist. Please try again.",
+				title: "Feil",
+				description: "Klarte ikke oppdatere watchlist. Prøv igjen",
 				variant: "destructive",
 			});
 		} finally {
@@ -121,7 +121,10 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 				<p className="text-lg">{movie.overview}</p>
 				<div className="mt-4 flex gap-4">
 					<a href={`https://www.themoviedb.org/movie/${movie.id}`} target="_blank" rel="noreferrer">
-						<Button className="px-4 py-2 rounded-md bg-blue-500 hover:bg-blue-400 text-white">View on TMDB</Button>
+						<Button className="px-4 py-2 rounded-md bg-blue-500 hover:bg-blue-400 text-white">
+							<InfoIcon size={16} className="mr-1" />
+							<span>Les mer på TMDb</span>
+						</Button>
 					</a>
 					<form action={handleFormAction}>
 						<input type="hidden" name="user_id" value="Henrik" />

@@ -1,14 +1,14 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
-import Link from "next/link";
-import { Card, CardContent } from "../ui/card";
-import Image from "next/image";
-import { useEffect, useState } from "react";
-import { Circle, CircleCheck, Loader2Icon } from "lucide-react";
-import { Button } from "../ui/button";
 import { toggleWatchedStatus } from "@/app/actions/watchlist";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { Eye, EyeOff, Loader2Icon } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
 
 interface WatchListProps {
 	title: string;
@@ -32,19 +32,16 @@ export default function WatchList({ title }: WatchListProps) {
 	const sortMovies = (movies: Movie[]) => {
 		return movies.sort((watched, unwatched) => {
 			if (watched.watched && !unwatched.watched) {
-				return 1; // a is watched, b is unwatched, so b comes first
+				return 1;
 			}
 			if (!watched.watched && unwatched.watched) {
-				return -1; // a is unwatched, b is watched, so a comes first
+				return -1;
 			}
-			// Both are watched or both are unwatched, sort by created_at (newest first)
 			return new Date(unwatched.created_at).getTime() - new Date(watched.created_at).getTime();
 		});
 	};
 
 	useEffect(() => {
-		const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-
 		const fetchWatchlistMovies = async () => {
 			setIsLoading(true);
 			try {
@@ -127,13 +124,13 @@ export default function WatchList({ title }: WatchListProps) {
 										className="absolute top-4 right-4 z-10"
 										disabled={pendingMovies.has(movie.movie_id)}
 									>
-										{pendingMovies.has(movie.movie_id) ? <Loader2Icon className="animate-spin" /> : movie.watched ? <CircleCheck className="text-green-500" /> : <Circle />}
+										{pendingMovies.has(movie.movie_id) ? <Loader2Icon className="animate-spin" /> : movie.watched ? <EyeOff className="text-gray-500" /> : <Eye />}
 									</Button>
 									<Image
 										width={500}
 										height={500}
 										className={`object-cover h-[400px] xl:h-[500px] w-full` + (movie.watched ? "filer brightness-[40%]" : "")}
-										src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+										src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
 										alt={movie.title}
 									/>
 								</div>
