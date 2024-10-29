@@ -28,14 +28,14 @@ function SearchInput() {
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+			<form role="search" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 				<FormField
 					control={form.control}
 					name="search"
 					render={({ field }: any) => (
 						<FormItem>
 							<FormControl>
-								<Input placeholder="Søk etter en film..." {...field} />
+								<Input type="search" placeholder="Søk etter en film..." {...field} />
 							</FormControl>
 						</FormItem>
 					)}
