@@ -8,8 +8,8 @@ import { ModeToggle } from "./ModeToggle";
 import { usePathname } from "next/navigation";
 
 export default function NavItems() {
+	const pathname = usePathname();
 	const isActivePage = (path: string) => {
-		const pathname = usePathname();
 		return pathname === path;
 	};
 
