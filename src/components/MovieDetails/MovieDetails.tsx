@@ -74,6 +74,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 					title: "Lagt til i listen din",
 					description: `${movie.title} har blitt lagt til i din liste.`,
 					variant: "default",
+					className: "bg-green-950",
 				});
 			} else if (action === "remove") {
 				await removeFromWatchlist(formData);
@@ -81,7 +82,8 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 				toast({
 					title: "Fjernet fra listen din",
 					description: `${movie.title} har blitt fjernet fra din liste.`,
-					variant: "destructive",
+					variant: "default",
+					className: "bg-orange-800",
 				});
 			}
 		} catch (error) {
