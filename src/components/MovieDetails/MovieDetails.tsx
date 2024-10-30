@@ -4,39 +4,13 @@ import { addToWatchlist, checkWatchlistStatus, removeFromWatchlist } from "@/app
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Movie } from "@/lib/typings";
-import { BookmarkMinus, BookmarkPlus, InfoIcon, Loader2, StarIcon } from "lucide-react";
+import { Check, InfoIcon, Loader2, Plus, StarIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useFormStatus } from "react-dom";
 
 type MovieDetailsProps = {
 	movie: Movie;
 };
-
-function SubmitButton({ isInWatchlist, isLoading }: { isInWatchlist: boolean; isLoading: boolean }) {
-	const { pending } = useFormStatus();
-
-	if (isLoading) {
-		return (
-			<Button type="button" className="bg-gray-400" variant="outline" size="icon" disabled>
-				<Loader2 size={20} className="animate-spin" />
-			</Button>
-		);
-	}
-	return (
-		<Button
-			type="submit"
-			aria-label={isInWatchlist ? "Fjern fra Watchlist" : "Legg til i Watchlist"}
-			title={isInWatchlist ? "Fjern fra Watchlist" : "Legg til i Watchlist"}
-			className={isInWatchlist ? "bg-red-800 hover:bg-red-900" : "bg-green-800 hover:bg-green-900"}
-			variant="outline"
-			size="icon"
-			disabled={pending}
-		>
-			{isInWatchlist ? <BookmarkMinus size={20} color="white" /> : <BookmarkPlus size={20} color="white" />}
-		</Button>
-	);
-}
 
 export default function MovieDetails({ movie }: MovieDetailsProps) {
 	const [isInWatchlist, setIsInWatchlist] = useState(false);
@@ -63,27 +37,34 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 		fetchWatchlistStatus();
 	}, [movie.id]);
 
-	const handleFormAction = async (formData: FormData) => {
-		const action = formData.get("action") as string;
+	const handleWatchlistToggle = async () => {
 		setIsLoading(true);
 		try {
-			if (action === "add") {
-				await addToWatchlist(formData);
-				setIsInWatchlist(true);
-				toast({
-					title: "Lagt til i listen din",
-					description: `${movie.title} har blitt lagt til i din liste.`,
-					variant: "default",
-					className: "bg-green-950",
+			if (isInWatchlist) {
+				await removeFromWatchlist({
+					user_id: "Henrik",
+					movie_id: movie.id.toString(),
 				});
-			} else if (action === "remove") {
-				await removeFromWatchlist(formData);
 				setIsInWatchlist(false);
 				toast({
 					title: "Fjernet fra listen din",
 					description: `${movie.title} har blitt fjernet fra din liste.`,
 					variant: "default",
 					className: "bg-orange-800",
+				});
+			} else {
+				await addToWatchlist({
+					user_id: "Henrik",
+					movie_id: movie.id.toString(),
+					title: movie.title,
+					poster_path: movie.poster_path,
+				});
+				setIsInWatchlist(true);
+				toast({
+					title: "Lagt til i listen din",
+					description: `${movie.title} har blitt lagt til i din liste.`,
+					variant: "default",
+					className: "bg-green-950",
 				});
 			}
 		} catch (error) {
@@ -128,14 +109,17 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 							<span>Les mer på TMDb</span>
 						</Button>
 					</a>
-					<form action={handleFormAction}>
-						<input type="hidden" name="user_id" value="Henrik" />
-						<input type="hidden" name="movie_id" value={movie.id.toString()} />
-						<input type="hidden" name="title" value={movie.title} />
-						<input type="hidden" name="poster_path" value={movie.poster_path} />
-						<input type="hidden" name="action" value={isInWatchlist ? "remove" : "add"} />
-						<SubmitButton isInWatchlist={isInWatchlist} isLoading={isLoading} />
-					</form>
+					<Button
+						onClick={handleWatchlistToggle}
+						disabled={isLoading}
+						variant={!isInWatchlist ? "outline" : "default"}
+						className={isInWatchlist ? "bg-green-800 hover:bg-green-900" : "bg-slate-950 hover:bg-slate-900"}
+						size="icon"
+					>
+						{isLoading ? <Loader2 size={20} className="animate-spin" /> : isInWatchlist ? <Check size={20} color="white" /> : <Plus size={20} color="white" />}
+
+						<span className="sr-only">{isInWatchlist ? "Fjern fra liste" : "Legg til i liste"}</span>
+					</Button>
 				</div>
 			</div>
 		</div>

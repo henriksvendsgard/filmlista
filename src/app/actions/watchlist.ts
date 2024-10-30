@@ -34,12 +34,7 @@ export async function checkWatchlistStatus(movie_id: string) {
 	return !!data;
 }
 
-export async function addToWatchlist(formData: FormData) {
-	const user_id = formData.get("user_id") as string;
-	const movie_id = formData.get("movie_id") as string;
-	const title = formData.get("title") as string;
-	const poster_path = formData.get("poster_path") as string;
-
+export async function addToWatchlist({ user_id, movie_id, title, poster_path }: { user_id?: string; movie_id: string; title: string; poster_path: string }) {
 	const { error } = await supabase.from("Watchlist").insert([{ user_id, movie_id, title, poster_path }]);
 
 	if (error) {
@@ -51,10 +46,7 @@ export async function addToWatchlist(formData: FormData) {
 	return { success: true, message: "Added to watchlist" };
 }
 
-export async function removeFromWatchlist(formData: FormData) {
-	const user_id = formData.get("user_id") as string;
-	const movie_id = formData.get("movie_id") as string;
-
+export async function removeFromWatchlist({ user_id, movie_id }: { user_id?: string; movie_id: string }) {
 	const { error } = await supabase.from("Watchlist").delete().eq("user_id", user_id).eq("movie_id", movie_id);
 
 	if (error) {

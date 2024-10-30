@@ -77,6 +77,7 @@ export default function WatchList({ title }: WatchListProps) {
 					title: result.watched ? `${movieTitle} er markert som sett` : `${movieTitle} er markert som ikke sett`,
 					description: `Du har ${result.watched ? "sett" : "ikke sett"} denne filmen.`,
 					variant: "default",
+					className: result.watched ? "bg-blue-950" : "bg-yellow-900",
 				});
 			} else {
 				throw new Error("Failed to update watched status");
