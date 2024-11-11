@@ -35,7 +35,7 @@ function SearchInput() {
 					render={({ field }: any) => (
 						<FormItem>
 							<FormControl>
-								<Input type="search" placeholder="Søk etter en film..." {...field} />
+								<Input className="text-base after:hidden" type="search" placeholder="Søk etter en film..." {...field} />
 							</FormControl>
 						</FormItem>
 					)}

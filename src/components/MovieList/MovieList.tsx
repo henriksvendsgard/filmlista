@@ -121,7 +121,7 @@ function MovieList({ title, movies, isVertical }: MovieItemProps) {
 
 	return (
 		<div className="mx-auto max-w-[1400px]">
-			{title && <h2 className="text-4xl font-semibold w-full mb-6 mt-20 font-heading">{title}</h2>}
+			{title && <h2 className="text-4xl font-semibold w-full mb-6 mt-12 lg:mt-20 font-heading">{title}</h2>}
 			<div className={cn("gap-8 grid lg:grid-cols-2", isVertical && "grid lg:grid-flow-row")}>
 				{movies.map(
 					(movie) =>

@@ -1,14 +1,35 @@
 "use client";
 
-import Image from "next/image";
-import { useTheme } from "next-themes";
-import NavItems from "./NavItems";
+import { useEffect, useState } from "react";
 import SearchBox from "../Search/SearchBox";
+import NavItems from "./NavItems";
 
 export default function Header() {
+	const [scrollDirection, setScrollDirection] = useState<"up" | "down">("down");
+	const [lastScrollY, setLastScrollY] = useState(0);
+
+	useEffect(() => {
+		const handleScroll = () => {
+			const currentScrollY = window.scrollY;
+
+			if (currentScrollY > lastScrollY) {
+				setScrollDirection("down");
+			}
+			if (currentScrollY < lastScrollY) {
+				setScrollDirection("up");
+			}
+
+			setLastScrollY(currentScrollY);
+		};
+
+		window.addEventListener("scroll", handleScroll);
+
+		return () => window.removeEventListener("scroll", handleScroll);
+	}, [lastScrollY]);
+
 	return (
-		<>
-			<div className="flex gap-6 justify-between px-5 py-5 items-center lg:p-10">
+		<div className={`fixed w-full z-50 ${scrollDirection === "down" ? "pb-4" : "pb-6"} sm:pb-0 transition-all duration-300`}>
+			<div className={`flex gap-6 justify-between px-5 lg:p-10 ${scrollDirection === "down" ? "py-4 lg:py-8" : "py-5"} items-center relative transition-all duration-300`}>
 				<div className="flex gap-6 w-full">
 					<a href="/" className="flex items-center">
 						<div className="flex gap-3">
@@ -27,6 +48,7 @@ export default function Header() {
 				<NavItems />
 			</div>
 			<SearchBox />
-		</>
+			<div className="backdrop-blur-lg bg-[rgb(0, 0, 0, 0.61)] absolute top-0 bottom-0 left-0 right-0 z-[-1] rounded-bl-md rounded-br-md"></div>
+		</div>
 	);
 }
