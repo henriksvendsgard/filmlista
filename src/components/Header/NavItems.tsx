@@ -24,7 +24,7 @@ export default function NavItems() {
 						</NavigationMenuLink>
 					</Link>
 				</NavigationMenuItem> */}
-				<NavigationMenuItem>
+				<NavigationMenuItem className=" rounded-md outline-1 outline outline-input">
 					<Link href="/watchlist" legacyBehavior passHref>
 						<NavigationMenuLink active={isActivePage("/watchlist")} className={navigationMenuTriggerStyle()}>
 							<CircleCheckBig className="w-5 h-5 pr-1" />

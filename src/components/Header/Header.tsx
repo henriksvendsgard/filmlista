@@ -28,7 +28,7 @@ export default function Header() {
 	}, [lastScrollY]);
 
 	return (
-		<div className={`fixed w-full z-50 ${scrollDirection === "down" ? "pb-3" : "pb-6"} sm:pb-0 transition-all duration-300`}>
+		<div className={`fixed w-full z-50 ${scrollDirection === "down" ? "pb-3" : "pb-6"} sm:pb-0 transition-all duration-300 `}>
 			<div className={`flex gap-6 justify-between px-5 lg:p-10 ${scrollDirection === "down" ? "py-3 lg:py-8" : "py-5"} items-center relative transition-all duration-300`}>
 				<div className="flex gap-6 w-full">
 					<a href="/" className="flex items-center">

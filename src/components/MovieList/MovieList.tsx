@@ -107,7 +107,7 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 								/>
 								<CardContent className="p-0 sm:p-4 lg:p-2">
 									<CardHeader>
-										<CardTitle className="text-2xl sm:text-3xl font-body mb-6">
+										<CardTitle className="text-2xl sm:text-3xl font-body mb-6 sm:mr-10">
 											{movie.title} ({movie.release_date.split("-")[0]})
 										</CardTitle>
 										<CardDescription className="overflow-hidden max-h-48 text-md">
