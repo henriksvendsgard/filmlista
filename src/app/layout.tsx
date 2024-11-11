@@ -39,7 +39,7 @@ export default function RootLayout({
 			<body className={cn("min-h-screen font-sans antialiased", fontSans.variable, fontHeading.variable, fontBody.variable)}>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
 					<Header />
-					<div className="flex flex-col items-center w-full pt-32">{children}</div>
+					<div className="flex flex-col items-center w-full pt-36">{children}</div>
 					<Toaster />
 				</ThemeProvider>
 			</body>

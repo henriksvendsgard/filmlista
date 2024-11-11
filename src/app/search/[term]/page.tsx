@@ -10,23 +10,21 @@ type SearchPageProps = {
 };
 
 async function SearchPage(props: SearchPageProps) {
-    const params = await props.params;
+	const params = await props.params;
 
-    const {
-        term
-    } = params;
+	const { term } = params;
 
-    if (!term) notFound();
+	if (!term) notFound();
 
-    // Removes spaces from the search term
-    const termToUse = decodeURI(term);
+	// Removes spaces from the search term
+	const termToUse = decodeURI(term);
 
-    const searchedMovies = await getSearchedMovies(termToUse);
-    const popularMovies = await getPopularMovies();
+	const searchedMovies = await getSearchedMovies(termToUse);
+	const popularMovies = await getPopularMovies();
 
-    return (
+	return (
 		<>
-			<div className="px-10">
+			<div className="px-6 lg:px-10 transition-all duration-300">
 				<section className="movie-list w-full h-full">
 					<MovieList title={`Resultater for "${termToUse}"`} movies={searchedMovies} isVertical />
 					{searchedMovies.length === 0 && (
