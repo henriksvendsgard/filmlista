@@ -80,7 +80,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 	};
 
 	return (
-		<div className="flex flex-col md:flex-row gap-10 max-w-6xl w-full mt-0 sm:mt-12 mb-48 px-5 lg:px-10">
+		<div className="flex flex-col md:flex-row gap-10 max-w-6xl w-full mt-0 sm:mt-12 mb-32 px-5 lg:px-10">
 			<div className="md:max-w-[450px]">
 				<Image className="md:max-w-[450px] rounded-lg" src={`https://image.tmdb.org/t/p/original${movie.poster_path}`} width={450} height={500} alt={`Movie poster for ${movie.title}`} />
 			</div>

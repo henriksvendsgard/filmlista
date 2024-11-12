@@ -11,7 +11,7 @@ const SearchInputSchema = z.object({
 	search: z.string().min(2).max(50),
 });
 
-function SearchInput() {
+export default function SearchInput() {
 	const router = useRouter();
 
 	const form = useForm<z.infer<typeof SearchInputSchema>>({
@@ -45,5 +45,3 @@ function SearchInput() {
 		</Form>
 	);
 }
-
-export default SearchInput;

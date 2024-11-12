@@ -6,6 +6,7 @@ import Header from "@/components/Header/Header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
+import Footer from "@/components/Footer/Footer";
 
 const fontSans = FontSans({
 	subsets: ["latin"],
@@ -36,10 +37,11 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body className={cn("min-h-screen font-sans antialiased", fontSans.variable, fontHeading.variable, fontBody.variable)}>
+			<body className={cn("min-h-screen flex flex-col font-sans antialiased", fontSans.variable, fontHeading.variable, fontBody.variable)}>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
 					<Header />
 					<div className="flex flex-col items-center w-full pt-36">{children}</div>
+					<Footer />
 					<Toaster />
 				</ThemeProvider>
 			</body>
