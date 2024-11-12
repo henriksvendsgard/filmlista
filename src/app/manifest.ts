@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
 		name: "Watcher - Movie Watchlist",
 		short_name: "Watcher",
 		start_url: "/",
-		display: "minimal-ui",
+		display: "fullscreen",
 		background_color: "#09090b",
 		theme_color: "#09090b",
 		icons: [
