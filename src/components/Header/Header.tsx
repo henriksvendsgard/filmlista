@@ -5,14 +5,14 @@ import SearchBox from "../Search/SearchBox";
 import NavItems from "./NavItems";
 
 export default function Header() {
-	const [scrollDirection, setScrollDirection] = useState<"up" | "down">("down");
+	const [scrollDirection, setScrollDirection] = useState<"up" | "down">("up");
 	const [lastScrollY, setLastScrollY] = useState(0);
 
 	useEffect(() => {
 		const handleScroll = () => {
 			const currentScrollY = window.scrollY;
 
-			if (currentScrollY > lastScrollY) {
+			if (currentScrollY > lastScrollY && currentScrollY > 100) {
 				setScrollDirection("down");
 			}
 			if (currentScrollY < lastScrollY) {
