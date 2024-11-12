@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
 		theme_color: "#09090b",
 		icons: [
 			{
-				src: "/icons/watcher_192x192.png",
+				src: "/icons/watcher_gray_192x192.png",
 				sizes: "192x192",
 				type: "image/png",
 			},
