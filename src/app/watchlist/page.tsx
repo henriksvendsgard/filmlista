@@ -7,7 +7,7 @@ export default async function WatchlistPage() {
 
 	return (
 		<div className="container mx-auto px-5 pb-8 lg:px-10 transition-all duration-300">
-			<WatchList title="Watchlist" />
+			<WatchList title="Filmlista" />
 			<div className="lg:mt-[300px] mt-[300px]">
 				<MovieList title="Kommende filmer" movies={upcomingMovies} isVertical />
 			</div>

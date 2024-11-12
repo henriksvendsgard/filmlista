@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
 	return {
-		name: "Watcher - Movie Watchlist",
-		short_name: "Watcher",
+		name: "Filmlista - filmer du vil se",
+		short_name: "Filmlista",
 		start_url: "/",
 		display: "fullscreen",
 		background_color: "#09090b",

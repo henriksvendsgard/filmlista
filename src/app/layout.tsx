@@ -26,8 +26,8 @@ const fontBody = Lexend({
 });
 
 export const metadata: Metadata = {
-	title: "Watcher",
-	description: "A simple movie watchlist app to keep track of your favorite movies.",
+	title: "Filmlista",
+	description: "En enkel filmliste for å holde styr på filmer du vil se.",
 };
 
 export default function RootLayout({
