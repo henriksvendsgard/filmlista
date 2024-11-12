@@ -100,7 +100,7 @@ export default function WatchList({ title }: WatchListProps) {
 
 	return (
 		<div>
-			<div className="flex items-center mb-6 mt-12">
+			<div className="flex items-center mb-6 mt-0 sm:mt-12">
 				<h1 className="text-5xl font-bold font-heading">{title}</h1>
 			</div>
 			{isLoading && (

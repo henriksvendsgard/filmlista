@@ -48,7 +48,8 @@ export default function Header() {
 				<NavItems />
 			</div>
 			<SearchBox />
-			<div className="backdrop-blur-lg bg-[rgb(0, 0, 0, 0.61)] absolute top-0 bottom-0 left-0 right-0 z-[-1] rounded-bl-md rounded-br-md"></div>
+			<div className="backdrop-blur-lg bg-black/60 absolute top-0 bottom-0 left-0 right-0 z-[-1] rounded-bl-md rounded-br-md"></div>
+			{/* <div className="bg-[rgb(0, 0, 0, 0.6)] absolute top-0 bottom-0 left-0 right-0 z-[-2] rounded-bl-md rounded-br-md"></div> */}
 		</div>
 	);
 }
