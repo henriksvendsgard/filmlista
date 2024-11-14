@@ -12,13 +12,13 @@ export async function toggleWatchedStatus(movieId: number): Promise<{ success: b
 	try {
 		const supabase = await createClient();
 
-		const { data, error } = await supabase.from("Watchlist").select("watched").eq("movie_id", movieId).single();
+		const { data, error } = await supabase.from("watchlist").select("watched").eq("movie_id", movieId).single();
 
 		if (error) throw error;
 
 		const newWatchedStatus = !data.watched;
 
-		const { error: updateError } = await supabase.from("Watchlist").update({ watched: newWatchedStatus }).eq("movie_id", movieId);
+		const { error: updateError } = await supabase.from("watchlist").update({ watched: newWatchedStatus }).eq("movie_id", movieId);
 
 		if (updateError) throw updateError;
 
@@ -39,7 +39,7 @@ export async function checkWatchlistStatus(movie_id: string) {
 	const supabase = await createClient();
 
 	const { data, error } = await supabase
-		.from("Watchlist")
+		.from("watchlist")
 		.select("id, user_id") // Henter ut id og user_id for å kunne vise hvem som la til filmen
 		.eq("movie_id", movie_id)
 		.single();
@@ -66,7 +66,7 @@ export async function checkWatchlistStatus(movie_id: string) {
  */
 export async function addToWatchlist({ user_id, movie_id, title, poster_path }: { user_id?: string; movie_id: string; title: string; poster_path: string }) {
 	const supabase = await createClient();
-	const { error } = await supabase.from("Watchlist").insert([{ user_id, movie_id, title, poster_path }]);
+	const { error } = await supabase.from("watchlist").insert([{ user_id, movie_id, title, poster_path }]);
 
 	if (error) {
 		console.error("Error adding to watchlist:", error);
@@ -85,7 +85,7 @@ export async function addToWatchlist({ user_id, movie_id, title, poster_path }: 
  */
 export async function removeFromWatchlist({ user_id, movie_id }: { user_id?: string; movie_id: string }) {
 	const supabase = await createClient();
-	const { error } = await supabase.from("Watchlist").delete().eq("user_id", user_id).eq("movie_id", movie_id);
+	const { error } = await supabase.from("watchlist").delete().eq("user_id", user_id).eq("movie_id", movie_id);
 
 	if (error) {
 		console.error("Error removing from watchlist:", error);

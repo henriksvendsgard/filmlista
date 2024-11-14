@@ -46,7 +46,7 @@ export default function WatchList({ title }: WatchListProps) {
 		const fetchWatchlistMovies = async () => {
 			setIsLoading(true);
 			try {
-				const { data, error } = await supabase.from("Watchlist").select("*");
+				const { data, error } = await supabase.from("watchlist").select("*");
 
 				if (error) {
 					console.error("Klarte ikke hente watchlist fra database:", error);
