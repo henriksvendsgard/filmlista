@@ -21,7 +21,7 @@ export default function AuthComponent() {
 		e.preventDefault();
 		setLoading(true);
 		setError(null);
-		setError("Registrering er ikke aktivert enda. Spør admin om å opprette bruker manuelt.");
+		setError("Tror du jeg er rik eller? Spør admin om å opprette bruker manuelt.");
 		// const { error } = await supabase.auth.signUp({ email, password });
 		// if (error) setError(error.message);
 		// else setError("Sjekk eposten din!");
@@ -69,13 +69,13 @@ export default function AuthComponent() {
 					</div>
 				</form>
 			</CardContent>
-			<CardFooter className="flex flex-col space-y-2">
-				{error && (
-					<Alert variant={error.includes("Registrering er ikke aktivert enda. Spør admin om å opprette bruker manuelt.") ? "default" : "destructive"}>
+			{error && (
+				<CardFooter className="flex flex-col space-y-2">
+					<Alert variant={error.includes("Tror du jeg er rik eller? Spør admin om å opprette bruker manuelt.") ? "default" : "destructive"}>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
-				)}
-			</CardFooter>
+				</CardFooter>
+			)}
 		</Card>
 	);
 }
