@@ -1,10 +1,17 @@
 "use server";
 
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/utils/supabase/client";
 import { revalidatePath } from "next/cache";
 
+/**
+ *
+ * @param movieId
+ * @returns { success: boolean, watched?: boolean, error?: string }
+ */
 export async function toggleWatchedStatus(movieId: number): Promise<{ success: boolean; watched?: boolean; error?: string }> {
 	try {
+		const supabase = await createClient();
+
 		const { data, error } = await supabase.from("Watchlist").select("watched").eq("movie_id", movieId).single();
 
 		if (error) throw error;
@@ -23,18 +30,42 @@ export async function toggleWatchedStatus(movieId: number): Promise<{ success: b
 	}
 }
 
+/**
+ *
+ * @param movie_id
+ * @returns isInWatchlist: boolean, addedByUser: string | null
+ */
 export async function checkWatchlistStatus(movie_id: string) {
-	const { data, error } = await supabase.from("Watchlist").select("id").eq("movie_id", movie_id).single();
+	const supabase = await createClient();
+
+	const { data, error } = await supabase
+		.from("Watchlist")
+		.select("id, user_id") // Henter ut id og user_id for å kunne vise hvem som la til filmen
+		.eq("movie_id", movie_id)
+		.single();
 
 	if (error && error.code !== "PGRST116") {
 		console.error("Error checking watchlist:", error);
 		throw new Error("An error occurred while checking the watchlist");
 	}
 
-	return !!data;
+	// Returnerer et objekt med to properties: isInWatchlist og addedByUser
+	return {
+		isInWatchlist: !!data,
+		addedByUser: data?.user_id || null,
+	};
 }
 
+/**
+ *
+ * @param user_id
+ * @param movie_id
+ * @param title
+ * @param poster_path
+ * @returns { success: boolean, message: string }
+ */
 export async function addToWatchlist({ user_id, movie_id, title, poster_path }: { user_id?: string; movie_id: string; title: string; poster_path: string }) {
+	const supabase = await createClient();
 	const { error } = await supabase.from("Watchlist").insert([{ user_id, movie_id, title, poster_path }]);
 
 	if (error) {
@@ -46,7 +77,14 @@ export async function addToWatchlist({ user_id, movie_id, title, poster_path }: 
 	return { success: true, message: "Added to watchlist" };
 }
 
+/**
+ *
+ * @param user_id
+ * @param movie_id
+ * @returns { success: boolean, message: string }
+ */
 export async function removeFromWatchlist({ user_id, movie_id }: { user_id?: string; movie_id: string }) {
+	const supabase = await createClient();
 	const { error } = await supabase.from("Watchlist").delete().eq("user_id", user_id).eq("movie_id", movie_id);
 
 	if (error) {

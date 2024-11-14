@@ -1,8 +1,7 @@
 "use client";
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
-import { CircleCheckBig, PersonStandingIcon } from "lucide-react";
+import { CircleCheckBig, CoffeeIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SignOutButton from "../Auth/SignOutButton";
@@ -39,7 +38,7 @@ export default function NavItems() {
 			<NavigationMenuList>
 				{user && (
 					<>
-						<NavigationMenuItem className=" rounded-md outline-1 outline outline-input">
+						<NavigationMenuItem className="rounded-md outline-1 outline outline-input">
 							<Link href="/watchlist" legacyBehavior passHref>
 								<NavigationMenuLink active={isActivePage("/watchlist")} className={navigationMenuTriggerStyle()}>
 									<CircleCheckBig className="w-5 h-5 pr-1" />
@@ -47,14 +46,17 @@ export default function NavItems() {
 								</NavigationMenuLink>
 							</Link>
 						</NavigationMenuItem>
-						<NavigationMenuItem>
+						<NavigationMenuItem className="rounded-md outline-1 outline outline-input flex items-center">
+							<SignOutButton />
+						</NavigationMenuItem>
+						{/* <NavigationMenuItem>
 							<DropdownMenu>
 								<DropdownMenuTrigger className={navigationMenuTriggerStyle()}>
 									<PersonStandingIcon className="w-5 h-5 pr-1" />
 									<span>Profil</span>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent>
-									<DropdownMenuLabel>Min profil</DropdownMenuLabel>
+									<DropdownMenuLabel>Logge ut?</DropdownMenuLabel>
 									<DropdownMenuSeparator />
 									<Link href="/profile/watchlist" className="w-full" legacyBehavior passHref>
 										<DropdownMenuItem className="cursor-pointer">
@@ -63,7 +65,7 @@ export default function NavItems() {
 									</Link>
 								</DropdownMenuContent>
 							</DropdownMenu>
-						</NavigationMenuItem>
+						</NavigationMenuItem> */}
 					</>
 				)}
 				<ModeToggle />

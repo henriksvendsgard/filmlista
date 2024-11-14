@@ -15,6 +15,11 @@ export async function middleware(req: NextRequest) {
 		return NextResponse.redirect(new URL("/login", req.url));
 	}
 
+	if (session && req.nextUrl.pathname === "/login") {
+		console.log("Redirecting to home page");
+		return NextResponse.redirect(new URL("/", req.url));
+	}
+
 	return res;
 }
 

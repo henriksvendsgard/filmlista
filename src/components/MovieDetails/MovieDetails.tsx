@@ -4,6 +4,8 @@ import { addToWatchlist, checkWatchlistStatus, removeFromWatchlist } from "@/app
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Movie } from "@/lib/typings";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { User } from "@supabase/supabase-js";
 import { Check, InfoIcon, Loader2, Plus, StarIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -14,14 +16,35 @@ type MovieDetailsProps = {
 
 export default function MovieDetails({ movie }: MovieDetailsProps) {
 	const [isInWatchlist, setIsInWatchlist] = useState(false);
+	const [addedByUser, setAddedByUser] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
+
+	const [user, setUser] = useState<User | null>(null);
+	const supabase = createClientComponentClient();
+
+	useEffect(() => {
+		const fetchUser = async () => {
+			const { data } = await supabase.auth.getUser();
+			setUser(data.user?.email ? data.user : null);
+		};
+
+		fetchUser();
+
+		const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+			setUser(session?.user || null);
+		});
+	}, []);
+
+	const userEmail = user?.email as string;
+	console.log(userEmail);
 
 	useEffect(() => {
 		const fetchWatchlistStatus = async () => {
 			setIsLoading(true);
 			try {
 				const status = await checkWatchlistStatus(movie.id.toString());
-				setIsInWatchlist(status);
+				setIsInWatchlist(status.isInWatchlist);
+				setAddedByUser(status.addedByUser);
 			} catch (error) {
 				console.error("Error checking watchlist status:", error);
 				toast({
@@ -41,20 +64,29 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 		setIsLoading(true);
 		try {
 			if (isInWatchlist) {
-				await removeFromWatchlist({
-					user_id: "Henrik",
-					movie_id: movie.id.toString(),
-				});
-				setIsInWatchlist(false);
-				toast({
-					title: "Fjernet fra listen din",
-					description: `${movie.title} har blitt fjernet fra din liste.`,
-					variant: "default",
-					className: "bg-orange-800",
-				});
+				if (addedByUser === userEmail) {
+					// Proceed to remove only if the user added the movie
+					await removeFromWatchlist({
+						user_id: userEmail,
+						movie_id: movie.id.toString(),
+					});
+					setIsInWatchlist(false);
+					toast({
+						title: "Fjernet fra listen din",
+						description: `${movie.title} har blitt fjernet fra lista.`,
+						variant: "default",
+						className: "bg-orange-800",
+					});
+				} else {
+					toast({
+						title: "Advarsel",
+						description: "Du kan bare fjerne filmer som du har lagt til selv.",
+						variant: "destructive",
+					});
+				}
 			} else {
 				await addToWatchlist({
-					user_id: "Henrik",
+					user_id: userEmail,
 					movie_id: movie.id.toString(),
 					title: movie.title,
 					poster_path: movie.poster_path,
@@ -62,7 +94,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 				setIsInWatchlist(true);
 				toast({
 					title: "Lagt til i listen din",
-					description: `${movie.title} har blitt lagt til i din liste.`,
+					description: `${movie.title} har blitt lagt til i lista.`,
 					variant: "default",
 					className: "bg-green-950",
 				});
@@ -71,7 +103,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 			console.error("Error updating watchlist:", error);
 			toast({
 				title: "Feil",
-				description: "Klarte ikke oppdatere watchlist. Prøv igjen",
+				description: "Klarte ikke oppdatere lista. Prøv igjen",
 				variant: "destructive",
 			});
 		} finally {
@@ -121,6 +153,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 						<span className="sr-only">{isInWatchlist ? "Fjern fra liste" : "Legg til i liste"}</span>
 					</Button>
 				</div>
+				{isInWatchlist && <p className="text-sm text-gray-500">Lagt til av {addedByUser}</p>}
 			</div>
 		</div>
 	);

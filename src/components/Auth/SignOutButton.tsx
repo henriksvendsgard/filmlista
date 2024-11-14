@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function SignOutButton() {
 	const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +26,7 @@ export default function SignOutButton() {
 
 	return (
 		<Button variant={"ghost"} onClick={handleSignOut} disabled={isLoading}>
+			<LogOut className="w-5 h-5 pr-1" />
 			{isLoading ? "Logger ut..." : "Logg ut"}
 		</Button>
 	);

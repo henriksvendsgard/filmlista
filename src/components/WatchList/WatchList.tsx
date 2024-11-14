@@ -2,7 +2,7 @@
 
 import { toggleWatchedStatus } from "@/app/actions/watchlist";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabaseClient";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Eye, EyeOff, Loader2Icon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -28,6 +28,7 @@ export default function WatchList({ title }: WatchListProps) {
 	const [isLoading, setIsLoading] = useState(true);
 	const [watchlistMovies, setWatchlistMovies] = useState<Movie[]>([]);
 	const [pendingMovies, setPendingMovies] = useState<Set<number>>(new Set());
+	const supabase = createClientComponentClient();
 
 	const sortMovies = (movies: Movie[]) => {
 		return movies.sort((watched, unwatched) => {

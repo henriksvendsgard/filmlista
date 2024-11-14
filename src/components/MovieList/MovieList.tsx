@@ -45,7 +45,7 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 		movies.forEach((movie) => {
 			checkWatchlistStatus(movie.id.toString())
 				.then((status) => {
-					setWatchlistStatuses((prev) => ({ ...prev, [movie.id]: status }));
+					setWatchlistStatuses((prev) => ({ ...prev, [movie.id]: status.isInWatchlist }));
 				})
 				.catch((error) => {
 					console.error(`Error checking status for movie ${movie.id}:`, error);
