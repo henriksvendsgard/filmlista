@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
 		name: "Filmlista - filmer du vil se",
 		short_name: "Filmlista",
 		start_url: "/",
-		display: "fullscreen",
+		display: "standalone",
 		background_color: "#09090b",
 		theme_color: "#09090b",
 		icons: [
