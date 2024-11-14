@@ -15,5 +15,6 @@ export default function CheckPWA() {
 			console.log("Installer meg som PWA!!!");
 		}
 	}, []);
-	if (isNotPWA) return <h1 className="text-white">Installer meg som PWA!!!</h1>;
+	// if (isNotPWA) return <h1 className="text-white">Installer meg som PWA!!!</h1>;
+	return null;
 }
