@@ -31,15 +31,7 @@ export default function WatchList({ title }: WatchListProps) {
 	const supabase = createClientComponentClient();
 
 	const sortMovies = (movies: Movie[]) => {
-		return movies.sort((watched, unwatched) => {
-			if (watched.watched && !unwatched.watched) {
-				return 1;
-			}
-			if (!watched.watched && unwatched.watched) {
-				return -1;
-			}
-			return new Date(unwatched.created_at).getTime() - new Date(watched.created_at).getTime();
-		});
+		return movies.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 	};
 
 	useEffect(() => {
