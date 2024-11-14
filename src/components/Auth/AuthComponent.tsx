@@ -57,23 +57,23 @@ export default function AuthComponent() {
 						<Label htmlFor="password">Passord</Label>
 						<Input id="password" type="password" placeholder="Passord" value={password} onChange={(e) => setPassword(e.target.value)} required />
 					</div>
+					<div>
+						<div className="flex flex-row-reverse justify-between w-full">
+							<Button type="submit" onClick={handleSignIn} disabled={loading}>
+								Logg inn
+							</Button>
+							<Button className="bg-gray-500" onClick={handleSignUp} disabled={loading}>
+								Registrer
+							</Button>
+						</div>
+					</div>
 				</form>
 			</CardContent>
 			<CardFooter className="flex flex-col space-y-2">
-				<div className="flex justify-between w-full">
-					<Button className="bg-gray-500" onClick={handleSignUp} disabled={loading}>
-						Sign Up
-					</Button>
-					<Button type="submit" onClick={handleSignIn} disabled={loading}>
-						Sign In
-					</Button>
-				</div>
 				{error && (
-					<div className="pt-5">
-						<Alert variant={error.includes("Registrering er ikke aktivert enda. Spør admin om å opprette bruker manuelt.") ? "default" : "destructive"}>
-							<AlertDescription>{error}</AlertDescription>
-						</Alert>
-					</div>
+					<Alert variant={error.includes("Registrering er ikke aktivert enda. Spør admin om å opprette bruker manuelt.") ? "default" : "destructive"}>
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
 				)}
 			</CardFooter>
 		</Card>
