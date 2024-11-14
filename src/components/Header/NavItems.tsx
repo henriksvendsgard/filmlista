@@ -38,15 +38,15 @@ export default function NavItems() {
 			<NavigationMenuList>
 				{user && (
 					<>
-						<NavigationMenuItem className="rounded-md outline-1 outline outline-input">
+						<NavigationMenuItem>
 							<Link href="/watchlist" legacyBehavior passHref>
-								<NavigationMenuLink active={isActivePage("/watchlist")} className={navigationMenuTriggerStyle()}>
+								<NavigationMenuLink active={isActivePage("/watchlist")} className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent`}>
 									<CircleCheckBig className="w-5 h-5 pr-1" />
 									<span>Liste</span>
 								</NavigationMenuLink>
 							</Link>
 						</NavigationMenuItem>
-						<NavigationMenuItem className="rounded-md outline-1 outline outline-input flex items-center">
+						<NavigationMenuItem className="flex items-center">
 							<SignOutButton />
 						</NavigationMenuItem>
 						{/* <NavigationMenuItem>

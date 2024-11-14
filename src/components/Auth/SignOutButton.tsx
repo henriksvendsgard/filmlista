@@ -25,7 +25,7 @@ export default function SignOutButton() {
 	};
 
 	return (
-		<Button className="w-10 p-0 sm:w-full sm:p-4" variant={"ghost"} onClick={handleSignOut} disabled={isLoading}>
+		<Button className="w-10 p-0 sm:w-full sm:p-4" variant={"outline"} onClick={handleSignOut} disabled={isLoading}>
 			<LogOut className="w-[18px] h-[18px] sm:pr-1" />
 			<span className="hidden sm:block">{isLoading ? "Logger ut..." : "Logg ut"}</span>
 		</Button>
