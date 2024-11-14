@@ -2,7 +2,7 @@
 
 import { useSupabase } from "@/components/SupabaseProvider";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, icons } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -25,9 +25,9 @@ export default function SignOutButton() {
 	};
 
 	return (
-		<Button variant={"ghost"} onClick={handleSignOut} disabled={isLoading}>
-			<LogOut className="w-5 h-5 pr-1" />
-			{isLoading ? "Logger ut..." : "Logg ut"}
+		<Button className="w-10 p-0 sm:w-full sm:p-4" variant={"ghost"} onClick={handleSignOut} disabled={isLoading}>
+			<LogOut className="w-[18px] h-[18px] sm:pr-1" />
+			<span className="hidden sm:block">{isLoading ? "Logger ut..." : "Logg ut"}</span>
 		</Button>
 	);
 }
