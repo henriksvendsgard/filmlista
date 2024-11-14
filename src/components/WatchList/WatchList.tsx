@@ -114,7 +114,7 @@ export default function WatchList({ title }: WatchListProps) {
 					<p className="text-lg text-gray-600">Ingen filmer lagt til i listen enda...</p>
 				</div>
 			) : (
-				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+				<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
 					{watchlistMovies.map((movie: Movie) => (
 						<Link href={`/movie/${movie.movie_id}`} key={movie.id} className="hover:scale-[99%] transition-all">
 							<Card key={movie.id} className="overflow-hidden flex flex-col">
@@ -140,7 +140,7 @@ export default function WatchList({ title }: WatchListProps) {
 									<h2 className="text-2xl font-semibold truncate">{movie.title}</h2>
 									<p className="text-gray-600 text-sm mt-1">Lagt til {new Date(movie.created_at).toLocaleDateString("nb-NO")}</p>
 									{/* TODO: Kommer snart: */}
-									<p className="text-gray-400 text-sm mt-1">Av {movie.user_id}</p>
+									<p className="text-gray-400 text-sm mt-1 truncate">Av {movie.user_id}</p>
 								</CardContent>
 							</Card>
 						</Link>

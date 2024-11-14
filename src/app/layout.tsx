@@ -51,7 +51,7 @@ export default async function RootLayout({
 				<SupabaseProvider session={session}>
 					<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
 						<Header />
-						<div className="flex flex-col items-center w-full pt-36">
+						<div className="flex flex-col items-center w-full pt-40">
 							<CheckPWA />
 							{children}
 						</div>

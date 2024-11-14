@@ -93,11 +93,11 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 	return (
 		<div className="mx-auto max-w-[1400px]">
 			{title && <h2 className="text-4xl font-semibold w-full mb-6 mt-0 sm:mt-12 lg:mt-20 font-heading">{title}</h2>}
-			<div className={cn("gap-8 grid lg:grid-cols-2", isVertical && "grid lg:grid-flow-row")}>
+			<div className={cn("gap-3 sm:gap-8 grid grid-cols-1 lg:grid-cols-2", isVertical && "grid lg:grid-flow-row")}>
 				{movies.map((movie) =>
 					movie.poster_path ? (
 						<Link href={`/movie/${movie.id}`} key={movie.id}>
-							<Card className="relative sm:flex hover:scale-[99%] transition-all min-w-20 h-full flex flex-col sm:flex-row">
+							<Card className="relative sm:flex hover:scale-[99%] transition-all min-w-20 h-full flex flex-row sm:flex-row">
 								<Button
 									className={`absolute top-4 right-4 ${watchlistStatuses[movie.id] ? "bg-green-800 hover:bg-green-900" : "bg-slate-950 hover:bg-slate-900"}`}
 									onClick={(e) => {
@@ -118,7 +118,7 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 									<span className="sr-only">{watchlistStatuses[movie.id] ? "Remove from list" : "Add to list"}</span>
 								</Button>
 								<Image
-									className="w-full sm:w-60 h-full rounded-bl-none rounded-tr-xl sm:rounded-bl-xl sm:rounded-tr-none max-h-[650px] sm:max-h-full sm:max-w-60 lg:max-w-48 rounded-tl-xl object-cover"
+									className="max-w-36 sm:w-60 max-h-[400px] rounded-bl-xl sm:rounded-tr-none sm:max-h-full sm:max-w-60 lg:max-w-48 rounded-tl-xl object-cover"
 									src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
 									width={500}
 									height={750}
@@ -126,11 +126,11 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 								/>
 								<CardContent className="p-0 sm:p-4 lg:p-2">
 									<CardHeader>
-										<CardTitle className="text-2xl sm:text-3xl font-body mb-6 sm:mr-10">
-											{movie.title} ({movie.release_date.split("-")[0]})
+										<CardTitle className="text-2xl sm:text-3xl font-body mb-6 mr-10">
+											{movie.title.length > 20 ? `${movie.title.slice(0, 20)}...` : movie.title} ({movie.release_date.split("-")[0]})
 										</CardTitle>
 										<CardDescription className="overflow-hidden max-h-48 text-md">
-											{movie.overview.length > 175 ? `${movie.overview.slice(0, 175)}...` : movie.overview}
+											{movie.overview.length > 100 ? `${movie.overview.slice(0, 100)}...` : movie.overview}
 										</CardDescription>
 									</CardHeader>
 								</CardContent>
