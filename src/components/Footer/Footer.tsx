@@ -9,7 +9,7 @@ export default function Footer() {
 					<p>Utviklet av</p>
 					<a className="underline underline-offset-2 flex items-center" href="https://github.com/henriksvendsgard">
 						henriksvendsgard
-						<Image className="rounded-full ml-1 w-6 h-6" src="/github_avatar.jpeg" alt="Watcher" width={24} height={24} />
+						<Image className="rounded-full ml-1 w-6 h-6" src="/images/github_avatar.jpeg" alt="Watcher" width={24} height={24} />
 					</a>
 				</div>
 			</div>
