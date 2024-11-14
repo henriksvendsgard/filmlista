@@ -139,7 +139,7 @@ export default function WatchList({ title }: WatchListProps) {
 									<h2 className="text-2xl font-semibold truncate">{movie.title}</h2>
 									<p className="text-gray-600 text-sm mt-1">Lagt til {new Date(movie.created_at).toLocaleDateString("nb-NO")}</p>
 									{/* TODO: Kommer snart: */}
-									{/* <p className="text-gray-400 text-sm mt-1">Av {movie.user_id}</p> */}
+									<p className="text-gray-400 text-sm mt-1">Av {movie.user_id}</p>
 								</CardContent>
 							</Card>
 						</Link>

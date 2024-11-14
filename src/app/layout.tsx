@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { Metadata } from "next";
 import { Inter as FontSans, Lexend } from "next/font/google";
 import "./globals.css";
 
@@ -8,6 +8,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import CheckPWA from "@/components/utils/CheckPWA";
 import { cn } from "@/lib/utils";
+import SupabaseProvider from "@/components/SupabaseProvider";
+import { cookies } from "next/headers";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
 const fontSans = FontSans({
 	subsets: ["latin"],
@@ -31,23 +34,31 @@ export const metadata: Metadata = {
 	description: "En enkel filmliste for å holde styr på filmer du vil se.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const supabase = createServerComponentClient({ cookies });
+
+	const {
+		data: { session },
+	} = await supabase.auth.getSession();
+
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body className={cn("min-h-screen flex flex-col font-sans antialiased", fontSans.variable, fontHeading.variable, fontBody.variable)}>
-				<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-					<Header />
-					<div className="flex flex-col items-center w-full pt-36">
-						<CheckPWA />
-						{children}
-					</div>
-					<Footer />
-					<Toaster />
-				</ThemeProvider>
+				<SupabaseProvider session={session}>
+					<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+						<Header />
+						<div className="flex flex-col items-center w-full pt-36">
+							<CheckPWA />
+							{children}
+						</div>
+						<Footer />
+						<Toaster />
+					</ThemeProvider>
+				</SupabaseProvider>
 			</body>
 		</html>
 	);

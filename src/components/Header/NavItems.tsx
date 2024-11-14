@@ -6,6 +6,7 @@ import { CircleCheckBig, PersonStandingIcon, Popcorn } from "lucide-react";
 import Link from "next/link";
 import { ModeToggle } from "./ModeToggle";
 import { usePathname } from "next/navigation";
+import SignOutButton from "../Auth/SignOutButton";
 
 export default function NavItems() {
 	const pathname = usePathname();
@@ -35,18 +36,17 @@ export default function NavItems() {
 				<NavigationMenuItem>
 					<DropdownMenu>
 						{/* Profil er disabled for nå */}
-						<DropdownMenuTrigger disabled className={navigationMenuTriggerStyle()}>
+						<DropdownMenuTrigger className={navigationMenuTriggerStyle()}>
 							<PersonStandingIcon className="w-5 h-5 pr-1" />
 							<span>Profil</span>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent>
 							<DropdownMenuLabel>Min profil</DropdownMenuLabel>
 							<DropdownMenuSeparator />
-							<Link href="/profile" className="w-full" legacyBehavior passHref>
-								<DropdownMenuItem className="cursor-pointer">Info</DropdownMenuItem>
-							</Link>
 							<Link href="/profile/watchlist" className="w-full" legacyBehavior passHref>
-								<DropdownMenuItem className="cursor-pointer">Logg ut</DropdownMenuItem>
+								<DropdownMenuItem className="cursor-pointer">
+									<SignOutButton />
+								</DropdownMenuItem>
 							</Link>
 						</DropdownMenuContent>
 					</DropdownMenu>
