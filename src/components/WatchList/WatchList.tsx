@@ -116,8 +116,8 @@ export default function WatchList({ title }: WatchListProps) {
 				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
 					{watchlistMovies.map((movie: Movie) => (
 						<Link href={`/movie/${movie.movie_id}`} key={movie.id} className="hover:scale-[99%] transition-all">
-							<Card key={movie.id} className="overflow-hidden">
-								<div className="relative h-[400px] xl:h-[500px] z-0 object-cover">
+							<Card key={movie.id} className="overflow-hidden flex flex-col">
+								<div className="relative z-0 object-cover">
 									<Button
 										onClick={(e) => handleToggleWatched(movie.movie_id, movie.title, e)}
 										size={"icon"}
@@ -130,12 +130,12 @@ export default function WatchList({ title }: WatchListProps) {
 									<Image
 										width={500}
 										height={500}
-										className={`object-cover h-[400px] xl:h-[500px] w-full` + (movie.watched ? "filer brightness-[40%]" : "")}
+										className={`object-cover max-h-[650px] xl:h-[500px] w-full` + (movie.watched ? "filer brightness-[40%]" : "")}
 										src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
 										alt={movie.title}
 									/>
 								</div>
-								<CardContent className="p-4 z-10">
+								<CardContent className="p-4 z-10 bg-black">
 									<h2 className="text-2xl font-semibold truncate">{movie.title}</h2>
 									<p className="text-gray-600 text-sm mt-1">Lagt til {new Date(movie.created_at).toLocaleDateString("nb-NO")}</p>
 									{/* TODO: Kommer snart: */}

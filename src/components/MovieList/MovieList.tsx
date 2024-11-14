@@ -78,7 +78,7 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 				{movies.map((movie) =>
 					movie.poster_path ? (
 						<Link href={`/movie/${movie.id}`} key={movie.id}>
-							<Card className="relative sm:flex hover:scale-[99%] transition-all min-w-20 h-full">
+							<Card className="relative sm:flex hover:scale-[99%] transition-all min-w-20 h-full flex flex-col sm:flex-row">
 								<Button
 									className={`absolute top-4 right-4 ${watchlistStatuses[movie.id] ? "bg-green-800 hover:bg-green-900" : "bg-slate-950 hover:bg-slate-900"}`}
 									onClick={(e) => {
@@ -99,7 +99,7 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 									<span className="sr-only">{watchlistStatuses[movie.id] ? "Remove from list" : "Add to list"}</span>
 								</Button>
 								<Image
-									className="w-full sm:w-60 h-full max-h-96 rounded-bl-none rounded-tr-xl sm:rounded-bl-xl sm:rounded-tr-none sm:max-h-full sm:max-w-60 lg:max-w-48 rounded-tl-xl object-cover"
+									className="w-full sm:w-60 h-full rounded-bl-none rounded-tr-xl sm:rounded-bl-xl sm:rounded-tr-none max-h-[650px] sm:max-h-full sm:max-w-60 lg:max-w-48 rounded-tl-xl object-cover"
 									src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
 									width={500}
 									height={750}
