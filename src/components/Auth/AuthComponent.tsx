@@ -45,20 +45,20 @@ export default function AuthComponent() {
 	return (
 		<Card className="min-w-full sm:w-[350px]">
 			<CardHeader>
-				<CardTitle>Logg inn med brukeren din</CardTitle>
+				<CardTitle>Logg inn med epost</CardTitle>
 			</CardHeader>
 			<CardContent>
 				<form onSubmit={handleSignIn} className="space-y-4">
 					<div className="space-y-2">
 						<Label htmlFor="email">Epost</Label>
-						<Input id="email" type="email" placeholder="Epost" value={email} onChange={(e) => setEmail(e.target.value)} required />
+						<Input className="text-base" id="email" type="email" placeholder="Epost" value={email} onChange={(e) => setEmail(e.target.value)} required />
 					</div>
 					<div className="space-y-2">
 						<Label htmlFor="password">Passord</Label>
-						<Input id="password" type="password" placeholder="Passord" value={password} onChange={(e) => setPassword(e.target.value)} required />
+						<Input className="text-base" id="password" type="password" placeholder="Passord" value={password} onChange={(e) => setPassword(e.target.value)} required />
 					</div>
 					<div>
-						<div className="flex flex-row-reverse justify-between w-full">
+						<div className="flex flex-row-reverse justify-between w-full mt-12">
 							<Button type="submit" onClick={handleSignIn} disabled={loading}>
 								Logg inn
 							</Button>

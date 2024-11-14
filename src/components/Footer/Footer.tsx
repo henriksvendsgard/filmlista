@@ -4,7 +4,7 @@ export default function Footer() {
 	return (
 		<div className="flex mt-auto mb-0 pt-10">
 			<div className="w-full bg-background border-t text-white px-5 py-8 flex justify-between flex-wrap gap-4">
-				<p>&copy; 2024 Kikkern</p>
+				<p>&copy; 2024 Filmlista</p>
 				<div className="flex items-center gap-1">
 					<p>Utviklet av</p>
 					<a className="underline underline-offset-2 flex items-center" href="https://github.com/henriksvendsgard">

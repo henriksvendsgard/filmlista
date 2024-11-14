@@ -10,6 +10,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { User } from "@supabase/supabase-js";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 type MovieItemProps = {
 	title?: string;
@@ -20,6 +22,23 @@ type MovieItemProps = {
 export default function MovieList({ title, movies, isVertical }: MovieItemProps) {
 	const [watchlistStatuses, setWatchlistStatuses] = useState<Record<number, boolean>>({});
 	const [loadingStatuses, setLoadingStatuses] = useState<Record<number, boolean>>(movies.reduce((acc, movie) => ({ ...acc, [movie.id]: true }), {}));
+	const [user, setUser] = useState<User | null>(null);
+	const supabase = createClientComponentClient();
+
+	useEffect(() => {
+		const fetchUser = async () => {
+			const { data } = await supabase.auth.getUser();
+			setUser(data.user?.email ? data.user : null);
+		};
+
+		fetchUser();
+
+		const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+			setUser(session?.user || null);
+		});
+	}, []);
+
+	const userEmail = user?.email as string;
 
 	useEffect(() => {
 		// Fetch each movie's watchlist status only on initial load
@@ -43,7 +62,7 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 
 		try {
 			if (isInWatchlist) {
-				await removeFromWatchlist({ user_id: "Henrik", movie_id: movieId.toString() });
+				await removeFromWatchlist({ user_id: userEmail, movie_id: movieId.toString() });
 				setWatchlistStatuses((prev) => ({ ...prev, [movieId]: false }));
 				toast({
 					title: "Fjernet fra listen din",
@@ -52,7 +71,7 @@ export default function MovieList({ title, movies, isVertical }: MovieItemProps)
 					className: "bg-orange-800",
 				});
 			} else {
-				await addToWatchlist({ user_id: "Henrik", movie_id: movieId.toString(), title: movieTitle, poster_path: posterPath });
+				await addToWatchlist({ user_id: userEmail, movie_id: movieId.toString(), title: movieTitle, poster_path: posterPath });
 				setWatchlistStatuses((prev) => ({ ...prev, [movieId]: true }));
 				toast({
 					title: "Lagt til i listen din",
