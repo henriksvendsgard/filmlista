@@ -270,7 +270,7 @@ export default function Lists() {
 				<TabsContent value="owned">
 					{!loading && lists.owned.length === 0 && lists.shared.length === 0 && (
 						<div className="flex justify-center items-center h-24">
-							<p className="text-muted-foreground">Du har ingen lister enda, trykk på "Ny liste" for å lage filmlista di!</p>
+							<p className="text-muted-foreground">Du har ingen lister enda, trykk på Ny liste for å lage filmlista di!</p>
 						</div>
 					)}
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 sm:mt-16">
