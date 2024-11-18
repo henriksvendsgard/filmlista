@@ -9,15 +9,41 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+interface List {
+	id: string;
+	name: string;
+	owner_id: string;
+	created_at: string;
+	// Add any other properties your list has
+}
+
+interface ListsState {
+	owned: List[];
+	shared: List[];
+}
 
 export default function Lists() {
-	const [lists, setLists] = useState<any>({ owned: [], shared: [] });
+	const [lists, setLists] = useState<ListsState>({ owned: [], shared: [] });
 	const [newListName, setNewListName] = useState("");
 	const [shareEmail, setShareEmail] = useState("");
 	const [selectedList, setSelectedList] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+	const [listToDelete, setListToDelete] = useState<{ id: string; name: string } | null>(null);
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
 	const supabase = createClientComponentClient();
 
@@ -96,24 +122,45 @@ export default function Lists() {
 		}
 	};
 
-	const handleDeleteList = async (listId: string) => {
-		try {
-			const { error } = await supabase.from("lists").delete().eq("id", listId);
+	const handleDeleteList = async () => {
+		if (!listToDelete) return;
 
-			if (error) throw error;
+		try {
+			// First, delete all movies in the list
+			const { error: moviesError } = await supabase.from("list_movies").delete().eq("list_id", listToDelete.id);
+
+			if (moviesError) throw moviesError;
+
+			// Then, delete any shared access to this list
+			const { error: sharedError } = await supabase.from("shared_lists").delete().eq("list_id", listToDelete.id);
+
+			if (sharedError) throw sharedError;
+
+			// Finally, delete the list itself
+			const { error: listError } = await supabase.from("lists").delete().eq("id", listToDelete.id);
+
+			if (listError) throw listError;
+
+			// Update local state
+			setLists((prev) => ({
+				...prev,
+				owned: prev.owned.filter((list) => list.id !== listToDelete.id),
+			}));
 
 			toast({
 				title: "Liste slettet",
-				description: "Listen er nå slettet",
+				description: `"${listToDelete.name}" har blitt slettet`,
 			});
-			fetchLists();
 		} catch (error) {
 			console.error("Error deleting list:", error);
 			toast({
-				title: "Kunne ikke slette",
-				description: "Det oppstod en feil ved å slette listen",
+				title: "Feil",
+				description: "Kunne ikke slette listen",
 				variant: "destructive",
 			});
+		} finally {
+			setIsDeleteDialogOpen(false);
+			setListToDelete(null);
 		}
 	};
 
@@ -229,7 +276,14 @@ export default function Lists() {
 										>
 											<Share2 className="h-4 w-4" />
 										</Button>
-										<Button variant="ghost" size="icon" onClick={() => handleDeleteList(list.id)}>
+										<Button
+											variant="destructive"
+											size="icon"
+											onClick={() => {
+												setListToDelete({ id: list.id, name: list.name });
+												setIsDeleteDialogOpen(true);
+											}}
+										>
 											<Trash2 className="h-4 w-4" />
 										</Button>
 									</div>
@@ -243,7 +297,7 @@ export default function Lists() {
 				</TabsContent>
 
 				<TabsContent value="shared">
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 sm:mt-16">
 						{lists.shared.map((list: any) => (
 							<Card key={list.id}>
 								<CardHeader>
@@ -271,6 +325,28 @@ export default function Lists() {
 					</form>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+						<AlertDialogDescription>Dette vil slette {listToDelete?.name} og fjerne alle filmene fra listen. Denne handlingen kan ikke angres.</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel
+							onClick={() => {
+								setIsDeleteDialogOpen(false);
+								setListToDelete(null);
+							}}
+						>
+							Cancel
+						</AlertDialogCancel>
+						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDeleteList}>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }
