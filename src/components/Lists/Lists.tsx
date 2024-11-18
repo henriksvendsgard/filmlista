@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { PlusCircle, Share2, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -122,46 +122,47 @@ export default function Lists() {
 		}
 	};
 
-	const handleDeleteList = async () => {
+	const handleDeleteList = () => {
 		if (!listToDelete) return;
 
-		try {
-			// First, delete all movies in the list
-			const { error: moviesError } = await supabase.from("list_movies").delete().eq("list_id", listToDelete.id);
+		const deleteList = async () => {
+			try {
+				const { error: moviesError } = await supabase.from("list_movies").delete().eq("list_id", listToDelete.id);
 
-			if (moviesError) throw moviesError;
+				if (moviesError) throw moviesError;
 
-			// Then, delete any shared access to this list
-			const { error: sharedError } = await supabase.from("shared_lists").delete().eq("list_id", listToDelete.id);
+				const { error: sharedError } = await supabase.from("shared_lists").delete().eq("list_id", listToDelete.id);
 
-			if (sharedError) throw sharedError;
+				if (sharedError) throw sharedError;
 
-			// Finally, delete the list itself
-			const { error: listError } = await supabase.from("lists").delete().eq("id", listToDelete.id);
+				const { error: listError } = await supabase.from("lists").delete().eq("id", listToDelete.id);
 
-			if (listError) throw listError;
+				if (listError) throw listError;
 
-			// Update local state
-			setLists((prev) => ({
-				...prev,
-				owned: prev.owned.filter((list) => list.id !== listToDelete.id),
-			}));
+				setLists((prev) => ({
+					...prev,
+					owned: prev.owned.filter((list) => list.id !== listToDelete.id),
+				}));
 
-			toast({
-				title: "Liste slettet",
-				description: `"${listToDelete.name}" har blitt slettet`,
-			});
-		} catch (error) {
-			console.error("Error deleting list:", error);
-			toast({
-				title: "Feil",
-				description: "Kunne ikke slette listen",
-				variant: "destructive",
-			});
-		} finally {
-			setIsDeleteDialogOpen(false);
-			setListToDelete(null);
-		}
+				toast({
+					title: "Liste slettet",
+					description: `"${listToDelete.name}" har blitt slettet`,
+					variant: "destructive",
+				});
+			} catch (error) {
+				console.error("Error deleting list:", error);
+				toast({
+					title: "Feil",
+					description: "Kunne ikke slette listen",
+					variant: "destructive",
+				});
+			} finally {
+				setIsDeleteDialogOpen(false);
+				setListToDelete(null);
+			}
+		};
+
+		deleteList();
 	};
 
 	const handleShareList = async (e: React.FormEvent) => {
@@ -231,20 +232,22 @@ export default function Lists() {
 						</Button>
 					</DialogTrigger>
 					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Opprett ny liste</DialogTitle>
-							<DialogDescription>Gi listen din et navn. Du kan legge til filmer senere.</DialogDescription>
+						<DialogHeader className="mb-8">
+							<DialogTitle className="mb-4">Opprett ny liste</DialogTitle>
+							<DialogDescription>Gi listen din et navn. Filmer legger du til senere.</DialogDescription>
 						</DialogHeader>
-						<div className="space-y-4">
+						<div className="space-y-8">
 							<div>
-								<Label htmlFor="name">Listenavn</Label>
-								<Input id="name" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="F.eks. Favorittfilmer" />
+								<Label className="hidden" htmlFor="name">
+									Listenavn
+								</Label>
+								<Input className="text-base" id="name" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="F.eks. Favorittfilmer" />
 							</div>
 							<DialogFooter>
 								<Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
 									Avbryt
 								</Button>
-								<Button onClick={handleCreateList} disabled={!newListName.trim()}>
+								<Button className="mb-4" onClick={handleCreateList} disabled={!newListName.trim()}>
 									Opprett liste
 								</Button>
 							</DialogFooter>
@@ -259,7 +262,17 @@ export default function Lists() {
 					<TabsTrigger value="shared">Delt med meg</TabsTrigger>
 				</TabsList>
 
+				{loading && (
+					<div className="flex justify-center items-center h-24">
+						<Loader2 className="h-10 w-10 mt-32 animate-spin" />
+					</div>
+				)}
 				<TabsContent value="owned">
+					{!loading && lists.owned.length === 0 && lists.shared.length === 0 && (
+						<div className="flex justify-center items-center h-24">
+							<p className="text-muted-foreground">Du har ingen lister enda, trykk på "Ny liste" for å lage filmlista di!</p>
+						</div>
+					)}
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 sm:mt-16">
 						{lists.owned.map((list: any) => (
 							<Card key={list.id}>
@@ -297,6 +310,11 @@ export default function Lists() {
 				</TabsContent>
 
 				<TabsContent value="shared">
+					{!loading && lists.shared.length === 0 && (
+						<div className="flex justify-center items-center h-24">
+							<p className="text-muted-foreground">Ingen har delt noen lister med deg enda...</p>
+						</div>
+					)}
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 sm:mt-16">
 						{lists.shared.map((list: any) => (
 							<Card key={list.id}>
@@ -339,10 +357,10 @@ export default function Lists() {
 								setListToDelete(null);
 							}}
 						>
-							Cancel
+							Avbryt
 						</AlertDialogCancel>
 						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDeleteList}>
-							Delete
+							Slett
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

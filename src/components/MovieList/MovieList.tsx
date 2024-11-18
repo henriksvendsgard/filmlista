@@ -251,11 +251,6 @@ export default function MovieList({ movies, title }: MovieListProps) {
 	}, [movies, fetchLists, fetchMovieListMap]);
 
 	useEffect(() => {
-		console.log("movieListMap:", movieListMap);
-		console.log("movieDetails:", movieDetails);
-	}, [movieListMap, movieDetails]);
-
-	useEffect(() => {
 		const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
 			const { type, movieId, listId } = event.detail;
 

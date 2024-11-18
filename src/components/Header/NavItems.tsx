@@ -59,7 +59,7 @@ export default function NavItems() {
 							<Link href="/watchlist" legacyBehavior passHref>
 								<NavigationMenuLink active={isActivePage("/watchlist")} className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent`}>
 									<CircleCheckBig className="w-5 h-5 pr-1" />
-									<span>Liste</span>
+									<span>Lista</span>
 								</NavigationMenuLink>
 							</Link>
 						</NavigationMenuItem>

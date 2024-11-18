@@ -162,7 +162,9 @@ export function MovieCard({
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
-			{showAddedBy && movie.added_by && movie.added_by_email && <div className="absolute bottom-2 right-2 bg-background/80 p-2 rounded-md text-xs">Lagt til av {movie.added_by_email}</div>}
+			{showAddedBy && movie.added_by && movie.added_by_email && (
+				<div className="absolute bottom-2 left-2 bg-background/80 p-2 rounded-md text-xs break-all mr-2">Lagt til av {movie.added_by_email}</div>
+			)}
 		</div>
 	);
 }
