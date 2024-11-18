@@ -26,11 +26,11 @@ async function SearchPage(props: SearchPageProps) {
 		<>
 			<div className="px-6 lg:px-10 transition-all duration-300">
 				<section className="movie-list w-full h-full">
-					<MovieList title={`Resultater for "${termToUse}"`} movies={searchedMovies} isVertical />
+					<MovieList title={`Resultater for "${termToUse}"`} movies={searchedMovies} />
 					{searchedMovies.length === 0 && (
 						<>
 							<h3>Finner ikke filmen i databasen...</h3>
-							<MovieList isVertical={true} title="Sjekk ut populære filmer i steden!" movies={popularMovies} />
+							<MovieList title="Sjekk ut populære filmer i steden!" movies={popularMovies} />
 						</>
 					)}
 				</section>

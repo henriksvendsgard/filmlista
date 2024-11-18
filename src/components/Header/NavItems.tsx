@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { CircleCheckBig, ListIcon, UserIcon, LogOut } from "lucide-react";
 import Link from "next/link";
@@ -39,9 +33,8 @@ export default function NavItems() {
 		const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
 			setUser(session?.user || null);
 		});
-	}, []);
+	}, [supabase.auth]);
 
-	
 	const router = useRouter();
 
 	const handleSignOut = async () => {
