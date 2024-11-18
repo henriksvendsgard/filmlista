@@ -1,26 +1,29 @@
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-	const res = NextResponse.next();
-	const supabase = createMiddlewareClient({ req, res });
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
-	const {
-		data: { session },
-	} = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-	if (!session && req.nextUrl.pathname !== "/login") {
-		console.log("Redirecting to login page");
-		return NextResponse.redirect(new URL("/login", req.url));
-	}
+  // Public paths that don't require authentication
+  const publicPaths = ['/login', '/register'];
+  const isPublicPath = publicPaths.includes(req.nextUrl.pathname);
 
-	if (session && req.nextUrl.pathname === "/login") {
-		console.log("Redirecting to home page");
-		return NextResponse.redirect(new URL("/", req.url));
-	}
+  if (!session && !isPublicPath) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 
-	return res;
+  if (session && isPublicPath) {
+    return NextResponse.redirect(new URL('/', req.url));
+  }
+
+  // Important: Return the response with updated cookies
+  return res;
 }
 
 export const config = {

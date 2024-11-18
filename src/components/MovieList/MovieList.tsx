@@ -1,143 +1,335 @@
 "use client";
 
-import { addToWatchlist, checkWatchlistStatus, removeFromWatchlist } from "@/app/actions/watchlist";
-import { toast } from "@/hooks/use-toast";
-import { Movie } from "@/lib/typings";
-import { cn } from "@/lib/utils";
-import { Check, Loader2, Plus } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { User } from "@supabase/supabase-js";
+import { TMDBMovie } from "@/types/movie";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { toast } from "@/hooks/use-toast";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { MovieCard } from "../MovieCard/MovieCard";
 
-type MovieItemProps = {
+interface List {
+	id: string;
+	name: string;
+	owner_id: string;
+}
+
+interface MovieListProps {
+	movies: TMDBMovie[];
 	title?: string;
-	movies: Movie[];
-	isVertical?: boolean;
+}
+
+interface MovieDetails {
+	added_at: string;
+	added_by: string;
+	added_by_email: string;
+}
+
+// First, let's create a proper type for the raw data
+type RawListMovie = {
+	movie_id: string;
+	list_id: string;
+	added_at: string;
+	added_by: string;
+	profile: {
+		email: string;
+	};
+}
+
+// Add this type at the top of your file
+type MovieListAction = {
+	type: 'added' | 'removed';
+	listId: string;
+	movieId: string;
 };
 
-export default function MovieList({ title, movies, isVertical }: MovieItemProps) {
-	const [watchlistStatuses, setWatchlistStatuses] = useState<Record<number, boolean>>({});
-	const [loadingStatuses, setLoadingStatuses] = useState<Record<number, boolean>>(movies.reduce((acc, movie) => ({ ...acc, [movie.id]: true }), {}));
-	const [user, setUser] = useState<User | null>(null);
+export default function MovieList({ movies, title }: MovieListProps) {
+	const router = useRouter();
+	const [lists, setLists] = useState<{ owned: List[], shared: List[] }>({ owned: [], shared: [] });
+	const [moviesInLists, setMoviesInLists] = useState<{ [key: number]: boolean }>({});
+	const [movieListMap, setMovieListMap] = useState<{ [key: string]: string[] }>({});
+	const [movieDetails, setMovieDetails] = useState<{ [key: string]: MovieDetails }>({});
+
 	const supabase = createClientComponentClient();
 
-	useEffect(() => {
-		const fetchUser = async () => {
-			const { data } = await supabase.auth.getUser();
-			setUser(data.user?.email ? data.user : null);
-		};
-
-		fetchUser();
-
-		const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-			setUser(session?.user || null);
-		});
-	}, []);
-
-	const userEmail = user?.email as string;
-
-	useEffect(() => {
-		// Fetch each movie's watchlist status only on initial load
-		movies.forEach((movie) => {
-			checkWatchlistStatus(movie.id.toString())
-				.then((status) => {
-					setWatchlistStatuses((prev) => ({ ...prev, [movie.id]: status.isInWatchlist }));
-				})
-				.catch((error) => {
-					console.error(`Error checking status for movie ${movie.id}:`, error);
-				})
-				.finally(() => {
-					setLoadingStatuses((prev) => ({ ...prev, [movie.id]: false }));
-				});
-		});
-	}, [movies]);
-
-	const handleWatchlistToggle = async (movieId: number, movieTitle: string, posterPath: string) => {
-		setLoadingStatuses((prev) => ({ ...prev, [movieId]: true }));
-		const isInWatchlist = watchlistStatuses[movieId];
+	const fetchLists = async () => {
+		const { data: { user } } = await supabase.auth.getUser();
+		if (!user) return;
 
 		try {
-			if (isInWatchlist) {
-				await removeFromWatchlist({ user_id: userEmail, movie_id: movieId.toString() });
-				setWatchlistStatuses((prev) => ({ ...prev, [movieId]: false }));
-				toast({
-					title: "Fjernet fra listen din",
-					description: `${movieTitle} har blitt fjernet fra din liste.`,
-					variant: "default",
-					className: "bg-orange-800",
-				});
-			} else {
-				await addToWatchlist({ user_id: userEmail, movie_id: movieId.toString(), title: movieTitle, poster_path: posterPath });
-				setWatchlistStatuses((prev) => ({ ...prev, [movieId]: true }));
-				toast({
-					title: "Lagt til i listen din",
-					description: `${movieTitle} har blitt lagt til i din liste.`,
-					variant: "default",
-					className: "bg-green-950",
-				});
-			}
+			const { data: sharedListIds, error: sharedError } = await supabase
+				.from('shared_lists')
+				.select('list_id')
+				.eq('user_id', user.id);
+
+			if (sharedError) throw sharedError;
+
+			const { data: allLists, error: listsError } = await supabase
+				.from('lists')
+				.select('*');
+
+			if (listsError) throw listsError;
+
+			const sharedListIdsArray = (sharedListIds || []).map(item => item.list_id);
+
+			const ownedLists = allLists.filter(list => list.owner_id === user.id);
+			const sharedLists = allLists.filter(list => sharedListIdsArray.includes(list.id));
+
+			setLists({
+				owned: ownedLists || [],
+				shared: sharedLists || []
+			});
 		} catch (error) {
-			console.error("Error updating watchlist:", error);
-			// Rollback the status in case of an error
-			setWatchlistStatuses((prev) => ({ ...prev, [movieId]: isInWatchlist }));
-			toast({ title: "Error", description: "Could not update watchlist. Try again." });
-		} finally {
-			setLoadingStatuses((prev) => ({ ...prev, [movieId]: false }));
+			console.error('Error fetching lists:', error);
+			toast({
+				title: "Error",
+				description: "Failed to fetch lists",
+				variant: "destructive",
+			});
 		}
 	};
 
+	const checkMovieInLists = async (movieId: number) => {
+		try {
+			const { data, error } = await supabase
+				.from('list_movies')
+				.select('list_id')
+				.eq('movie_id', movieId.toString());
+
+			if (error) throw error;
+
+			return data.length > 0;
+		} catch (error) {
+			console.error('Error checking movie in lists:', error);
+			return false;
+		}
+	};
+
+	const updateMoviesInLists = async () => {
+		const newStatuses: { [key: number]: boolean } = {};
+		for (const movie of movies) {
+			newStatuses[movie.id] = await checkMovieInLists(movie.id);
+		}
+		setMoviesInLists(newStatuses);
+	};
+
+	const handleAddToList = async (movie: TMDBMovie, listId: string) => {
+		try {
+			const { data: { user } } = await supabase.auth.getUser();
+			if (!user) return;
+
+			const { error } = await supabase.from('list_movies').insert({
+				list_id: listId,
+				movie_id: movie.id.toString(),
+				title: movie.title,
+				poster_path: movie.poster_path,
+				added_by: user.id,
+			});
+
+			if (error) throw error;
+
+			// Update local state immediately
+			setMovieListMap(prev => ({
+				...prev,
+				[movie.id.toString()]: [...(prev[movie.id.toString()] || []), listId]
+			}));
+
+			// Emit event for other components
+			const event = new CustomEvent('movieListUpdate', { 
+				detail: { 
+					type: 'added',
+					listId,
+					movieId: movie.id.toString()
+				} as MovieListAction
+			});
+			window.dispatchEvent(event);
+
+			toast({
+				title: "Film lagt til i listen",
+				description: `${movie.title} er lagt til i listen`,
+				className: "bg-blue-800"
+			});
+
+		} catch (error) {
+			console.error('Error adding movie to list:', error);
+			toast({
+				title: "Feil",
+				description: "Kunne ikke legge til filmen i listen",
+				variant: "destructive",
+			});
+		}
+	};
+
+	const handleRemoveFromList = async (movie: TMDBMovie, listId: string) => {
+		try {
+			const { error } = await supabase
+				.from('list_movies')
+				.delete()
+				.eq('movie_id', movie.id.toString())
+				.eq('list_id', listId);
+
+			if (error) throw error;
+
+			// Update local state immediately
+			setMovieListMap(prev => {
+				const newMap = { ...prev };
+				const movieId = movie.id.toString();
+				
+				if (newMap[movieId]) {
+					newMap[movieId] = newMap[movieId].filter(id => id !== listId);
+					if (newMap[movieId].length === 0) {
+						delete newMap[movieId];
+					}
+				}
+				return newMap;
+			});
+
+			// Emit event for other components
+			const event = new CustomEvent('movieListUpdate', { 
+				detail: { 
+					type: 'removed',
+					listId,
+					movieId: movie.id.toString()
+				} as MovieListAction
+			});
+			window.dispatchEvent(event);
+
+			toast({
+				title: "Film fjernet fra listen",
+				description: `${movie.title} er fjernet fra listen`,
+				className: "bg-orange-800"
+			});
+
+		} catch (error) {
+			console.error('Error removing movie from list:', error);
+			toast({
+				title: "Feil",
+				description: "Kunne ikke fjerne filmen fra listen",
+				variant: "destructive",
+			});
+		}
+	};
+
+	const handleMovieClick = (movieId: number) => {
+		router.push(`/movie/${movieId}`);
+	};
+
+	const fetchMovieListMap = async () => {
+		const { data: { user } } = await supabase.auth.getUser();
+		if (!user) return;
+
+		try {
+			const { data, error } = await supabase
+				.from('list_movies')
+				.select(`
+					movie_id, 
+					list_id, 
+					added_at,
+					added_by,
+					profile:profiles!list_movies_added_by_fkey (
+						email
+					)
+				`)
+				.in('movie_id', movies.map(m => m.id.toString()));
+
+			if (error) throw error;
+
+			// Cast data to unknown first, then to our type
+			const typedData = (data as unknown) as RawListMovie[];
+
+			const movieMap: { [key: string]: string[] } = {};
+			const movieDetails: { [key: string]: MovieDetails } = {};
+			
+			typedData.forEach(item => {
+				if (!movieMap[item.movie_id]) {
+					movieMap[item.movie_id] = [];
+				}
+				movieMap[item.movie_id].push(item.list_id);
+
+				movieDetails[item.movie_id] = {
+					added_at: item.added_at,
+					added_by: item.added_by,
+					added_by_email: item.profile.email
+				};
+			});
+
+			setMovieListMap(movieMap);
+			setMovieDetails(movieDetails);
+		} catch (error) {
+			console.error('Error fetching movie list map:', error);
+		}
+	};
+
+	useEffect(() => {
+		fetchLists();
+		fetchMovieListMap();
+	}, [movies]);
+
+	useEffect(() => {
+		console.log('movieListMap:', movieListMap);
+		console.log('movieDetails:', movieDetails);
+	}, [movieListMap, movieDetails]);
+
+	useEffect(() => {
+		const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
+			const { type, movieId, listId } = event.detail;
+			
+			setMovieListMap(prev => {
+				const newMap = { ...prev };
+				if (type === 'removed') {
+					if (newMap[movieId]) {
+						newMap[movieId] = newMap[movieId].filter(id => id !== listId);
+						if (newMap[movieId].length === 0) {
+							delete newMap[movieId];
+						}
+					}
+				} else if (type === 'added') {
+					if (!newMap[movieId]) {
+						newMap[movieId] = [];
+					}
+					newMap[movieId] = [...newMap[movieId], listId];
+				}
+				return newMap;
+			});
+		};
+
+		window.addEventListener('movieListUpdate', handleMovieListUpdate as EventListener);
+		return () => {
+			window.removeEventListener('movieListUpdate', handleMovieListUpdate as EventListener);
+		};
+	}, []);
+
 	return (
-		<div className="mx-auto max-w-[1400px]">
-			{title && <h2 className="text-4xl font-semibold w-full mb-6 mt-0 sm:mt-12 lg:mt-20 font-heading">{title}</h2>}
-			<div className={cn("gap-3 sm:gap-8 grid grid-cols-2 sm:grid-cols-1 lg:grid-cols-2", isVertical && "grid lg:grid-flow-row")}>
-				{movies.map((movie) =>
-					movie.poster_path ? (
-						<Link href={`/movie/${movie.id}`} key={movie.id}>
-							<Card className="relative sm:flex hover:scale-[99%] transition-all min-w-20 h-full flex flex-col sm:flex-row">
-								<Button
-									className={`absolute top-4 right-4 ${watchlistStatuses[movie.id] ? "bg-green-800 hover:bg-green-900" : "bg-slate-950 hover:bg-slate-900"}`}
-									onClick={(e) => {
-										e.preventDefault();
-										handleWatchlistToggle(movie.id, movie.title, movie.poster_path);
-									}}
-									variant={!watchlistStatuses[movie.id] ? "outline" : "default"}
-									disabled={loadingStatuses[movie.id]}
-									size="icon"
-								>
-									{loadingStatuses[movie.id] ? (
-										<Loader2 size={20} className="animate-spin" />
-									) : watchlistStatuses[movie.id] ? (
-										<Check size={20} color="white" />
-									) : (
-										<Plus size={20} color="white" />
-									)}
-									<span className="sr-only">{watchlistStatuses[movie.id] ? "Remove from list" : "Add to list"}</span>
-								</Button>
-								<Image
-									className="sm:w-60 max-h-[400px] sm:rounded-bl-xl rounded-tr-xl sm:rounded-tr-none sm:max-h-full sm:max-w-60 lg:max-w-48 rounded-tl-xl object-cover"
-									src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
-									width={500}
-									height={750}
-									alt={movie.title}
-								/>
-								<CardContent className="p-0 sm:p-4 lg:p-2">
-									<CardHeader className="p-4 sm:p-6">
-										<CardTitle className="text-lg overflow-hidden sm:text-2xl lg:text-3xl font-body sm:mb-6 sm:mr-10">
-											{movie.title.length > 20 ? `${movie.title.slice(0, 20)}...` : movie.title} ({movie.release_date.split("-")[0]})
-										</CardTitle>
-										<CardDescription className="overflow-hidden hidden sm:block max-h-48 text-md">
-											{movie.overview.length > 175 ? `${movie.overview.slice(0, 175)}...` : movie.overview}
-										</CardDescription>
-									</CardHeader>
-								</CardContent>
-							</Card>
-						</Link>
-					) : null
-				)}
+		<div className="space-y-6">
+			{title && <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>}
+			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+				{movies?.map((movie) => (
+					<MovieCard
+						key={movie.id}
+						movie={{
+							id: movie.id.toString(),
+							movie_id: movie.id.toString(),
+							title: movie.title,
+							poster_path: movie.poster_path ?? '',
+							watched: false,
+							added_at: movieDetails[movie.id.toString()]?.added_at,
+							added_by: movieDetails[movie.id.toString()]?.added_by,
+							added_by_email: movieDetails[movie.id.toString()]?.added_by_email
+						}}
+						isInList={!!movieListMap[movie.id.toString()]?.length}
+						lists={lists}
+						movieLists={movieListMap[movie.id.toString()] || []}
+						onAddToList={(listId) => handleAddToList(movie, listId)}
+						onRemoveFromList={(listId) => handleRemoveFromList(movie, listId)}
+						onClick={() => router.push(`/movie/${movie.id}`)}
+					/>
+				))}
 			</div>
 		</div>
 	);

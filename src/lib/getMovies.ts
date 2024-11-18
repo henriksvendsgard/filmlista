@@ -10,7 +10,7 @@ async function fetchFromTMDB(url: URL) {
 		method: "GET",
 		headers: {
 			accept: "application/json",
-			Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+			Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
 		},
 		next: {
 			revalidate: 60 * 60 * 24,

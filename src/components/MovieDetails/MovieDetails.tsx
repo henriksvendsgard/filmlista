@@ -1,7 +1,6 @@
 "use client";
 
 import { addToWatchlist, checkWatchlistStatus, removeFromWatchlist } from "@/app/actions/watchlist";
-import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Movie } from "@/lib/typings";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -9,6 +8,7 @@ import { User } from "@supabase/supabase-js";
 import { Check, InfoIcon, Loader2, Plus, StarIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { Button } from "../ui/button";
 
 type MovieDetailsProps = {
 	movie: Movie;

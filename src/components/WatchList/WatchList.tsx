@@ -1,144 +1,380 @@
 "use client";
 
-import { toggleWatchedStatus } from "@/app/actions/watchlist";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
+import { Movie } from '@/types/movie';
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Eye, EyeOff, Loader2Icon } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import { Film, Loader2 } from "lucide-react";
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
-import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
+import { MovieCard } from "../MovieCard/MovieCard";
 
-interface WatchListProps {
-	title: string;
+interface List {
+	id: string;
+	name: string;
+	owner_id: string;
 }
 
-interface Movie {
-	id: number;
-	created_at: string;
-	user_id: string;
+interface WatchListMovie {
+	movie_id: string;
 	title: string;
-	movie_id: number;
 	poster_path: string;
 	watched: boolean;
+	added_at: string;
+	added_by: string;
+	profiles: {
+		email: string;
+	};
 }
 
-export default function WatchList({ title }: WatchListProps) {
-	const [isLoading, setIsLoading] = useState(true);
-	const [watchlistMovies, setWatchlistMovies] = useState<Movie[]>([]);
-	const [pendingMovies, setPendingMovies] = useState<Set<number>>(new Set());
-	const supabase = createClientComponentClient();
-
-	const sortMovies = (movies: Movie[]) => {
-		return movies.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+// First, define a type that matches the raw data exactly
+type RawWatchListMovie = {
+	movie_id: string;
+	title: string;
+	poster_path: string;
+	watched: boolean;
+	added_at: string;
+	added_by: string;
+	profiles: {
+		email: string;
 	};
+}
 
-	useEffect(() => {
-		const fetchWatchlistMovies = async () => {
-			setIsLoading(true);
-			try {
-				const { data, error } = await supabase.from("watchlist").select("*");
+type MovieListAction = {
+	type: 'added' | 'removed';
+	listId: string;
+	movieId: string;
+};
 
-				if (error) {
-					console.error("Klarte ikke hente watchlist fra database:", error);
-					return;
-				}
+export default function Watchlist() {
+	const [isLoading, setIsLoading] = useState(true);
+	const [movies, setMovies] = useState<Movie[]>([]);
+	const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
+	const [selectedList, setSelectedList] = useState<string | null>(null);
 
-				setWatchlistMovies(sortMovies(data));
-			} catch (error) {
-				console.error("Noe feil skjedde:", error);
-			} finally {
-				setIsLoading(false);
-			}
-		};
+	const supabase = createClientComponentClient();
+	const router = useRouter();
 
-		fetchWatchlistMovies();
-	}, []);
+	const fetchLists = async () => {
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
+		if (!user) return;
 
-	const handleToggleWatched = async (movieId: number, movieTitle: string, event: React.MouseEvent) => {
-		event.preventDefault();
-		setPendingMovies((prev) => new Set(prev).add(movieId));
 		try {
-			const result = await toggleWatchedStatus(movieId);
-			if (result.success && typeof result.watched === "boolean") {
-				setWatchlistMovies((movies) => {
-					const updatedMovies = movies.map((movie) => (movie.movie_id === movieId ? { ...movie, watched: result.watched || false } : movie));
-					return sortMovies(updatedMovies);
-				});
-				toast({
-					title: result.watched ? `${movieTitle} er markert som sett` : `${movieTitle} er markert som ikke sett`,
-					description: `Du har ${result.watched ? "sett" : "ikke sett"} denne filmen.`,
-					variant: "default",
-					className: result.watched ? "bg-blue-950" : "bg-yellow-900",
-				});
-			} else {
-				throw new Error("Failed to update watched status");
+			const { data: sharedListIds, error: sharedError } = await supabase.from("shared_lists").select("list_id").eq("user_id", user.id);
+
+			if (sharedError) throw sharedError;
+
+			const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
+
+			if (listsError) throw listsError;
+
+			const sharedListIdsArray = (sharedListIds || []).map((item) => item.list_id);
+
+			const ownedLists = allLists.filter((list) => list.owner_id === user.id);
+			const sharedLists = allLists.filter((list) => sharedListIdsArray.includes(list.id));
+
+			setLists({
+				owned: ownedLists || [],
+				shared: sharedLists || [],
+			});
+
+			// Set the first list as selected by default
+			if (!selectedList && (ownedLists.length > 0 || sharedLists.length > 0)) {
+				setSelectedList(ownedLists[0]?.id || sharedLists[0]?.id);
 			}
 		} catch (error) {
-			console.error("Error updating watched status:", error);
+			console.error("Error fetching lists:", error);
 			toast({
 				title: "Error",
-				description: "Failed to update watched status. Please try again.",
+				description: "Failed to fetch lists",
 				variant: "destructive",
-			});
-		} finally {
-			setPendingMovies((prev) => {
-				const newSet = new Set(prev);
-				newSet.delete(movieId);
-				return newSet;
 			});
 		}
 	};
 
+	const fetchMovies = async () => {
+		try {
+			const { data, error } = await supabase
+				.from('list_movies')
+				.select(`
+					movie_id,
+					title,
+					poster_path,
+					watched,
+					added_at,
+					added_by,
+					profiles (email)
+				`)
+				.eq('list_id', selectedList)
+				.order('added_at', { ascending: false });
+
+			if (error) throw error;
+
+			// First cast to unknown, then to our type
+			const typedData = (data as unknown) as RawWatchListMovie[];
+
+			const processedMovies = typedData.map(item => ({
+				id: item.movie_id,
+				movie_id: item.movie_id,
+				title: item.title,
+				poster_path: item.poster_path,
+				watched: item.watched || false,
+				added_at: item.added_at,
+				added_by: item.added_by,
+				added_by_email: item.profiles.email
+			}));
+
+			setMovies(processedMovies);
+			setIsLoading(false);
+
+		} catch (error) {
+			console.error('Error fetching movies:', error);
+			setIsLoading(false);
+			setMovies([]);
+		}
+	};
+
+	const handleRemoveFromList = async (listId: string, movieId: string, movieTitle: string) => {
+		try {
+			const { error } = await supabase
+				.from('list_movies')
+				.delete()
+				.eq('list_id', listId)
+				.eq('movie_id', movieId);
+
+			if (error) throw error;
+
+			// Emit event for other components to update
+			const event = new CustomEvent('movieListUpdate', { 
+				detail: { 
+					type: 'removed',
+					listId,
+					movieId
+				}
+			});
+			window.dispatchEvent(event);
+
+			// Refresh the watchlist
+			fetchMovies();
+
+			toast({
+				title: "Film fjernet",
+				description: `${movieTitle} er fjernet fra listen`,
+				className: "bg-orange-800"
+			});
+
+		} catch (error) {
+			console.error('Error removing movie from list:', error);
+			toast({
+				title: "Feil",
+				description: "Kunne ikke fjerne filmen fra listen",
+				variant: "destructive",
+			});
+		}
+	};
+
+	const handleToggleWatched = async (movieId: string, currentWatchedStatus: boolean) => {
+		try {
+			const { error } = await supabase
+				.from('list_movies')
+				.update({ watched: !currentWatchedStatus })
+				.eq('movie_id', movieId)
+				.eq('list_id', selectedList);
+
+			if (error) throw error;
+
+			// Update local state
+			setMovies(movies.map(movie => 
+				movie.movie_id === movieId 
+					? { ...movie, watched: !movie.watched }
+					: movie
+			));
+
+			toast({
+				title: currentWatchedStatus ? "Markert som usett" : "Markert som sett",
+				description: `Filmen er nå markert som ${currentWatchedStatus ? 'usett' : 'sett'}`,
+				className: currentWatchedStatus ? "bg-yellow-600" : "bg-green-800"
+			});
+		} catch (error) {
+			console.error('Error toggling watched status:', error);
+			toast({
+				title: "Error",
+				description: "Could not update watched status",
+				variant: "destructive",
+			});
+		}
+	};
+
+	useEffect(() => {
+		fetchLists();
+	}, []);
+
+	useEffect(() => {
+		console.log('WatchList useEffect triggered');
+		if (selectedList) {
+			fetchMovies();
+		}
+	}, [selectedList]);
+
+	useEffect(() => {
+		const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
+			const { type, listId: updatedListId } = event.detail;
+			
+			// Only refresh if the update affects this list
+			if (updatedListId === selectedList) {
+				fetchMovies();
+			}
+		};
+
+		// Add event listener
+		window.addEventListener('movieListUpdate', handleMovieListUpdate as EventListener);
+
+		// Cleanup
+		return () => {
+			window.removeEventListener('movieListUpdate', handleMovieListUpdate as EventListener);
+		};
+	}, [selectedList, fetchMovies]);
+
 	return (
 		<div>
-			<div className="flex items-center mb-6 mt-0 sm:mt-12">
-				<h1 className="text-5xl font-bold font-heading">{title}</h1>
-			</div>
-			{isLoading && (
-				<div className="flex align-middle justify-center my-60 ">
-					<Loader2Icon className="animate-spin w-20 h-20 text-gray-600 max-w-full" />
-				</div>
-			)}
-			{watchlistMovies.length === 0 && !isLoading ? (
-				<div>
-					<p className="text-lg text-gray-600">Ingen filmer lagt til i listen enda...</p>
-				</div>
+			{isLoading ? (
+				<div className="flex justify-center items-center min-h-[200px]">
+				<Loader2 className="h-8 w-8 animate-spin text-primary" />
+			  </div>
 			) : (
-				<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
-					{watchlistMovies.map((movie: Movie) => (
-						<Link href={`/movie/${movie.movie_id}`} key={movie.id} className="hover:scale-[99%] transition-all">
-							<Card key={movie.id} className="overflow-hidden flex flex-col h-full">
-								<div className="relative z-0 object-cover">
-									<Button
-										onClick={(e) => handleToggleWatched(movie.movie_id, movie.title, e)}
-										size={"icon"}
-										variant={"outline"}
-										className="absolute top-4 right-4 z-10"
-										disabled={pendingMovies.has(movie.movie_id)}
-									>
-										{pendingMovies.has(movie.movie_id) ? <Loader2Icon className="animate-spin" /> : movie.watched ? <EyeOff className="text-gray-500" /> : <Eye />}
-									</Button>
-									<Image
-										width={500}
-										height={500}
-										className={`object-cover max-h-[650px] xl:h-[500px] w-full` + (movie.watched ? "filer brightness-[40%]" : "")}
-										src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
-										alt={movie.title}
+				<div className="space-y-6">
+					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+						<h2 className="text-3xl font-bold tracking-tight">Filmlista</h2>
+						<Select value={selectedList || undefined} onValueChange={setSelectedList}>
+							<SelectTrigger className="w-[200px]">
+								<SelectValue placeholder="Velg en liste" />
+							</SelectTrigger>
+							<SelectContent>
+								{lists.owned.length > 0 || lists.shared.length > 0 ? (
+									<>
+										{lists.owned.length > 0 && (
+											<>
+												<SelectItem value="_header_owned" disabled className="font-semibold">
+													Mine lister
+												</SelectItem>
+												{lists.owned.map((list) => (
+													<SelectItem key={list.id} value={list.id}>
+														{list.name}
+													</SelectItem>
+												))}
+											</>
+										)}
+										{lists.shared.length > 0 && (
+											<>
+												<SelectItem value="_header_shared" disabled className="font-semibold">
+													Delt med meg
+												</SelectItem>
+												{lists.shared.map((list) => (
+													<SelectItem key={list.id} value={list.id}>
+														{list.name}
+													</SelectItem>
+												))}
+											</>
+										)}
+									</>
+								) : (
+									<SelectItem value="_no_lists" disabled>
+										Ingen lister tilgjengelig
+									</SelectItem>
+								)}
+							</SelectContent>
+						</Select>
+					</div>
+					{ movies.length > 0 &&(
+
+
+					<Tabs defaultValue="all" className="w-full">
+						<TabsList>
+							<TabsTrigger value="all">Alle</TabsTrigger>
+							<TabsTrigger value="unwatched">Ikke sett</TabsTrigger>
+							<TabsTrigger value="watched">Sett</TabsTrigger>
+						</TabsList>
+
+						<TabsContent value="all">
+							<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+								{movies.map((movie) => (
+									<MovieCard
+										key={movie.id}
+										movie={movie}
+										isInList={true}
+										lists={lists}
+										onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title)}
+										onToggleWatched={() => handleToggleWatched(movie.id, movie.watched)}
+										onClick={() => router.push(`/movie/${movie.movie_id}`)}
+										isWatchList={true}
+										currentListId={selectedList || undefined}
+										showAddedBy={true}
 									/>
-								</div>
-								<CardContent className="p-4 z-10 bg-black flex flex-col h-full">
-									<h2 className="text-xl sm:text-2xl font-semibold">{movie.title}</h2>
-									<div className="mt-auto mb-0">
-										<p className="text-gray-600 text-sm mt-1">Lagt til {new Date(movie.created_at).toLocaleDateString("nb-NO")}</p>
-										{/* TODO: Kommer snart: */}
-										<p className="text-gray-400 text-sm mt-1 truncate">Av {movie.user_id}</p>
-									</div>
-								</CardContent>
-							</Card>
-						</Link>
-					))}
+								))}
+							</div>
+						</TabsContent>
+
+						<TabsContent value="unwatched">
+							<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+								{movies
+									.filter((m) => !m.watched)
+									.map((movie) => (
+										<MovieCard
+											key={movie.id}
+											movie={movie}
+											isInList={true}
+											lists={lists}
+											onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title)}
+											onToggleWatched={() => handleToggleWatched(movie.id, movie.watched)}
+											onClick={() => router.push(`/movie/${movie.movie_id}`)}
+											isWatchList={true}
+											currentListId={selectedList || undefined}
+											showAddedBy={true}
+										/>
+									))}
+							</div>
+						</TabsContent>
+
+						<TabsContent value="watched">
+							<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+								{movies
+									.filter((m) => m.watched)
+									.map((movie) => (
+										<MovieCard
+											key={movie.id}
+											movie={movie}
+											isInList={true}
+											lists={lists}
+											onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title)}
+											onToggleWatched={() => handleToggleWatched(movie.id, movie.watched)}
+											onClick={() => router.push(`/movie/${movie.movie_id}`)}
+											isWatchList={true}
+											currentListId={selectedList || undefined}
+											showAddedBy={true}
+										/>
+										))}
+							</div>
+						</TabsContent>
+					</Tabs>
+					)}
+
+					{movies.length === 0 && selectedList && (
+						<div className="text-center py-10 flex flex-col items-center">
+							<Film className="h-16 w-16 mb-4 opacity-50" />
+							<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
+							<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
+						</div>
+					)}
+
+					{!selectedList && (
+						<div className="text-center py-10">
+							<h3 className="text-lg font-semibold">Ingen liste valgt</h3>
+							<p className="text-muted-foreground">Velg en liste for å se filmer i den</p>
+						</div>
+					)}
 				</div>
 			)}
 		</div>
