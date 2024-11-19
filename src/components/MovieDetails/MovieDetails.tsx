@@ -5,8 +5,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useMovieLists } from "@/hooks/useMovieLists";
+import { StarFilledIcon } from "@radix-ui/react-icons";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ArrowLeft, ListPlus } from "lucide-react";
+import { ArrowLeft, ListPlus, Star } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -289,10 +290,10 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 									</>
 								)}
 
-								{/* Lists the movie is in */}
+								{/* Lister filmen er i */}
 								{listsWithMovie.length > 0 && (
 									<>
-										{/* Only show separator if there are lists above */}
+										{/* Kun vis separator hvis det er liste over */}
 										{(lists?.owned?.some((list) => !movieListMap[params.id]?.includes(list.id)) || lists?.shared?.some((list) => !movieListMap[params.id]?.includes(list.id))) && (
 											<DropdownMenuSeparator />
 										)}
@@ -307,7 +308,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 									</>
 								)}
 
-								{/* No lists available */}
+								{/* Ingen lister tilgjengelig */}
 								{!lists?.owned?.length && !lists?.shared?.length && <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>}
 							</DropdownMenuContent>
 						</DropdownMenu>
@@ -324,7 +325,10 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 						{movie.vote_average && (
 							<>
 								<span>•</span>
-								<span>{movie.vote_average.toFixed(1)} ⭐</span>
+								<span className="flex items-center gap-1">
+									{movie.vote_average.toFixed(1)}
+									<span className="text-xs">⭐️</span>
+								</span>
 							</>
 						)}
 					</div>
