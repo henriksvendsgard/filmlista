@@ -1,25 +1,15 @@
 "use client";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Loader2, PlusCircle, Share2, Trash2 } from "lucide-react";
+import { PlusCircle, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Skeleton } from "../ui/skeleton";
 
 interface List {
@@ -27,7 +17,6 @@ interface List {
 	name: string;
 	owner_id: string;
 	created_at: string;
-	// Add any other properties your list has
 }
 
 interface ListsState {
@@ -55,17 +44,17 @@ export default function Lists() {
 		if (!user) return;
 
 		try {
-			// First get all shared_lists for this user
+			// Hent alle delte lister for denne brukeren
 			const { data: sharedListIds, error: sharedError } = await supabase.from("shared_lists").select("list_id").eq("user_id", user.id);
 
 			if (sharedError) throw sharedError;
 
-			// Get all relevant lists
+			// Hent alle lister
 			const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
 
 			if (listsError) throw listsError;
 
-			// Filter lists into owned and shared
+			// Filtrer lister inn i owned og shared
 			const sharedListIdsArray = (sharedListIds || []).map((item) => item.list_id);
 
 			const ownedLists = allLists.filter((list) => list.owner_id === user.id);
@@ -171,9 +160,9 @@ export default function Lists() {
 		if (!selectedList) return;
 
 		try {
-			// Get user ID from email using the profiles table
+			// Hent brukerens ID fra e-posten ved å bruke profiles-tabellen
 			const { data: userData, error: userError } = await supabase
-				.from("profiles") // Make sure you have a profiles table
+				.from("profiles") // profiles-tabellen er en del av Supabase Auth
 				.select("id")
 				.eq("email", shareEmail)
 				.single();
@@ -187,7 +176,7 @@ export default function Lists() {
 				return;
 			}
 
-			// Check if the list is already shared with this user
+			// Sjekker om lista er delt med brukeren allerede
 			const { data: existingShare, error: existingError } = await supabase.from("shared_lists").select("*").eq("list_id", selectedList).eq("user_id", userData.id).single();
 
 			if (existingShare) {

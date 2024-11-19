@@ -1,156 +1,533 @@
 "use client";
 
-import { addToWatchlist, checkWatchlistStatus, removeFromWatchlist } from "@/app/actions/watchlist";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { Movie } from "@/lib/typings";
+import { useMovieLists } from "@/hooks/useMovieLists";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { User } from "@supabase/supabase-js";
-import { Check, InfoIcon, Loader2, Plus, StarIcon } from "lucide-react";
+import { ArrowLeft, ListPlus } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import { Button } from "../ui/button";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
-type MovieDetailsProps = {
-	movie: Movie;
-};
+interface MovieDetails {
+	id: number;
+	title: string;
+	overview: string;
+	poster_path: string | null;
+	backdrop_path: string | null;
+	release_date: string;
+	vote_average: number;
+	runtime: number | null;
+	genres: { id: number; name: string }[];
+}
 
-export default function MovieDetails({ movie }: MovieDetailsProps) {
-	const [isInWatchlist, setIsInWatchlist] = useState(false);
-	const [addedByUser, setAddedByUser] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
+interface Cast {
+	id: number;
+	name: string;
+	character: string;
+	profile_path: string | null;
+}
 
-	const [user, setUser] = useState<User | null>(null);
+interface WatchProvider {
+	provider_name: string;
+	logo_path: string;
+}
+
+interface WatchProviders {
+	rent?: WatchProvider[];
+	buy?: WatchProvider[];
+	flatrate?: WatchProvider[];
+}
+
+interface MovieDetailProps {
+	params: {
+		id: string;
+	};
+}
+
+export default function MovieDetails({ params }: MovieDetailProps) {
+	const movieId = params.id;
+	const router = useRouter();
+	const [movie, setMovie] = useState<MovieDetails | null>(null);
+	const [cast, setCast] = useState<Cast[]>([]);
+	const [watchProviders, setWatchProviders] = useState<WatchProviders | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const { lists } = useMovieLists();
+	const [movieListMap, setMovieListMap] = useState<Record<string, string[]>>({});
+	const [listsWithMovie, setListsWithMovie] = useState<any[]>([]);
+
 	const supabase = createClientComponentClient();
 
-	useEffect(() => {
-		const fetchUser = async () => {
-			const { data } = await supabase.auth.getUser();
-			setUser(data.user?.email ? data.user : null);
-		};
-
-		fetchUser();
-	}, [supabase.auth]);
-
-	const userEmail = user?.email as string;
-	console.log(userEmail);
-
-	useEffect(() => {
-		const fetchWatchlistStatus = async () => {
-			setIsLoading(true);
-			try {
-				const status = await checkWatchlistStatus(movie.id.toString());
-				setIsInWatchlist(status.isInWatchlist);
-				setAddedByUser(status.addedByUser);
-			} catch (error) {
-				console.error("Error checking watchlist status:", error);
-				toast({
-					title: "Error",
-					description: "Failed to check watchlist status. Please try again.",
-					variant: "destructive",
-				});
-			} finally {
-				setIsLoading(false);
-			}
-		};
-
-		fetchWatchlistStatus();
-	}, [movie.id]);
-
-	const handleWatchlistToggle = async () => {
-		setIsLoading(true);
+	const fetchMovieListMap = useCallback(async () => {
 		try {
-			if (isInWatchlist) {
-				if (addedByUser === userEmail) {
-					// Proceed to remove only if the user added the movie
-					await removeFromWatchlist({
-						user_id: userEmail,
-						movie_id: movie.id.toString(),
-					});
-					setIsInWatchlist(false);
-					toast({
-						title: "Fjernet fra listen din",
-						description: `${movie.title} har blitt fjernet fra lista.`,
-						variant: "default",
-						className: "bg-orange-800",
-					});
-				} else {
-					toast({
-						title: "Advarsel",
-						description: "Du kan bare fjerne filmer som du har lagt til selv.",
-						variant: "destructive",
-					});
-				}
+			const { data, error } = await supabase.from("list_movies").select("list_id").eq("movie_id", movieId);
+
+			if (error) throw error;
+
+			const listIds = data.map((item) => item.list_id);
+			setMovieListMap({ [movieId]: listIds });
+
+			if (listIds.length > 0) {
+				const { data: listData, error: listError } = await supabase.from("lists").select("*").in("id", listIds);
+
+				if (listError) throw listError;
+				setListsWithMovie(listData || []);
 			} else {
-				await addToWatchlist({
-					user_id: userEmail,
-					movie_id: movie.id.toString(),
-					title: movie.title,
-					poster_path: movie.poster_path,
-				});
-				setIsInWatchlist(true);
-				toast({
-					title: "Lagt til i listen din",
-					description: `${movie.title} har blitt lagt til i lista.`,
-					variant: "default",
-					className: "bg-green-950",
-				});
+				setListsWithMovie([]);
 			}
 		} catch (error) {
-			console.error("Error updating watchlist:", error);
+			console.error("Error fetching movie lists:", error);
+		}
+	}, [movieId, supabase]);
+
+	useEffect(() => {
+		const fetchMovieData = async () => {
+			if (!process.env.NEXT_PUBLIC_TMDB_API_KEY) {
+				setError("API key is not configured");
+				setLoading(false);
+				return;
+			}
+
+			try {
+				// Henter filmdetaljer
+				const movieResponse = await fetch(`https://api.themoviedb.org/3/movie/${movieId}`, {
+					headers: {
+						Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+						accept: "application/json",
+					},
+				});
+
+				// Skuespillere
+				const creditsResponse = await fetch(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
+					headers: {
+						Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+						accept: "application/json",
+					},
+				});
+
+				// Strømmetjenester
+				const providersResponse = await fetch(`https://api.themoviedb.org/3/movie/${movieId}/watch/providers`, {
+					headers: {
+						Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+						accept: "application/json",
+					},
+				});
+
+				if (!movieResponse.ok || !creditsResponse.ok || !providersResponse.ok) {
+					throw new Error("Failed to fetch movie data");
+				}
+
+				const movieData = await movieResponse.json();
+				const creditsData = await creditsResponse.json();
+				const providersData = await providersResponse.json();
+
+				setMovie(movieData);
+				setCast(creditsData.cast?.slice(0, 6) || []); // Henter første 6
+				setWatchProviders(providersData.results?.NO || null); // Henter norske strømmetjenester
+			} catch (error) {
+				console.error("Error:", error);
+				setError(error instanceof Error ? error.message : "Klarte ikke hente filmdetaljer");
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchMovieData();
+	}, [movieId]);
+
+	useEffect(() => {
+		fetchMovieListMap();
+	}, [fetchMovieListMap]);
+
+	const handleAddToList = async (listId: string) => {
+		try {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) return;
+
+			const { error } = await supabase.from("list_movies").insert({
+				list_id: listId,
+				movie_id: params.id,
+				title: movie?.title,
+				poster_path: movie?.poster_path,
+				added_by: user.id,
+			});
+
+			if (error) throw error;
+
+			setMovieListMap((prev) => ({
+				...prev,
+				[params.id]: [...(prev[params.id] || []), listId],
+			}));
+
+			// Oppdaterer listsWithMovie
+			const newList = [...lists.owned, ...lists.shared].find((l) => l.id === listId);
+			if (newList) {
+				setListsWithMovie((prev) => [...prev, newList]);
+			}
+
+			toast({
+				title: "Film lagt til",
+				description: `${movie?.title} er lagt til i ${newList?.name}`,
+				className: "bg-blue-800",
+			});
+		} catch (error) {
+			console.error("Feil ved innlegging av film:", error);
 			toast({
 				title: "Feil",
-				description: "Klarte ikke oppdatere lista. Prøv igjen",
+				description: "Kunne ikke legge til filmen i listen",
 				variant: "destructive",
 			});
-		} finally {
-			setIsLoading(false);
 		}
 	};
 
-	return (
-		<div className="flex flex-col md:flex-row gap-10 max-w-6xl w-full mt-0 sm:mt-12 mb-32 px-5 lg:px-10">
-			<div className="md:max-w-[450px]">
-				<Image className="md:max-w-[450px] rounded-lg" src={`https://image.tmdb.org/t/p/original${movie.poster_path}`} width={450} height={500} alt={`Movie poster for ${movie.title}`} />
-			</div>
-			<div className="flex flex-col gap-4">
-				<h1 className="text-4xl font-bold">{movie.title}</h1>
-				<div className="text-slate-600 dark:text-slate-400 flex flex-col gap-2">
-					<div>
-						<span>{movie.genres.map((genre: any) => genre.name).join(", ")}</span>
-					</div>
-					<div className="flex">
-						<span>{new Date(movie.release_date).toLocaleDateString("en-GB")}</span>
-						<span className="mx-2">•</span>
-						<span>{movie.runtime} min</span>
-						<span className="mx-2">•</span>
-						<span className="flex items-center gap-1">
-							{movie.vote_average.toFixed(1)} / 10
-							<StarIcon size={14} fill="currentColor" />
-						</span>
-					</div>
-				</div>
-				<p className="text-lg">{movie.overview}</p>
-				<div className="mt-4 flex gap-4">
-					<a href={`https://www.themoviedb.org/movie/${movie.id}`} target="_blank" rel="noreferrer">
-						<Button className="px-4 py-2 rounded-md bg-blue-500 hover:bg-blue-400 text-white">
-							<InfoIcon size={16} className="mr-1" />
-							<span>Les mer på TMDb</span>
-						</Button>
-					</a>
-					<Button
-						onClick={handleWatchlistToggle}
-						disabled={isLoading}
-						variant={!isInWatchlist ? "outline" : "default"}
-						className={isInWatchlist ? "bg-green-800 hover:bg-green-900" : "bg-slate-950 hover:bg-slate-900"}
-						size="icon"
-					>
-						{isLoading ? <Loader2 size={20} className="animate-spin" /> : isInWatchlist ? <Check size={20} color="white" /> : <Plus size={20} color="white" />}
+	const handleRemoveFromList = async (listId: string, listName: string) => {
+		try {
+			const { error } = await supabase.from("list_movies").delete().eq("movie_id", params.id).eq("list_id", listId);
 
-						<span className="sr-only">{isInWatchlist ? "Fjern fra liste" : "Legg til i liste"}</span>
-					</Button>
+			if (error) throw error;
+
+			setMovieListMap((prev) => {
+				const newMap = { ...prev };
+				if (newMap[params.id]) {
+					newMap[params.id] = newMap[params.id].filter((id) => id !== listId);
+					if (newMap[params.id].length === 0) {
+						delete newMap[params.id];
+					}
+				}
+				return newMap;
+			});
+
+			// Oppdater listsWithMovie for å fjerne filmen
+			setListsWithMovie((prev) => prev.filter((list) => list.id !== listId));
+
+			toast({
+				title: "Film fjernet",
+				description: `${movie?.title} er fjernet fra ${listName}`,
+				className: "bg-orange-800",
+			});
+		} catch (error) {
+			console.error("Error removing movie from list:", error);
+			toast({
+				title: "Feil",
+				description: "Kunne ikke fjerne filmen fra listen",
+				variant: "destructive",
+			});
+		}
+	};
+
+	if (loading) return <MovieDetailsSkeleton />;
+	if (error || !movie) return <ErrorState error={error} onBack={() => router.back()} />;
+
+	return (
+		<div className="container mx-auto px-5 sm:py-8 space-y-8">
+			<Button variant="ghost" onClick={() => router.back()} className="mb-4">
+				<ArrowLeft className="mr-2 h-4 w-4" />
+				Tilbake
+			</Button>
+
+			<div className="relative w-full aspect-[2.76/1] overflow-hidden rounded-xl">
+				{movie.backdrop_path ? (
+					<Image src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`} alt={movie.title} fill className="object-cover" priority />
+				) : (
+					<div className="w-full h-full bg-muted flex items-center justify-center">
+						<span className="text-muted-foreground">Ingen bakgrunnsbilde tilgjengelig</span>
+					</div>
+				)}
+			</div>
+
+			<div className="grid gap-8 md:grid-cols-[2fr,1fr]">
+				<div className="space-y-8">
+					<div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+						<h1 className="text-4xl font-bold">{movie.title}</h1>
+						<DropdownMenu>
+							<DropdownMenuTrigger className="flex-shrink-0" asChild>
+								<Button variant="outline" size="icon">
+									<ListPlus className="h-4 w-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-56">
+								{/* Sjekker om det finnes lister å legge til i */}
+								{(lists?.owned?.some((list) => !movieListMap[params.id]?.includes(list.id)) || lists?.shared?.some((list) => !movieListMap[params.id]?.includes(list.id))) && (
+									<>
+										{/* Egne lister */}
+										{lists.owned.filter((list) => !movieListMap[params.id]?.includes(list.id)).length > 0 && (
+											<>
+												<DropdownMenuItem disabled className="text-muted-foreground">
+													Dine lister
+												</DropdownMenuItem>
+												{lists.owned
+													.filter((list) => !movieListMap[params.id]?.includes(list.id))
+													.map((list) => (
+														<DropdownMenuItem key={list.id} onClick={() => handleAddToList(list.id)} className="cursor-pointer">
+															Legg til i {list.name}
+														</DropdownMenuItem>
+													))}
+											</>
+										)}
+
+										{/* Delte lister */}
+										{lists.shared.filter((list) => !movieListMap[params.id]?.includes(list.id)).length > 0 && (
+											<>
+												{lists.owned.filter((list) => !movieListMap[params.id]?.includes(list.id)).length > 0 && <DropdownMenuSeparator />}
+												<DropdownMenuItem disabled className="text-muted-foreground">
+													Delte lister
+												</DropdownMenuItem>
+												{lists.shared
+													.filter((list) => !movieListMap[params.id]?.includes(list.id))
+													.map((list) => (
+														<DropdownMenuItem key={list.id} onClick={() => handleAddToList(list.id)} className="cursor-pointer">
+															Legg til i {list.name}
+														</DropdownMenuItem>
+													))}
+											</>
+										)}
+									</>
+								)}
+
+								{/* Lists the movie is in */}
+								{listsWithMovie.length > 0 && (
+									<>
+										{/* Only show separator if there are lists above */}
+										{(lists?.owned?.some((list) => !movieListMap[params.id]?.includes(list.id)) || lists?.shared?.some((list) => !movieListMap[params.id]?.includes(list.id))) && (
+											<DropdownMenuSeparator />
+										)}
+										<DropdownMenuItem disabled className="text-muted-foreground">
+											Fjern fra
+										</DropdownMenuItem>
+										{listsWithMovie.map((list) => (
+											<DropdownMenuItem key={list.id} onClick={() => handleRemoveFromList(list.id, list.name)} className="text-red-600 cursor-pointer">
+												{list.name}
+											</DropdownMenuItem>
+										))}
+									</>
+								)}
+
+								{/* No lists available */}
+								{!lists?.owned?.length && !lists?.shared?.length && <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+
+					<div className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
+						{movie.release_date && <span>{new Date(movie.release_date).getFullYear()}</span>}
+						{movie.runtime && (
+							<>
+								<span>•</span>
+								<span>{movie.runtime} min</span>
+							</>
+						)}
+						{movie.vote_average && (
+							<>
+								<span>•</span>
+								<span>{movie.vote_average.toFixed(1)} ⭐</span>
+							</>
+						)}
+					</div>
+
+					<div className="flex flex-wrap gap-2">
+						{movie.genres.map((genre) => (
+							<div key={genre.id} className="rounded-full bg-muted px-3 py-1 text-sm">
+								{translateGenre(genre.name)}
+							</div>
+						))}
+					</div>
+
+					<p className="text-muted-foreground leading-relaxed">{movie.overview}</p>
+
+					{cast.length > 0 && (
+						<div>
+							<h2 className="text-2xl font-semibold mb-4">Skuespillere</h2>
+							<div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+								{cast.map((actor) => (
+									<div key={actor.id} className="flex items-center space-x-4">
+										<div className="flex-shrink-0 w-12 h-12 relative">
+											{actor.profile_path ? (
+												<Image src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`} alt={actor.name} fill className="rounded-full object-cover" />
+											) : (
+												<div className="w-full h-full rounded-full bg-muted flex items-center justify-center">
+													<span className="text-xl">👤</span>
+												</div>
+											)}
+										</div>
+										<div className="min-w-0">
+											<p className="font-medium truncate">{actor.name}</p>
+											<p className="text-sm text-muted-foreground truncate">{actor.character}</p>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
 				</div>
-				{isInWatchlist && <p className="text-sm text-gray-500">Lagt til av {addedByUser}</p>}
+
+				<div>
+					<div className="sticky top-8 space-y-8">
+						{movie.poster_path ? (
+							<Image src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} width={300} height={450} className="rounded-lg w-full" priority />
+						) : (
+							<div className="w-full aspect-[2/3] rounded-lg bg-muted flex items-center justify-center">
+								<span className="text-muted-foreground">Ingen plakat tilgjengelig</span>
+							</div>
+						)}
+					</div>
+				</div>
+			</div>
+			{!watchProviders && <h3 className="text-muted-foreground">Fant ikke tilgjengelige strømmetjenester for denne filmen</h3>}
+			{watchProviders && (
+				<div className="mt-8 space-y-6 border-t pt-8">
+					<h2 className="text-2xl font-semibold">Tilgjengelig på</h2>
+
+					<div className="grid gap-8 sm:grid-cols-3">
+						{watchProviders.flatrate && (
+							<div>
+								<h3 className="text-lg font-medium mb-4">Strøm</h3>
+								<div className="flex flex-wrap gap-3">
+									{watchProviders.flatrate.map((provider) => (
+										<div key={provider.provider_name} className="tooltip" data-tip={provider.provider_name}>
+											<Image
+												src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+												alt={provider.provider_name}
+												width={50}
+												height={50}
+												className="rounded-lg shadow-md hover:shadow-lg transition-shadow"
+											/>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+
+						{watchProviders.rent && (
+							<div>
+								<h3 className="text-lg font-medium mb-4">Leie</h3>
+								<div className="flex flex-wrap gap-3">
+									{watchProviders.rent.map((provider) => (
+										<div key={provider.provider_name} className="tooltip" data-tip={provider.provider_name}>
+											<Image
+												src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+												alt={provider.provider_name}
+												width={50}
+												height={50}
+												className="rounded-lg shadow-md hover:shadow-lg transition-shadow"
+											/>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+
+						{watchProviders.buy && (
+							<div>
+								<h3 className="text-lg font-medium mb-4">Kjøp</h3>
+								<div className="flex flex-wrap gap-3">
+									{watchProviders.buy.map((provider) => (
+										<div key={provider.provider_name} className="tooltip" data-tip={provider.provider_name}>
+											<Image
+												src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+												alt={provider.provider_name}
+												width={50}
+												height={50}
+												className="rounded-lg shadow-md hover:shadow-lg transition-shadow"
+											/>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+					</div>
+
+					{!watchProviders.flatrate && !watchProviders.rent && !watchProviders.buy && (
+						<p className="text-muted-foreground">Ikke tilgjengelig på noen strømmetjenester i Norge for øyeblikket.</p>
+					)}
+				</div>
+			)}
+		</div>
+	);
+}
+function ErrorState({ error, onBack }: { error: string | null; onBack: () => void }) {
+	return (
+		<div className="flex flex-col items-center justify-center p-8 space-y-4">
+			<h1 className="text-2xl font-bold text-red-500">Feil</h1>
+			<p className="text-muted-foreground">{error || "Fant ikke filmen"}</p>
+			<Button variant="outline" onClick={onBack}>
+				<ArrowLeft className="mr-2 h-4 w-4" />
+				Tilbake
+			</Button>
+		</div>
+	);
+}
+
+function MovieDetailsSkeleton() {
+	return (
+		<div className="container mx-auto px-4 py-8 space-y-8">
+			<Skeleton className="h-10 w-20" />
+			<Skeleton className="w-full aspect-[2.76/1] rounded-xl" />
+			<div className="grid gap-8 md:grid-cols-[2fr,1fr]">
+				<div className="space-y-6">
+					<div>
+						<Skeleton className="h-12 w-3/4 mb-4" />
+						<Skeleton className="h-4 w-1/2" />
+					</div>
+					<div className="flex flex-wrap gap-2">
+						{[1, 2, 3].map((i) => (
+							<Skeleton key={i} className="h-8 w-20 rounded-full" />
+						))}
+					</div>
+					<div className="space-y-2">
+						<Skeleton className="h-4 w-full" />
+						<Skeleton className="h-4 w-full" />
+						<Skeleton className="h-4 w-3/4" />
+					</div>
+					<div className="space-y-4">
+						<Skeleton className="h-8 w-40" />
+						<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+							{[1, 2, 3, 4, 5, 6].map((i) => (
+								<div key={i} className="flex items-center space-x-3">
+									<Skeleton className="h-[45px] w-[45px] rounded-full" />
+									<div className="space-y-2">
+										<Skeleton className="h-4 w-24" />
+										<Skeleton className="h-3 w-20" />
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+				<div>
+					<Skeleton className="aspect-[2/3] w-full rounded-lg" />
+				</div>
 			</div>
 		</div>
 	);
+}
+
+function translateGenre(genre: string): string {
+	const genreTranslations: { [key: string]: string } = {
+		Action: "Action",
+		Adventure: "Eventyr",
+		Animation: "Animasjon",
+		Comedy: "Komedie",
+		Crime: "Krim",
+		Documentary: "Dokumentar",
+		Drama: "Drama",
+		Family: "Familie",
+		Fantasy: "Fantasy",
+		History: "Historie",
+		Horror: "Skrekk",
+		Music: "Musikk",
+		Mystery: "Mysterie",
+		Romance: "Romantikk",
+		"Science Fiction": "Science Fiction",
+		"TV Movie": "TV-Film",
+		Thriller: "Thriller",
+		War: "Krig",
+		Western: "Western",
+	};
+
+	return genreTranslations[genre] || genre;
 }

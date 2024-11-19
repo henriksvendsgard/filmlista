@@ -5,11 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Movie } from "@/types/movie";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Film, Loader2 } from "lucide-react";
+import { Film } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
-import { set } from "react-hook-form";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 
@@ -30,19 +29,6 @@ interface WatchListMovie {
 		email: string;
 	};
 }
-
-// First, define a type that matches the raw data exactly
-type RawWatchListMovie = {
-	movie_id: string;
-	title: string;
-	poster_path: string;
-	watched: boolean;
-	added_at: string;
-	added_by: string;
-	profiles: {
-		email: string;
-	};
-};
 
 type MovieListAction = {
 	type: "added" | "removed";
@@ -84,7 +70,7 @@ export default function Watchlist() {
 				shared: sharedLists || [],
 			});
 
-			// Set the first list as selected by default
+			// Setter den første listen som valgt som default
 			if (!selectedList && (ownedLists.length > 0 || sharedLists.length > 0)) {
 				setSelectedList(ownedLists[0]?.id || sharedLists[0]?.id);
 			}
@@ -100,6 +86,7 @@ export default function Watchlist() {
 		}
 	};
 
+	// Hent filmer fra valgt liste
 	const fetchMovies = async () => {
 		try {
 			const { data, error } = await supabase
@@ -120,8 +107,7 @@ export default function Watchlist() {
 
 			if (error) throw error;
 
-			// First cast to unknown, then to our type
-			const typedData = data as unknown as RawWatchListMovie[];
+			const typedData = data as unknown as WatchListMovie[];
 
 			const processedMovies = typedData.map((item) => ({
 				id: item.movie_id,
@@ -149,7 +135,7 @@ export default function Watchlist() {
 
 			if (error) throw error;
 
-			// Emit event for other components to update
+			// Emit så andre komponenter kan oppdatere seg
 			const event = new CustomEvent("movieListUpdate", {
 				detail: {
 					type: "removed",
@@ -159,7 +145,7 @@ export default function Watchlist() {
 			});
 			window.dispatchEvent(event);
 
-			// Refresh the watchlist
+			// Refresh listen
 			fetchMovies();
 
 			toast({
