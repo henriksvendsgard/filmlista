@@ -20,6 +20,7 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "../ui/skeleton";
 
 interface List {
 	id: string;
@@ -263,9 +264,10 @@ export default function Lists() {
 				</TabsList>
 
 				{loading && (
-					<div className="flex justify-center items-center h-24">
-						<Loader2 className="h-10 w-10 mt-32 animate-spin" />
-					</div>
+					<TabsContent value="owned" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 sm:mt-16">
+						<Skeleton className="w-full h-[115px]" />
+						<Skeleton className="w-full h-[115px]" />
+					</TabsContent>
 				)}
 				<TabsContent value="owned">
 					{!loading && lists.owned.length === 0 && lists.shared.length === 0 && (
