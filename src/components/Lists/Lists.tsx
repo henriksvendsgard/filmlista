@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { PlusCircle, Share2, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -37,7 +37,7 @@ export default function Lists() {
 
 	const supabase = createClientComponentClient();
 
-	const fetchLists = async () => {
+	const fetchLists = useCallback(async () => {
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
@@ -73,7 +73,7 @@ export default function Lists() {
 			});
 		}
 		setLoading(false);
-	};
+	}, [supabase]);
 
 	useEffect(() => {
 		fetchLists();

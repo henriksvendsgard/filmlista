@@ -3,7 +3,7 @@
 import { TMDBMovie } from "@/types/movie";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { MovieCard } from "../MovieCard/MovieCard";
@@ -52,7 +52,7 @@ export default function MovieList({ movies, title }: MovieListProps) {
 
 	const supabase = createClientComponentClient();
 
-	const fetchLists = async () => {
+	const fetchLists = useCallback(async () => {
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
@@ -84,7 +84,7 @@ export default function MovieList({ movies, title }: MovieListProps) {
 				variant: "destructive",
 			});
 		}
-	};
+	}, [supabase]);
 
 	const checkMovieInLists = async (movieId: number) => {
 		try {
@@ -192,7 +192,7 @@ export default function MovieList({ movies, title }: MovieListProps) {
 		}
 	};
 
-	const fetchMovieListMap = async () => {
+	const fetchMovieListMap = useCallback(async () => {
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
@@ -243,7 +243,7 @@ export default function MovieList({ movies, title }: MovieListProps) {
 		} catch (error) {
 			console.error("Error fetching movie list map:", error);
 		}
-	};
+	}, [movies, supabase]);
 
 	useEffect(() => {
 		fetchLists();

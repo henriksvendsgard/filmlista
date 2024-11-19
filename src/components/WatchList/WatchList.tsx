@@ -7,7 +7,7 @@ import { Movie } from "@/types/movie";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Film } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
@@ -45,7 +45,7 @@ export default function Watchlist() {
 	const supabase = createClientComponentClient();
 	const router = useRouter();
 
-	const fetchLists = async () => {
+	const fetchLists = useCallback(async () => {
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
@@ -84,10 +84,10 @@ export default function Watchlist() {
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [selectedList, supabase]);
 
 	// Hent filmer fra valgt liste
-	const fetchMovies = async () => {
+	const fetchMovies = useCallback(async () => {
 		try {
 			const { data, error } = await supabase
 				.from("list_movies")
@@ -127,7 +127,7 @@ export default function Watchlist() {
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [selectedList, supabase]);
 
 	const handleRemoveFromList = async (listId: string, movieId: string, movieTitle: string) => {
 		try {
@@ -189,13 +189,13 @@ export default function Watchlist() {
 
 	useEffect(() => {
 		fetchLists();
-	}, []);
+	}, [fetchLists]);
 
 	useEffect(() => {
 		if (selectedList) {
 			fetchMovies();
 		}
-	}, [selectedList]);
+	}, [selectedList, fetchMovies]);
 
 	useEffect(() => {
 		const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
