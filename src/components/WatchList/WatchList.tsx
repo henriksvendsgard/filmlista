@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
 import { set } from "react-hook-form";
 import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
 
 interface List {
 	id: string;
@@ -94,6 +95,8 @@ export default function Watchlist() {
 				description: "Failed to fetch lists",
 				variant: "destructive",
 			});
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
@@ -132,11 +135,11 @@ export default function Watchlist() {
 			}));
 
 			setMovies(processedMovies);
-			setIsLoading(false);
 		} catch (error) {
 			console.error("Error fetching movies:", error);
-			setIsLoading(false);
 			setMovies([]);
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
@@ -203,8 +206,6 @@ export default function Watchlist() {
 	}, []);
 
 	useEffect(() => {
-		console.log("WatchList useEffect triggered");
-		setIsLoading(false);
 		if (selectedList) {
 			fetchMovies();
 		}
@@ -232,8 +233,38 @@ export default function Watchlist() {
 	return (
 		<div>
 			{isLoading ? (
-				<div className="flex justify-center items-center min-h-[200px]">
-					<Loader2 className="h-8 w-8 animate-spin text-primary" />
+				<div className="space-y-6">
+					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+						<Skeleton className="h-9 w-40" />
+						<Select disabled>
+							<SelectTrigger className="w-[200px]">
+								<SelectValue placeholder="Laster lister..." />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="loading">Laster...</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					<Tabs defaultValue="all" className="w-full">
+						<TabsList className="mb-6 w-[200px]">
+							<Skeleton className="w-1/3" />
+							<Skeleton className="w-1/3" />
+							<Skeleton className="w-1/3" />
+						</TabsList>
+
+						{["all", "unwatched", "watched"].map((tab) => (
+							<TabsContent key={tab} value={tab}>
+								<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+									{Array.from({ length: 10 }).map((_, index) => (
+										<div key={index} className="space-y-2">
+											<Skeleton className="h-[350px] w-full" />
+										</div>
+									))}
+								</div>
+							</TabsContent>
+						))}
+					</Tabs>
 				</div>
 			) : (
 				<div className="space-y-6">
@@ -350,14 +381,6 @@ export default function Watchlist() {
 						</Tabs>
 					)}
 
-					{movies.length === 0 && selectedList && (
-						<div className="text-center py-10 flex flex-col items-center">
-							<Film className="h-16 w-16 mb-4 opacity-50" />
-							<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
-							<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
-						</div>
-					)}
-
 					{!selectedList && (
 						<div className="text-center py-10">
 							<h3 className="text-xl font-semibold mb-4">Du har ingen lister</h3>
@@ -365,6 +388,14 @@ export default function Watchlist() {
 							<Button onClick={() => router.push("/lists")} className="mt-10">
 								Lag en liste
 							</Button>
+						</div>
+					)}
+
+					{selectedList && !movies && (
+						<div className="text-center py-10 flex flex-col items-center">
+							<Film className="h-16 w-16 mb-4 opacity-50" />
+							<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
+							<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
 						</div>
 					)}
 				</div>

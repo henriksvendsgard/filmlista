@@ -74,7 +74,11 @@ export function MovieCard({
 					onClick={onClick}
 				/>
 			</div>
-			{isWatchList && movie.watched && <CheckCircle className="h-6 w-6 absolute top-4 left-4 text-green-500" />}
+			{isWatchList && movie.watched && (
+				<div className="w-8 h-8 flex items-center absolute top-2 left-2 py-1 px-2 bg-green-700 bg-opacity-70 rounded-[100%] text-xs">
+					<Check />
+				</div>
+			)}
 			<div className="absolute top-2 right-2">
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
