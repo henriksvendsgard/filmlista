@@ -30,7 +30,7 @@ async function SearchPage(props: SearchPageProps) {
 						<MovieList title={`Resultater for "${termToUse}"`} movies={searchedMovies} />
 					) : (
 						<>
-							<h3 className="my-32 sm:my-64 mx-auto w-full text-3xl">Fant ingen resultater for "{termToUse}"</h3>
+							<h3 className="my-32 sm:my-64 mx-auto w-full text-3xl">Fant ingen resultater for {`"${termToUse}"`}</h3>
 							<MovieList title="Sjekk ut populære filmer i steden!" movies={popularMovies} />
 						</>
 					)}
