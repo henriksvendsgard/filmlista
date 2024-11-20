@@ -350,7 +350,7 @@ export default function Lists() {
 						>
 							Avbryt
 						</AlertDialogCancel>
-						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDeleteList}>
+						<AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDeleteList}>
 							Slett
 						</AlertDialogAction>
 					</AlertDialogFooter>

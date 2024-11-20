@@ -99,14 +99,14 @@ export function MovieCard({
 													Fjern fra listen
 												</DropdownMenuItem>
 											</AlertDialogTrigger>
-											<AlertDialogContent>
+											<AlertDialogContent className="rounded">
 												<AlertDialogHeader>
 													<AlertDialogTitle>Er du sikker?</AlertDialogTitle>
 													<AlertDialogDescription>Dette vil fjerne {movie.title} fra listen.</AlertDialogDescription>
 												</AlertDialogHeader>
 												<AlertDialogFooter>
 													<AlertDialogCancel>Avbryt</AlertDialogCancel>
-													<AlertDialogAction onClick={() => onRemoveFromList(currentListId)} className="bg-red-600 hover:bg-red-700">
+													<AlertDialogAction onClick={() => onRemoveFromList(currentListId)} className="bg-red-600 hover:bg-red-700 text-white">
 														Fjern
 													</AlertDialogAction>
 												</AlertDialogFooter>
