@@ -377,8 +377,8 @@ export default function Watchlist() {
 						</div>
 					)}
 
-					{selectedList && !movies && (
-						<div className="text-center py-10 flex flex-col items-center">
+					{selectedList && movies.length === 0 && (
+						<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
 							<Film className="h-16 w-16 mb-4 opacity-50" />
 							<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
 							<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>

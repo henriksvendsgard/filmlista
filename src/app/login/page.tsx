@@ -2,8 +2,8 @@ import AuthComponent from "@/components/Auth/AuthComponent";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-	title: "Login | Movie Watchlist",
-	description: "Login to your Movie Watchlist account",
+	title: "Logg inn | Filmlista",
+	description: "Logg inn med din konto på Filmlista",
 };
 
 export default function LoginPage() {
