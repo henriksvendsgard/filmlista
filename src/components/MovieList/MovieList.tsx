@@ -31,7 +31,7 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 	}, [movies]);
 
 	const createPageURL = (pageNumber: number) => {
-		const params = new URLSearchParams(searchParams);
+		const params = new URLSearchParams(Array.from(searchParams.entries()));
 		params.set("page", pageNumber.toString());
 		return `${pathname}?${params.toString()}`;
 	};

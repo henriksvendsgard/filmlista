@@ -8,6 +8,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { useEffect, useState } from "react";
 import { TMDBMovie } from "@/types/movie";
+import Image from "next/image";
 
 const SearchInputSchema = z.object({
 	search: z.string().min(2).max(50),
@@ -40,38 +41,41 @@ export default function SearchInput() {
 		}
 
 		try {
-			const url = new URL('https://api.themoviedb.org/3/search/movie');
-			url.searchParams.set('query', value);
-			url.searchParams.set('language', 'en-US');
-			url.searchParams.set('page', '1');
-			url.searchParams.set('include_adult', 'false');
+			const url = new URL("https://api.themoviedb.org/3/search/movie");
+			url.searchParams.set("query", value);
+			url.searchParams.set("language", "en-US");
+			url.searchParams.set("page", "1");
+			url.searchParams.set("include_adult", "false");
 
 			const response = await fetch(url.toString(), {
 				headers: {
-					'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-					'accept': 'application/json'
-				}
+					Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+					accept: "application/json",
+				},
 			});
 
 			const data = await response.json();
 			setSuggestions(data.results?.slice(0, 5) || []);
 			setShowSuggestions(true);
 		} catch (error) {
-			console.error('Error fetching suggestions:', error);
+			console.error("Error fetching suggestions:", error);
 		}
 	};
+
+	// Følger søkefeltet
+	const searchValue = form.watch("search");
 
 	// Debounce the input to prevent too many API calls
 	useEffect(() => {
 		const handler = setTimeout(() => {
-			const currentValue = form.getValues('search');
+			const currentValue = form.getValues("search");
 			if (currentValue) {
 				handleInputChange(currentValue);
 			}
 		}, 300);
 
 		return () => clearTimeout(handler);
-	}, [form.watch('search')]);
+	}, [searchValue, form]);
 
 	return (
 		<Form {...form}>
@@ -116,17 +120,17 @@ export default function SearchInput() {
 													}}
 												>
 													{movie.poster_path && (
-														<img 
+														<Image
 															src={`https://image.tmdb.org/t/p/w45${movie.poster_path}`}
 															alt={movie.title}
 															className="h-12 w-8 object-cover rounded"
+															width={100}
+															height={100}
 														/>
 													)}
 													<div>
 														<div className="font-medium">{movie.title}</div>
-														<div className="text-sm text-muted-foreground">
-															{new Date(movie.release_date).getFullYear()}
-														</div>
+														<div className="text-sm text-muted-foreground">{new Date(movie.release_date).getFullYear()}</div>
 													</div>
 												</div>
 											))}

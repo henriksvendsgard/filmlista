@@ -5,9 +5,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useMovieLists } from "@/hooks/useMovieLists";
-import { StarFilledIcon } from "@radix-ui/react-icons";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ArrowLeft, ListPlus, Star } from "lucide-react";
+import { ArrowLeft, BookmarkPlus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -247,8 +246,8 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 						<h1 className="text-4xl font-bold">{movie.title}</h1>
 						<DropdownMenu>
 							<DropdownMenuTrigger className="flex-shrink-0" asChild>
-								<Button variant="outline" size="icon">
-									<ListPlus className="h-4 w-4" />
+								<Button variant="secondary" size="icon">
+									<BookmarkPlus className="h-4 w-4" />
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">
