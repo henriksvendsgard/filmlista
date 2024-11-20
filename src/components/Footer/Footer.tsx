@@ -3,7 +3,7 @@ import Image from "next/image";
 export default function Footer() {
 	return (
 		<div className="flex mt-auto mb-0 pt-10">
-			<div className="w-full bg-background border-t px-5 pt-8 pb-12 flex justify-between flex-wrap gap-4">
+			<div className="w-full bg-background border-t px-5 pt-8 pb-12 sm:py-8 flex justify-between flex-wrap gap-4">
 				<p>&copy; 2024 Filmlista</p>
 				<div className="flex items-center gap-1">
 					<p>Laget av</p>
