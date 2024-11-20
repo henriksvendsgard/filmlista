@@ -39,7 +39,10 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 	const paginate = (pageNumber: number) => {
 		setIsLoading(true);
 		router.push(createPageURL(pageNumber));
-		document.querySelector(".movie-list")?.scrollIntoView({ behavior: "smooth" });
+		window.scrollTo({
+			top: 0,
+			behavior: "smooth",
+		});
 	};
 
 	// List ut 500 sider maks
