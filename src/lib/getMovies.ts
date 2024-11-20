@@ -1,10 +1,10 @@
 import { SearchResults } from "./typings";
 
-async function fetchFromTMDB(url: URL) {
+async function fetchFromTMDB(url: URL, page = 1) {
 	url.searchParams.set("include_adult", "false");
 	url.searchParams.set("include_video", "false");
 	url.searchParams.set("language", "en-US");
-	url.searchParams.set("page", "1");
+	url.searchParams.set("page", page.toString());
 
 	const options: RequestInit = {
 		method: "GET",
@@ -47,10 +47,15 @@ async function fetchMovieFromTMDB(url: URL) {
 	return movie;
 }
 
-export async function getUpcomingMovies() {
+export async function getUpcomingMovies(page = 1) {
 	const url = new URL("https://api.themoviedb.org/3/movie/upcoming");
-	const data = await fetchFromTMDB(url);
-	return data.results;
+	const data = await fetchFromTMDB(url, page);
+	return {
+		results: data.results,
+		total_pages: data.total_pages,
+		total_results: data.total_results,
+		page: data.page
+	};
 }
 
 export async function getTopRatedMovies() {
@@ -60,11 +65,15 @@ export async function getTopRatedMovies() {
 	return data.results;
 }
 
-export async function getPopularMovies() {
+export async function getPopularMovies(page = 1) {
 	const url = new URL("https://api.themoviedb.org/3/movie/popular");
-	const data = await fetchFromTMDB(url);
-
-	return data.results;
+	const data = await fetchFromTMDB(url, page);
+	return {
+		results: data.results,
+		total_pages: data.total_pages,
+		total_results: data.total_results,
+		page: data.page
+	};
 }
 
 export async function getDiscoverMovies(id?: string, keywords?: string) {
@@ -80,12 +89,16 @@ export async function getDiscoverMovies(id?: string, keywords?: string) {
 	return data.results;
 }
 
-export async function getSearchedMovies(term: string) {
+export async function getSearchedMovies(term: string, page = 1) {
 	const url = new URL("https://api.themoviedb.org/3/search/movie");
 	url.searchParams.set("query", term);
-	const data = await fetchFromTMDB(url);
-
-	return data.results;
+	const data = await fetchFromTMDB(url, page);
+	return {
+		results: data.results,
+		total_pages: data.total_pages,
+		total_results: data.total_results,
+		page: data.page
+	};
 }
 
 export async function getMovieDetails(id: string) {

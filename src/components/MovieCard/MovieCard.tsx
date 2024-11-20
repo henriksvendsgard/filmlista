@@ -25,7 +25,7 @@ interface MovieCardProps {
 		id: string;
 		movie_id: string;
 		title: string;
-		poster_path: string;
+		poster_path: string | null;
 		watched: boolean;
 		added_at?: string;
 		added_by?: string;
