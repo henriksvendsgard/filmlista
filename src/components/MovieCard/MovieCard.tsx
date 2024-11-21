@@ -160,7 +160,7 @@ export function MovieCard({
 									</>
 								)}
 
-								{!availableOwnedLists.length && !availableSharedLists.length && !isInList && <DropdownMenuItem disabled>Ingen listen tilgjengelig</DropdownMenuItem>}
+								{!availableOwnedLists.length && !availableSharedLists.length && !isInList && <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>}
 							</>
 						)}
 					</DropdownMenuContent>

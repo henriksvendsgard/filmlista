@@ -17,6 +17,7 @@ interface List {
 	name: string;
 	owner_id: string;
 	created_at: string;
+	owner_email: string;
 }
 
 interface ListsState {
@@ -96,8 +97,9 @@ export default function Lists() {
 			if (error) throw error;
 
 			toast({
-				title: "Liste opprettet",
-				description: "Den nye listen er opprettet",
+				title: "Lista er opprettet",
+				description: `Lista "${newListName}" er opprettet, du kan nå legge til filmer i den`,
+				className: "bg-green-700",
 			});
 			setNewListName("");
 			setIsCreateDialogOpen(false);
@@ -105,8 +107,8 @@ export default function Lists() {
 		} catch (error) {
 			console.error("Error creating list:", error);
 			toast({
-				title: "Kunne ikke opprette",
-				description: "Det oppstod en feil ved å opprette listen",
+				title: "Kunne ikke opprette liste",
+				description: "Det oppstod en feil ved å opprette lista",
 				variant: "destructive",
 			});
 		}
@@ -135,15 +137,15 @@ export default function Lists() {
 				}));
 
 				toast({
-					title: "Liste slettet",
-					description: `"${listToDelete.name}" har blitt slettet`,
+					title: "Lista ble slettet",
+					description: `Lista "${listToDelete.name}" har nå blitt slettet`,
 					variant: "destructive",
 				});
 			} catch (error) {
 				console.error("Error deleting list:", error);
 				toast({
-					title: "Feil",
-					description: "Kunne ikke slette listen",
+					title: "Noe gikk galt...",
+					description: "Kunne ikke slette lista",
 					variant: "destructive",
 				});
 			} finally {
@@ -169,8 +171,8 @@ export default function Lists() {
 
 			if (userError || !userData) {
 				toast({
-					title: "Feil",
-					description: "Brukeren ikke funnet",
+					title: "Noe gikk galt...",
+					description: "Fant ikke brukeren med denne e-posten!",
 					variant: "destructive",
 				});
 				return;
@@ -182,8 +184,9 @@ export default function Lists() {
 			if (existingShare) {
 				toast({
 					title: "Allerede delt",
-					description: "Denne listen er allerede delt med denne brukeren",
+					description: "Denne lista er allerede delt med denne brukeren",
 					variant: "default",
+					className: "bg-yellow-600",
 				});
 				return;
 			}
@@ -193,8 +196,9 @@ export default function Lists() {
 			if (error) throw error;
 
 			toast({
-				title: "Liste delt",
-				description: "Listen er nå delt med den valgte brukeren",
+				title: "Lista ble delt!",
+				description: `Lista er nå delt med ${shareEmail}`,
+				className: "bg-green-700",
 			});
 			setShareEmail("");
 			setSelectedList(null);
@@ -204,7 +208,7 @@ export default function Lists() {
 			console.error("Error sharing list:", error);
 			toast({
 				title: "Kunne ikke dele",
-				description: "Det oppstod en feil ved å dele listen",
+				description: "Det oppstod en feil ved å dele lista",
 				variant: "destructive",
 			});
 		}
@@ -265,7 +269,7 @@ export default function Lists() {
 						</div>
 					)}
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 sm:mt-16">
-						{lists.owned.map((list: any) => (
+						{lists.owned.map((list: List) => (
 							<Card key={list.id}>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-lg font-bold">{list.name}</CardTitle>
@@ -313,7 +317,7 @@ export default function Lists() {
 									<CardTitle className="text-lg font-bold">{list.name}</CardTitle>
 								</CardHeader>
 								<CardContent>
-									<p className="text-sm text-muted-foreground">Created at: {new Date(list.created_at).toLocaleDateString()}</p>
+									<p className="text-sm text-muted-foreground">Opprettet: {new Date(list.created_at).toLocaleDateString()}</p>
 								</CardContent>
 							</Card>
 						))}
@@ -324,12 +328,12 @@ export default function Lists() {
 			<Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Share List</DialogTitle>
+						<DialogTitle>Del listen din med andre brukere</DialogTitle>
 					</DialogHeader>
 					<form onSubmit={handleShareList} className="space-y-4">
-						<Input type="email" value={shareEmail} onChange={(e) => setShareEmail(e.target.value)} placeholder="User email" required />
+						<Input type="email" value={shareEmail} onChange={(e) => setShareEmail(e.target.value)} placeholder="Brukerens e-post" required />
 						<Button type="submit" className="w-full">
-							Share
+							Del liste
 						</Button>
 					</form>
 				</DialogContent>
