@@ -350,7 +350,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 									<div key={actor.id} className="flex items-center space-x-4">
 										<div className="flex-shrink-0 w-12 h-12 relative">
 											{actor.profile_path ? (
-												<Image src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`} alt={actor.name} fill className="rounded-full object-cover" />
+												<Image src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`} alt={actor.name} fill sizes="50px" className="rounded-full object-cover" />
 											) : (
 												<div className="w-full h-full rounded-full bg-muted flex items-center justify-center">
 													<span className="text-xl">👤</span>
