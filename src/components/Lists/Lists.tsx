@@ -3,7 +3,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { User, createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { PlusCircle, Share2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -27,6 +27,7 @@ interface ListsState {
 
 export default function Lists() {
 	const [lists, setLists] = useState<ListsState>({ owned: [], shared: [] });
+	const [user, setUser] = useState<User | null>(null);
 	const [newListName, setNewListName] = useState("");
 	const [shareEmail, setShareEmail] = useState("");
 	const [selectedList, setSelectedList] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function Lists() {
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
+		setUser(user);
 		if (!user) return;
 
 		try {
@@ -217,7 +219,7 @@ export default function Lists() {
 	return (
 		<div className="space-y-6">
 			<div className="flex justify-between items-center">
-				<h2 className="text-3xl font-bold tracking-tight">Dine lister</h2>
+				<h2 className="text-3xl font-bold tracking-tight">Lister for "{user?.email}"</h2>
 				<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
 					<DialogTrigger asChild>
 						<Button>
