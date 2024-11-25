@@ -66,7 +66,6 @@ export function MovieCard({
 		<div className="group relative">
 			<div className={`aspect-[2/3] overflow-hidden rounded-lg ${isWatchList && movie.watched ? "opacity-40" : ""}`}>
 				<Image
-					unoptimized
 					src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
 					alt={movie.title}
 					width={500}
