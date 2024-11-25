@@ -150,7 +150,7 @@ export default function Watchlist() {
 
 			toast({
 				title: "Film fjernet",
-				description: `${movieTitle} er fjernet fra listen`,
+				description: `"${movieTitle}" er fjernet fra listen`,
 				className: "bg-orange-800",
 			});
 		} catch (error) {

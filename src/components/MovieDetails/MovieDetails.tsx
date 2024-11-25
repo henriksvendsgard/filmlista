@@ -172,7 +172,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 
 			toast({
 				title: "Film lagt til",
-				description: `${movie?.title} er lagt til i ${newList?.name}`,
+				description: `"${movie?.title}" er nå lagt til i "${newList?.name}"`,
 				className: "bg-blue-800",
 			});
 		} catch (error) {
@@ -207,7 +207,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 
 			toast({
 				title: "Film fjernet",
-				description: `${movie?.title} er fjernet fra ${listName}`,
+				description: `"${movie?.title}" er nå fjernet fra "${listName}"`,
 				className: "bg-orange-800",
 			});
 		} catch (error) {

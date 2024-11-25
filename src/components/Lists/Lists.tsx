@@ -219,7 +219,7 @@ export default function Lists() {
 	return (
 		<div className="space-y-6">
 			<div className="flex justify-between items-center">
-				<h2 className="text-3xl font-bold tracking-tight">Lister for "{user?.email}"</h2>
+				<h2 className="text-3xl font-bold tracking-tight">Lister for {`"${user?.email}"`}</h2>
 				<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
 					<DialogTrigger asChild>
 						<Button>

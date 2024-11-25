@@ -66,20 +66,17 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 	}, [movies]);
 
 	const fetchLists = useCallback(async () => {
-		const { data: { user } } = await supabase.auth.getUser();
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
 		if (!user) return;
 
 		try {
-			const { data: sharedListIds, error: sharedError } = await supabase
-				.from("shared_lists")
-				.select("list_id")
-				.eq("user_id", user.id);
+			const { data: sharedListIds, error: sharedError } = await supabase.from("shared_lists").select("list_id").eq("user_id", user.id);
 
 			if (sharedError) throw sharedError;
 
-			const { data: allLists, error: listsError } = await supabase
-				.from("lists")
-				.select("*");
+			const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
 
 			if (listsError) throw listsError;
 
@@ -103,7 +100,9 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 
 	const handleAddToList = async (movie: TMDBMovie, listId: string) => {
 		try {
-			const { data: { user } } = await supabase.auth.getUser();
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
 			if (!user) return;
 
 			const { error } = await supabase.from("list_movies").insert({
@@ -132,7 +131,7 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 
 			toast({
 				title: "Film lagt til i listen",
-				description: `${movie.title} er lagt til i listen`,
+				description: `"${movie.title}" er nå lagt til i lista`,
 				className: "bg-blue-800",
 			});
 		} catch (error) {
@@ -147,11 +146,7 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 
 	const handleRemoveFromList = async (movie: TMDBMovie, listId: string) => {
 		try {
-			const { error } = await supabase
-				.from("list_movies")
-				.delete()
-				.eq("movie_id", movie.id.toString())
-				.eq("list_id", listId);
+			const { error } = await supabase.from("list_movies").delete().eq("movie_id", movie.id.toString()).eq("list_id", listId);
 
 			if (error) throw error;
 
@@ -178,7 +173,7 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 
 			toast({
 				title: "Film fjernet fra listen",
-				description: `${movie.title} er fjernet fra listen`,
+				description: `"${movie.title}" er nå fjernet fra lista`,
 				className: "bg-orange-800",
 			});
 		} catch (error) {
@@ -207,13 +202,16 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 	};
 
 	const fetchMovieListMap = useCallback(async () => {
-		const { data: { user } } = await supabase.auth.getUser();
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
 		if (!user) return;
 
 		try {
 			const { data, error } = await supabase
 				.from("list_movies")
-				.select(`
+				.select(
+					`
 					movie_id, 
 					list_id, 
 					added_at,
@@ -221,7 +219,8 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 					profile:profiles!list_movies_added_by_fkey (
 						email
 					)
-				`)
+				`
+				)
 				.in(
 					"movie_id",
 					movies.results.map((m) => m.id.toString())
