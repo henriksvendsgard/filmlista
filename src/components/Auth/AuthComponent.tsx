@@ -24,7 +24,7 @@ export default function AuthComponent() {
 	// Sjekk om vi har en recovery token i URL-en
 	useEffect(() => {
 		const hash = window.location.hash;
-		if (hash && hash.includes('type=recovery')) {
+		if (hash && (hash.includes('type=recovery') || hash.includes('auth-callback'))) {
 			setIsResetPassword(true);
 		}
 	}, []);
@@ -96,9 +96,9 @@ export default function AuthComponent() {
 		setMessage(null);
 
 		if (!isResetPassword) {
-			// Send tilbakestillingsmail
+			// Send tilbakestillingsmail med spesifikk redirect URL
 			const { error } = await supabase.auth.resetPasswordForEmail(email, {
-				redirectTo: `${window.location.origin}/login`,
+				redirectTo: `${window.location.origin}/login#auth-callback`,
 			});
 
 			if (error) {
