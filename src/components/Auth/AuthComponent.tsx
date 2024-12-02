@@ -20,11 +20,11 @@ export default function AuthComponent() {
 	const [message, setMessage] = useState<string | null>(null);
 	const router = useRouter();
 	const { supabase } = useSupabase();
-	
+
 	// Sjekk om vi har en recovery token i URL-en
 	useEffect(() => {
 		const hash = window.location.hash;
-		if (hash && (hash.includes('type=recovery') || hash.includes('auth-callback'))) {
+		if (hash && (hash.includes("type=recovery") || hash.includes("auth-callback"))) {
 			setIsResetPassword(true);
 		}
 	}, []);
@@ -54,7 +54,7 @@ export default function AuthComponent() {
 		if (error) {
 			setError(error.message);
 		} else if (data) {
-			setError("Sjekk e-posten din for bekreftelseslenke. Dette kan ta litt tid.");
+			setMessage("Sjekk e-posten din for bekreftelseslenke. Dette kan ta litt tid.");
 			setIsSignUp(false);
 		}
 		setLoading(false);
@@ -64,13 +64,13 @@ export default function AuthComponent() {
 		e.preventDefault();
 		setLoading(true);
 		setError(null);
-		
+
 		try {
-			const { data, error } = await supabase.auth.signInWithPassword({ 
-				email, 
-				password
+			const { data, error } = await supabase.auth.signInWithPassword({
+				email,
+				password,
 			});
-			
+
 			if (error) {
 				if (error.message === "Invalid login credentials") {
 					setError("Feil e-post eller passord");
@@ -82,7 +82,7 @@ export default function AuthComponent() {
 				router.refresh();
 			}
 		} catch (err) {
-			console.error('SignIn error:', err);
+			console.error("SignIn error:", err);
 			setError("Noe gikk galt ved innlogging. Prøv igjen senere.");
 		} finally {
 			setLoading(false);
@@ -122,7 +122,7 @@ export default function AuthComponent() {
 				setMessage("Passordet ditt er oppdatert. Du kan nå logge inn.");
 				setIsResetPassword(false);
 				// Fjern hash fra URL
-				window.history.replaceState(null, '', window.location.pathname);
+				window.history.replaceState(null, "", window.location.pathname);
 			}
 		}
 		setLoading(false);
@@ -138,15 +138,7 @@ export default function AuthComponent() {
 					<form onSubmit={handlePasswordReset} className="space-y-4">
 						<div className="space-y-2">
 							<Label htmlFor="password">Nytt passord</Label>
-							<Input
-								className="text-base"
-								id="password"
-								type="password"
-								placeholder="Nytt passord"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								required
-							/>
+							<Input className="text-base" id="password" type="password" placeholder="Nytt passord" value={password} onChange={(e) => setPassword(e.target.value)} required />
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="confirmPassword">Bekreft nytt passord</Label>
@@ -187,27 +179,11 @@ export default function AuthComponent() {
 				<form onSubmit={isSignUp ? handleSignUp : handleSignIn} className="space-y-4">
 					<div className="space-y-2">
 						<Label htmlFor="email">Epost</Label>
-						<Input 
-							className="text-base" 
-							id="email" 
-							type="email" 
-							placeholder="Epost" 
-							value={email} 
-							onChange={(e) => setEmail(e.target.value)} 
-							required 
-						/>
+						<Input className="text-base" id="email" type="email" placeholder="Epost" value={email} onChange={(e) => setEmail(e.target.value)} required />
 					</div>
 					<div className="space-y-2">
 						<Label htmlFor="password">Passord</Label>
-						<Input 
-							className="text-base" 
-							id="password" 
-							type="password" 
-							placeholder="Passord" 
-							value={password} 
-							onChange={(e) => setPassword(e.target.value)} 
-							required 
-						/>
+						<Input className="text-base" id="password" type="password" placeholder="Passord" value={password} onChange={(e) => setPassword(e.target.value)} required />
 					</div>
 					{isSignUp && (
 						<div className="space-y-2">
