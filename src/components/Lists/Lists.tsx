@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { User, createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { PlusCircle, Share2, Trash2 } from "lucide-react";
+import { PlusCircle, Share, Share2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -218,12 +218,12 @@ export default function Lists() {
 
 	return (
 		<div className="space-y-6">
-			<div className="flex justify-between items-center">
-				<h2 className="text-3xl font-bold tracking-tight">Lister for {`"${user?.email}"`}</h2>
+			<div className=" flex gap-4 justify-between items-center flex-wrap">
+				<h2 className="text-3xl font-bold tracking-tight">Listene til {`"${user?.email}"`}</h2>
 				<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
 					<DialogTrigger asChild>
 						<Button>
-							<PlusCircle className="mr-2 h-4 w-4" />
+							<PlusCircle className="h-4 w-4" />
 							Ny liste
 						</Button>
 					</DialogTrigger>
@@ -284,7 +284,7 @@ export default function Lists() {
 												setIsShareDialogOpen(true);
 											}}
 										>
-											<Share2 className="h-4 w-4" />
+											<Share className="h-4 w-4" />
 										</Button>
 										<Button
 											variant="destructive"
@@ -328,7 +328,7 @@ export default function Lists() {
 			</Tabs>
 
 			<Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-				<DialogContent>
+				<DialogContent className="flex-col gap-8">
 					<DialogHeader>
 						<DialogTitle>Del listen din med andre brukere</DialogTitle>
 					</DialogHeader>
@@ -343,9 +343,9 @@ export default function Lists() {
 
 			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
-					<AlertDialogHeader>
+					<AlertDialogHeader className="space-y-4">
 						<AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-						<AlertDialogDescription>Dette vil slette {listToDelete?.name} og fjerne alle filmene fra listen. Denne handlingen kan ikke angres.</AlertDialogDescription>
+						<AlertDialogDescription>Dette vil slette {` "${listToDelete?.name}"`} og fjerne alle filmene fra listen. Denne handlingen kan ikke angres.</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel
