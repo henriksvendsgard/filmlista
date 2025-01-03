@@ -3,10 +3,16 @@
 import { useEffect, useState } from "react";
 import SearchBox from "../Search/SearchBox";
 import NavItems from "./NavItems";
+import { useSupabase } from "../SupabaseProvider";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function Header() {
 	const [scrollDirection, setScrollDirection] = useState<"up" | "down">("up");
 	const [lastScrollY, setLastScrollY] = useState(0);
+	const [showInfoBar, setShowInfoBar] = useState(false);
+
+	const pathname = usePathname();
+	const { supabase } = useSupabase();
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -27,8 +33,38 @@ export default function Header() {
 		return () => window.removeEventListener("scroll", handleScroll);
 	}, [lastScrollY]);
 
+	useEffect(() => {
+		const fetchUserProfile = async () => {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (user) {
+				const displayName = user.user_metadata?.display_name;
+
+				// Show toast if displayname is not set
+				if (!displayName && pathname !== "/profile") {
+					setShowInfoBar(true);
+				} else {
+					setShowInfoBar(false);
+				}
+			}
+		};
+		fetchUserProfile();
+	}, [supabase, pathname]);
+
 	return (
 		<div className={`fixed w-full z-50 ${scrollDirection === "down" ? "pb-3" : "pb-6"} sm:pb-0 transition-all duration-300 `}>
+			{showInfoBar && (
+				<div className="bg-blue-800 text-white text-center py-3">
+					<p>
+						<strong>Hallo!</strong> Du har ikke satt et visningsnavn enda... Gå til{" "}
+						<a href="/profile" className="underline">
+							profilen din
+						</a>{" "}
+						for å gjøre dette.
+					</p>
+				</div>
+			)}
 			<div className={`flex gap-6 justify-between px-5 lg:p-10 ${scrollDirection === "down" ? "py-3 lg:py-8" : "py-5"} items-center relative transition-all duration-300`}>
 				<div className="flex gap-6 w-full">
 					<a href="/" className="flex items-center">

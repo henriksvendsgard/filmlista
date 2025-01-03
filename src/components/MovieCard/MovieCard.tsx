@@ -30,6 +30,7 @@ interface MovieCardProps {
 		added_at?: string;
 		added_by?: string;
 		added_by_email?: string;
+		added_by_displayname?: string;
 	};
 	isInList: boolean;
 	lists?: {
@@ -166,8 +167,8 @@ export function MovieCard({
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
-			{showAddedBy && movie.added_by && movie.added_by_email && (
-				<div className="absolute bottom-2 left-2 bg-background/80 p-2 rounded-md text-xs break-all mr-2">Lagt til av {movie.added_by_email}</div>
+			{showAddedBy && movie.added_by_displayname && (
+				<div className="absolute bottom-2 left-2 bg-background/80 p-2 rounded-md text-xs break-all mr-2">Lagt til av {movie.added_by_displayname}</div>
 			)}
 		</div>
 	);

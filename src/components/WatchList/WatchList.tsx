@@ -27,6 +27,7 @@ interface WatchListMovie {
 	added_by: string;
 	profiles: {
 		email: string;
+		displayname: string;
 	};
 }
 
@@ -99,7 +100,7 @@ export default function Watchlist() {
 					watched,
 					added_at,
 					added_by,
-					profiles (email)
+					profiles (displayname, email)
 				`
 				)
 				.eq("list_id", selectedList)
@@ -107,8 +108,10 @@ export default function Watchlist() {
 
 			if (error) throw error;
 
+			// Cast the data into a specific type
 			const typedData = data as unknown as WatchListMovie[];
 
+			// Process movies and include the display name
 			const processedMovies = typedData.map((item) => ({
 				id: item.movie_id,
 				movie_id: item.movie_id,
@@ -117,15 +120,16 @@ export default function Watchlist() {
 				watched: item.watched || false,
 				added_at: item.added_at,
 				added_by: item.added_by,
-				added_by_email: item.profiles.email,
+				added_by_displayname: item.profiles?.displayname || item.profiles?.email || "Unknown",
 			}));
 
+			// Update state with the processed movie list
 			setMovies(processedMovies);
 		} catch (error) {
 			console.error("Error fetching movies:", error);
-			setMovies([]);
+			setMovies([]); // Reset movies on error
 		} finally {
-			setIsLoading(false);
+			setIsLoading(false); // Stop loading state
 		}
 	}, [selectedList, supabase]);
 
