@@ -4,7 +4,7 @@ A simple watch list with auth and shared lists built on Next.js 14 with TypeScri
 
 ### **Some core functionality includes:**
 
--   Create and delete watchlists
+-   Create and delete personal watchlists
 -   Share your watchlist with other users
 -   Search for movies, and see where they can be streamed
 -   Add and remove movies from a spesific watchlist
@@ -28,3 +28,8 @@ To install Filmlista, follow these steps:
 3. Install dependencies: **`npm install`**
 4. Build the project: **`npm run build`**
 5. Start the project: **`npm start`**
+
+### ***Licence***
+
+This project is licenced under the MIT Licence.
+
