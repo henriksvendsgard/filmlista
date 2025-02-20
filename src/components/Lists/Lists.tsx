@@ -89,19 +89,6 @@ export default function Lists() {
 		fetchLists();
 	}, [fetchLists]);
 
-	// useEffect(() => {
-	// 	const fetchUserProfile = async () => {
-	// 		const {
-	// 			data: { user },
-	// 		} = await supabase.auth.getUser();
-	// 		if (user) {
-	// 			const displayName = user.user_metadata?.display_name;
-	// 			setUser({ ...user, displayName: displayName });
-	// 		}
-	// 	};
-	// 	fetchUserProfile();
-	// }, [supabase]);
-
 	const handleCreateList = async (e: React.FormEvent) => {
 		e.preventDefault();
 		const {

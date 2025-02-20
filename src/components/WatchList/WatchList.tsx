@@ -45,6 +45,19 @@ export default function Watchlist() {
 
 	const supabase = createClientComponentClient();
 	const router = useRouter();
+	const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+	const listIdFromUrl = searchParams.get("list");
+
+	const updateUrlWithList = (listId: string | null) => {
+		const newUrl = listId ? `${window.location.pathname}?list=${listId}` : window.location.pathname;
+		router.replace(newUrl);
+	};
+
+	// Update the list selection handler
+	const handleListSelection = (listId: string) => {
+		setSelectedList(listId);
+		updateUrlWithList(listId);
+	};
 
 	const fetchLists = useCallback(async () => {
 		const {
@@ -71,9 +84,13 @@ export default function Watchlist() {
 				shared: sharedLists || [],
 			});
 
-			// Setter den første listen som valgt som default
+			// Set initial list selection from URL or default to first list
 			if (!selectedList && (ownedLists.length > 0 || sharedLists.length > 0)) {
-				setSelectedList(ownedLists[0]?.id || sharedLists[0]?.id);
+				const initialList = listIdFromUrl || ownedLists[0]?.id || sharedLists[0]?.id;
+				setSelectedList(initialList);
+				if (!listIdFromUrl) {
+					updateUrlWithList(initialList);
+				}
 			}
 		} catch (error) {
 			console.error("Error fetching lists:", error);
@@ -85,7 +102,7 @@ export default function Watchlist() {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [selectedList, supabase]);
+	}, [selectedList, supabase, listIdFromUrl]);
 
 	// Hent filmer fra valgt liste
 	const fetchMovies = useCallback(async () => {
@@ -260,7 +277,7 @@ export default function Watchlist() {
 				<div className="space-y-6">
 					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 						<h2 className="text-3xl font-bold tracking-tight">Filmlista</h2>
-						<Select value={selectedList || undefined} onValueChange={setSelectedList}>
+						<Select value={selectedList || undefined} onValueChange={handleListSelection}>
 							<SelectTrigger className="w-[200px]">
 								<SelectValue placeholder="Velg en liste" />
 							</SelectTrigger>
