@@ -18,6 +18,7 @@ export default function AuthComponent() {
 	const [isSignUp, setIsSignUp] = useState(false);
 	const [isResetPassword, setIsResetPassword] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
+	const [displayName, setDisplayName] = useState("");
 	const router = useRouter();
 	const { supabase } = useSupabase();
 
@@ -48,15 +49,17 @@ export default function AuthComponent() {
 			password,
 			options: {
 				emailRedirectTo: `${window.location.origin}/auth/callback`,
+				data: { display_name: displayName },
 			},
 		});
 
 		if (error) {
 			setError(error.message);
-		} else if (data) {
-			setMessage("Sjekk e-posten din for bekreftelseslenke. Dette kan ta litt tid.");
+		} else {
+			setMessage("Sjekk e-posten din for bekreftelseslenke. Profilen din er opprettet!");
 			setIsSignUp(false);
 		}
+
 		setLoading(false);
 	};
 
@@ -78,6 +81,11 @@ export default function AuthComponent() {
 					setError(error.message);
 				}
 			} else if (data.user) {
+				const { error: profileError } = await supabase.from("profiles").update({ displayname: displayName }).eq("id", data.user.id);
+				if (profileError) {
+					setError("Feil ved oppdatering av visningsnavn");
+					return;
+				}
 				router.push("/");
 				router.refresh();
 			}
@@ -186,18 +194,24 @@ export default function AuthComponent() {
 						<Input className="text-base" id="password" type="password" placeholder="Passord" value={password} onChange={(e) => setPassword(e.target.value)} required />
 					</div>
 					{isSignUp && (
-						<div className="space-y-2">
-							<Label htmlFor="confirmPassword">Bekreft passord</Label>
-							<Input
-								className="text-base"
-								id="confirmPassword"
-								type="password"
-								placeholder="Bekreft passord"
-								value={confirmPassword}
-								onChange={(e) => setConfirmPassword(e.target.value)}
-								required
-							/>
-						</div>
+						<>
+							<div className="space-y-2">
+								<Label htmlFor="confirmPassword">Bekreft passord</Label>
+								<Input
+									className="text-base"
+									id="confirmPassword"
+									type="password"
+									placeholder="Bekreft passord"
+									value={confirmPassword}
+									onChange={(e) => setConfirmPassword(e.target.value)}
+									required
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="displayName">Visningsnavn</Label>
+								<Input className="text-base" id="displayName" type="text" placeholder="Visningsnavn" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+							</div>
+						</>
 					)}
 					<div>
 						<div className="flex flex-col space-y-4">
@@ -214,6 +228,7 @@ export default function AuthComponent() {
 										setMessage(null);
 										setPassword("");
 										setConfirmPassword("");
+										setDisplayName("");
 									}}
 									disabled={loading}
 								>

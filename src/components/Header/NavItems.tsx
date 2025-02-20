@@ -70,6 +70,12 @@ export default function NavItems() {
 									<span>Profil</span>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent>
+									<Link href="/profile" className="w-full">
+										<DropdownMenuItem className="cursor-pointer">
+											<UserIcon className="w-4 h-4 mr-2" />
+											<span>Profil</span>
+										</DropdownMenuItem>
+									</Link>
 									<Link href="/lists" className="w-full">
 										<DropdownMenuItem className="cursor-pointer">
 											<ListIcon className="w-4 h-4 mr-2" />
