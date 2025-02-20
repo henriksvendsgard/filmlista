@@ -23,6 +23,14 @@ interface MovieDetails {
 	genres: { id: number; name: string }[];
 }
 
+interface SimilarMovie {
+	id: number;
+	title: string;
+	poster_path: string | null;
+	vote_average: number;
+	release_date: string;
+}
+
 interface Cast {
 	id: number;
 	name: string;
@@ -52,6 +60,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 	const router = useRouter();
 	const [movie, setMovie] = useState<MovieDetails | null>(null);
 	const [cast, setCast] = useState<Cast[]>([]);
+	const [similarMovies, setSimilarMovies] = useState<SimilarMovie[]>([]);
 	const [watchProviders, setWatchProviders] = useState<WatchProviders | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -92,41 +101,44 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 			}
 
 			try {
-				// Henter filmdetaljer
-				const movieResponse = await fetch(`https://api.themoviedb.org/3/movie/${movieId}`, {
-					headers: {
-						Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-						accept: "application/json",
-					},
-				});
+				// Fetch movie details, cast, and providers as before...
+				const [movieResponse, creditsResponse, providersResponse, similarResponse] = await Promise.all([
+					fetch(`https://api.themoviedb.org/3/movie/${params.id}`, {
+						headers: {
+							Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+							accept: "application/json",
+						},
+					}),
+					fetch(`https://api.themoviedb.org/3/movie/${params.id}/credits`, {
+						headers: {
+							Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+							accept: "application/json",
+						},
+					}),
+					fetch(`https://api.themoviedb.org/3/movie/${params.id}/watch/providers`, {
+						headers: {
+							Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+							accept: "application/json",
+						},
+					}),
+					fetch(`https://api.themoviedb.org/3/movie/${params.id}/similar`, {
+						headers: {
+							Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+							accept: "application/json",
+						},
+					}),
+				]);
 
-				// Skuespillere
-				const creditsResponse = await fetch(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
-					headers: {
-						Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-						accept: "application/json",
-					},
-				});
-
-				// Strømmetjenester
-				const providersResponse = await fetch(`https://api.themoviedb.org/3/movie/${movieId}/watch/providers`, {
-					headers: {
-						Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-						accept: "application/json",
-					},
-				});
-
-				if (!movieResponse.ok || !creditsResponse.ok || !providersResponse.ok) {
+				if (!movieResponse.ok || !creditsResponse.ok || !providersResponse.ok || !similarResponse.ok) {
 					throw new Error("Failed to fetch movie data");
 				}
 
-				const movieData = await movieResponse.json();
-				const creditsData = await creditsResponse.json();
-				const providersData = await providersResponse.json();
+				const [movieData, creditsData, providersData, similarData] = await Promise.all([movieResponse.json(), creditsResponse.json(), providersResponse.json(), similarResponse.json()]);
 
 				setMovie(movieData);
-				setCast(creditsData.cast?.slice(0, 6) || []); // Henter første 6
-				setWatchProviders(providersData.results?.NO || null); // Henter norske strømmetjenester
+				setCast(creditsData.cast?.slice(0, 6) || []); // First 6 cast members
+				setWatchProviders(providersData.results?.NO || null); // Norwegian providers
+				setSimilarMovies(similarData.results?.slice(0, 6) || []); // First 6 similar movies
 			} catch (error) {
 				console.error("Error:", error);
 				setError(error instanceof Error ? error.message : "Klarte ikke hente filmdetaljer");
@@ -136,7 +148,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 		};
 
 		fetchMovieData();
-	}, [movieId]);
+	}, [params.id]);
 
 	useEffect(() => {
 		fetchMovieListMap();
@@ -449,9 +461,37 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 					)}
 				</div>
 			)}
+
+			{similarMovies.length > 0 && (
+				<div className="mt-8 space-y-6 border-t pt-16">
+					<h2 className="text-2xl font-semibold">Lignende filmer</h2>
+					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+						{similarMovies.map((movie) => (
+							<div key={movie.id} className="cursor-pointer group" onClick={() => router.push(`/movie/${movie.id}`)}>
+								<div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+									{movie.poster_path ? (
+										<Image
+											src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+											alt={movie.title}
+											fill
+											className="object-cover transition-transform group-hover:scale-105"
+											sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 16vw"
+										/>
+									) : (
+										<div className="w-full h-full bg-muted flex items-center justify-center">
+											<span className="text-muted-foreground">Ingen plakat</span>
+										</div>
+									)}
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
+
 function ErrorState({ error, onBack }: { error: string | null; onBack: () => void }) {
 	return (
 		<div className="flex flex-col items-center justify-center p-8 space-y-4">
@@ -503,6 +543,18 @@ function MovieDetailsSkeleton() {
 				</div>
 				<div>
 					<Skeleton className="aspect-[2/3] w-full rounded-lg" />
+				</div>
+			</div>
+			<div className="space-y-4">
+				<Skeleton className="h-8 w-40" />
+				<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+					{[1, 2, 3, 4, 5, 6].map((i) => (
+						<div key={i} className="space-y-2">
+							<Skeleton className="aspect-[2/3] w-full rounded-lg" />
+							<Skeleton className="h-4 w-3/4" />
+							<Skeleton className="h-3 w-1/2" />
+						</div>
+					))}
 				</div>
 			</div>
 		</div>
