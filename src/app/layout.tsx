@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import SupabaseProvider from "@/components/SupabaseProvider";
 import { cookies } from "next/headers";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import ZoomDisabler from "@/components/utils/ZoomDisabler";
 
 const fontSans = FontSans({
 	subsets: ["latin"],
@@ -48,15 +49,16 @@ export default async function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
-				<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 			</head>
 			<body className={cn("min-h-screen flex flex-col font-sans antialiased", fontSans.variable, fontHeading.variable, fontBody.variable)}>
 				<SupabaseProvider session={session}>
 					<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
 						<Header />
 						<div className="flex flex-col items-center w-full pt-40">
-							<CheckPWA />
 							{children}
+							<ZoomDisabler />
+							<CheckPWA />
 						</div>
 						<Footer />
 						<Toaster />

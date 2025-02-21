@@ -7,7 +7,6 @@ export default async function Home({ searchParams }: { searchParams: { page: str
 
 	return (
 		<div className="px-5 lg:px-10 mb-20">
-			<div className="flex flex-col items-center"></div>
 			<MovieList title="Populære filmer" movies={movies} isOnFrontPage />
 		</div>
 	);
