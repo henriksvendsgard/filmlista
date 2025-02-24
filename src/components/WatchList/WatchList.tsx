@@ -66,6 +66,13 @@ export default function Watchlist() {
 	const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
 	const listIdFromUrl = searchParams.get("list");
 
+	// Reset loading state when user changes
+	useEffect(() => {
+		if (!user) {
+			setIsLoading(true);
+		}
+	}, [user]);
+
 	const updateUrlWithList = useCallback(
 		(listId: string | null) => {
 			const newUrl = listId ? `${window.location.pathname}?list=${listId}` : window.location.pathname;
@@ -85,14 +92,6 @@ export default function Watchlist() {
 	);
 
 	const fetchLists = useCallback(async () => {
-		const {
-			data: { user },
-			error: userError,
-		} = await supabase.auth.getUser();
-		if (userError) {
-			console.error("Error fetching user:", userError);
-			return;
-		}
 		if (!user) return;
 
 		try {
@@ -131,13 +130,12 @@ export default function Watchlist() {
 				description: "Failed to fetch lists",
 				variant: "destructive",
 			});
-		} finally {
-			setIsLoading(false);
 		}
-	}, [supabase, listIdFromUrl, updateUrlWithList, selectedList]);
+	}, [supabase, user, listIdFromUrl, updateUrlWithList, selectedList]);
 
 	const fetchMovies = useCallback(async () => {
 		if (!selectedList || !user) return;
+		setIsLoading(true); // Set loading when starting to fetch movies
 
 		try {
 			// Get all movies in the list
@@ -203,7 +201,7 @@ export default function Watchlist() {
 			console.error("Error fetching movies:", error);
 			setMovies([]);
 		} finally {
-			setIsLoading(false);
+			setIsLoading(false); // Only set loading to false after movies are processed
 		}
 	}, [selectedList, supabase, user]);
 
@@ -302,8 +300,10 @@ export default function Watchlist() {
 	};
 
 	useEffect(() => {
-		fetchLists();
-	}, [fetchLists]);
+		if (user) {
+			fetchLists();
+		}
+	}, [fetchLists, user]);
 
 	useEffect(() => {
 		if (selectedList) {
@@ -329,7 +329,7 @@ export default function Watchlist() {
 
 	return (
 		<div>
-			{isLoading || !selectedList || movies === undefined ? (
+			{isLoading || !selectedList || !movies ? ( // Updated condition to include !movies
 				<div className="space-y-6">
 					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 						<Skeleton className="h-9 w-40" />
