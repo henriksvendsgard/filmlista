@@ -205,11 +205,15 @@ export default function Watchlist() {
 
 	const handleRemoveFromList = async (listId: string, movieId: string, movieTitle: string) => {
 		try {
-			const { error } = await supabase.from("list_movies").delete().eq("list_id", listId).eq("movie_id", movieId);
+			// Delete the movie from the list
+			const { error: removeError } = await supabase.from("list_movies").delete().eq("list_id", listId).eq("movie_id", movieId);
+			if (removeError) throw removeError;
 
-			if (error) throw error;
+			// Also delete any watched status for this movie in this list
+			const { error: watchedError } = await supabase.from("watched_movies").delete().eq("list_id", listId).eq("movie_id", movieId);
+			if (watchedError) throw watchedError;
 
-			// Emit så andre komponenter kan oppdatere seg
+			// Emit so other components can update
 			const event = new CustomEvent("movieListUpdate", {
 				detail: {
 					type: "removed",
@@ -219,7 +223,7 @@ export default function Watchlist() {
 			});
 			window.dispatchEvent(event);
 
-			// Refresh listen
+			// Refresh the list
 			fetchMovies();
 
 			toast({
