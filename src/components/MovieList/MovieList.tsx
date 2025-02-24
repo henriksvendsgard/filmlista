@@ -25,6 +25,7 @@ interface MovieListProps {
 	};
 	title: string;
 	isOnFrontPage?: boolean;
+	isLoading?: boolean;
 }
 
 interface MovieDetails {
@@ -49,21 +50,15 @@ type MovieListAction = {
 	movieId: string;
 };
 
-export default function MovieList({ movies, title, isOnFrontPage }: MovieListProps) {
+export default function MovieList({ movies, title, isOnFrontPage, isLoading }: MovieListProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
-	const [isLoading, setIsLoading] = useState(false);
 	const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
 	const [movieListMap, setMovieListMap] = useState<{ [key: string]: string[] }>({});
 	const [movieDetails, setMovieDetails] = useState<{ [key: string]: MovieDetails }>({});
 
 	const supabase = createClientComponentClient();
-
-	// Loading state
-	useEffect(() => {
-		setIsLoading(false);
-	}, [movies]);
 
 	const fetchLists = useCallback(async () => {
 		const {
@@ -193,7 +188,6 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 	};
 
 	const paginate = (pageNumber: number) => {
-		setIsLoading(true);
 		router.push(createPageURL(pageNumber));
 		window.scrollTo({
 			top: 0,
@@ -285,9 +279,6 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 		};
 	}, []);
 
-	const maxPages = Math.min(movies.total_pages, 500);
-	const currentPage = movies.page;
-
 	return (
 		<section className="movie-list w-full h-full max-w-full">
 			<h2 className="text-3xl font-bold tracking-tight mb-6">{title}</h2>
@@ -326,18 +317,18 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 				)}
 			</div>
 
-			{isOnFrontPage && maxPages > 1 && (
+			{isOnFrontPage && movies.total_pages > 1 && !isLoading && (
 				<div className="flex justify-center items-center gap-6 mt-8 mb-12">
-					<Button variant="outline" onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || isLoading} className="h-10">
+					<Button variant="outline" onClick={() => paginate(movies.page - 1)} disabled={movies.page === 1} className="h-10">
 						<ChevronLeft className="h-4 w-4 sm:mr-2" />
 						<span className="hidden sm:inline">Forrige</span>
 					</Button>
 
 					<div className="flex items-center">
-						<span className="text-sm">Side {currentPage}</span>
+						<span className="text-sm">Side {movies.page}</span>
 					</div>
 
-					<Button variant="outline" onClick={() => paginate(currentPage + 1)} disabled={currentPage === maxPages || isLoading} className="h-10">
+					<Button variant="outline" onClick={() => paginate(movies.page + 1)} disabled={movies.page === Math.min(movies.total_pages, 500)} className="h-10">
 						<span className="hidden sm:inline">Neste</span>
 						<ChevronRight className="h-4 w-4 sm:ml-2" />
 					</Button>

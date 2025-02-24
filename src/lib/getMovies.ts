@@ -5,6 +5,8 @@ async function fetchFromTMDB(url: URL, page = 1) {
 	url.searchParams.set("include_video", "false");
 	url.searchParams.set("language", "en-US");
 	url.searchParams.set("page", page.toString());
+	url.searchParams.set("include_null_first_air_dates", "false");
+	url.searchParams.set("without_null_poster_path", "true");
 
 	const options: RequestInit = {
 		method: "GET",
@@ -19,6 +21,8 @@ async function fetchFromTMDB(url: URL, page = 1) {
 
 	const response = await fetch(url.toString(), options);
 	const data = (await response.json()) as SearchResults;
+
+	data.results = data.results.filter((movie) => movie.poster_path !== null);
 
 	return data;
 }
@@ -54,7 +58,7 @@ export async function getUpcomingMovies(page = 1) {
 		results: data.results,
 		total_pages: data.total_pages,
 		total_results: data.total_results,
-		page: data.page
+		page: data.page,
 	};
 }
 
@@ -72,11 +76,11 @@ export async function getPopularMovies(page = 1) {
 		results: data.results,
 		total_pages: data.total_pages,
 		total_results: data.total_results,
-		page: data.page
+		page: data.page,
 	};
 }
 
-export async function getDiscoverMovies(id?: string, keywords?: string) {
+export async function getDiscoverMovies(id?: string, keywords?: string, page = 1) {
 	const url = new URL("https://api.themoviedb.org/3/discover/movie");
 	if (id) {
 		url.searchParams.set("with_genres", id);
@@ -84,9 +88,14 @@ export async function getDiscoverMovies(id?: string, keywords?: string) {
 	if (keywords) {
 		url.searchParams.set("with_keywords", keywords);
 	}
-	const data = await fetchFromTMDB(url);
+	const data = await fetchFromTMDB(url, page);
 
-	return data.results;
+	return {
+		results: data.results,
+		total_pages: data.total_pages,
+		total_results: data.total_results,
+		page: data.page,
+	};
 }
 
 export async function getSearchedMovies(term: string, page = 1) {
@@ -97,7 +106,7 @@ export async function getSearchedMovies(term: string, page = 1) {
 		results: data.results,
 		total_pages: data.total_pages,
 		total_results: data.total_results,
-		page: data.page
+		page: data.page,
 	};
 }
 
@@ -106,4 +115,22 @@ export async function getMovieDetails(id: string) {
 	const movie = await fetchMovieFromTMDB(url);
 
 	return movie;
+}
+
+export async function getMovieGenres() {
+	const url = new URL("https://api.themoviedb.org/3/genre/movie/list");
+	const options: RequestInit = {
+		method: "GET",
+		headers: {
+			accept: "application/json",
+			Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+		},
+		next: {
+			revalidate: 60 * 60 * 24,
+		},
+	};
+
+	const response = await fetch(url.toString(), options);
+	const data = await response.json();
+	return data.genres;
 }

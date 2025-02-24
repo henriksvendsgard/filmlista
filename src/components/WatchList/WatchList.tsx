@@ -9,7 +9,6 @@ import { Film } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
-import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 
 interface List {
@@ -39,7 +38,7 @@ type MovieListAction = {
 
 export default function Watchlist() {
 	const [isLoading, setIsLoading] = useState(true);
-	const [movies, setMovies] = useState<Movie[]>([]);
+	const [movies, setMovies] = useState<Movie[] | undefined>(undefined);
 	const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
 	const [selectedList, setSelectedList] = useState<string | null>(null);
 
@@ -191,7 +190,9 @@ export default function Watchlist() {
 			if (error) throw error;
 
 			// Update local state
-			setMovies(movies.map((movie) => (movie.movie_id === movieId ? { ...movie, watched: !movie.watched } : movie)));
+			if (movies) {
+				setMovies(movies.map((movie) => (movie.movie_id === movieId ? { ...movie, watched: !movie.watched } : movie)));
+			}
 
 			toast({
 				title: currentWatchedStatus ? "Markert som usett" : "Markert som sett",
@@ -239,7 +240,7 @@ export default function Watchlist() {
 
 	return (
 		<div>
-			{isLoading ? (
+			{isLoading || !selectedList || movies === undefined ? (
 				<div className="space-y-6">
 					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 						<Skeleton className="h-9 w-40" />
@@ -265,7 +266,7 @@ export default function Watchlist() {
 								<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
 									{Array.from({ length: 10 }).map((_, index) => (
 										<div key={index} className="space-y-2">
-											<Skeleton className="h-[225px] sm:h-[350px] w-full" />
+											<Skeleton className="aspect-[2/3] w-full" />
 										</div>
 									))}
 								</div>
@@ -317,7 +318,14 @@ export default function Watchlist() {
 							</SelectContent>
 						</Select>
 					</div>
-					{movies.length > 0 && (
+
+					{!movies || movies.length === 0 ? (
+						<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
+							<Film className="h-16 w-16 mb-4 opacity-50" />
+							<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
+							<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
+						</div>
+					) : (
 						<Tabs defaultValue="all" className="w-full">
 							<TabsList className="mb-6">
 								<TabsTrigger value="all">Alle</TabsTrigger>
@@ -386,24 +394,6 @@ export default function Watchlist() {
 								</div>
 							</TabsContent>
 						</Tabs>
-					)}
-
-					{!selectedList && (
-						<div className="text-center py-10">
-							<h3 className="text-xl font-semibold mb-4">Du har ingen lister</h3>
-							<p className="text-muted-foreground">Lag en liste for å legge til filmer</p>
-							<Button onClick={() => router.push("/lists")} className="mt-10">
-								Lag en liste
-							</Button>
-						</div>
-					)}
-
-					{selectedList && movies.length === 0 && (
-						<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
-							<Film className="h-16 w-16 mb-4 opacity-50" />
-							<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
-							<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
-						</div>
 					)}
 				</div>
 			)}
