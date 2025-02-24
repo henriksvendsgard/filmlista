@@ -43,8 +43,8 @@ export default async function RootLayout({
 	const supabase = createServerComponentClient({ cookies });
 
 	const {
-		data: { session },
-	} = await supabase.auth.getSession();
+		data: { user },
+	} = await supabase.auth.getUser();
 
 	return (
 		<html lang="en" suppressHydrationWarning>
@@ -52,7 +52,7 @@ export default async function RootLayout({
 				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 			</head>
 			<body className={cn("min-h-screen flex flex-col font-sans antialiased", fontSans.variable, fontHeading.variable, fontBody.variable)}>
-				<SupabaseProvider session={session}>
+				<SupabaseProvider initialUser={user}>
 					<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
 						<Header />
 						<div className="flex flex-col items-center w-full pt-40">

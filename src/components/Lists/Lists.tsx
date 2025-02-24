@@ -46,7 +46,12 @@ export default function Lists() {
 	const fetchLists = useCallback(async () => {
 		const {
 			data: { user },
+			error: userError,
 		} = await supabase.auth.getUser();
+		if (userError) {
+			console.error("Error fetching user:", userError);
+			return;
+		}
 		if (user) {
 			const displayName = user.user_metadata?.display_name;
 			setUser({ ...user, displayName: displayName });
@@ -259,8 +264,8 @@ export default function Lists() {
 				</Dialog>
 			</div>
 
-			<Tabs defaultValue="owned" className="w-full">
-				<TabsList className="grid w-full grid-cols-2">
+			<Tabs defaultValue="owned">
+				<TabsList>
 					<TabsTrigger value="owned">Mine lister</TabsTrigger>
 					<TabsTrigger value="shared">Delt med meg</TabsTrigger>
 				</TabsList>

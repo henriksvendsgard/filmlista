@@ -6,11 +6,8 @@ import { CircleCheckBig, ListIcon, UserIcon, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
-
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { User } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
 import { useSupabase } from "@/components/SupabaseProvider";
+import { useState } from "react";
 
 export default function NavItems() {
 	const pathname = usePathname();
@@ -18,31 +15,14 @@ export default function NavItems() {
 		return pathname === path;
 	};
 
-	const [user, setUser] = useState<User | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
-	const supabase = createClientComponentClient();
-
-	useEffect(() => {
-		const fetchUser = async () => {
-			const { data } = await supabase.auth.getUser();
-			setUser(data.user);
-		};
-
-		fetchUser();
-
-		const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-			setUser(session?.user || null);
-		});
-	}, [supabase.auth]);
-
+	const { supabase, user } = useSupabase();
 	const router = useRouter();
 
 	const handleSignOut = async () => {
 		setIsLoading(true);
 		try {
 			await supabase.auth.signOut();
-			router.push("/login");
-			router.refresh();
 		} catch (error) {
 			console.error("Error signing out:", error);
 		} finally {
@@ -58,7 +38,6 @@ export default function NavItems() {
 						<NavigationMenuItem>
 							<Link href="/watchlist" legacyBehavior passHref>
 								<NavigationMenuLink
-									// active={isActivePage("/watchlist")}
 									className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent  ${
 										isActivePage("/watchlist") ? "bg-filmlista-primary hover:bg-filmlista-hover focus:bg-filmlista-primary" : ""
 									}`}

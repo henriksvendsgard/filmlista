@@ -61,7 +61,12 @@ export default function Watchlist() {
 	const fetchLists = useCallback(async () => {
 		const {
 			data: { user },
+			error: userError,
 		} = await supabase.auth.getUser();
+		if (userError) {
+			console.error("Error fetching user:", userError);
+			return;
+		}
 		if (!user) return;
 
 		try {

@@ -2,25 +2,33 @@
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect } from "react";
-import type { SupabaseClient } from "@supabase/auth-helpers-nextjs";
-import type { Session } from "@supabase/supabase-js";
+import { createContext, useContext, useEffect, useState } from "react";
+import type { SupabaseClient, User } from "@supabase/auth-helpers-nextjs";
 
 type SupabaseContext = {
 	supabase: SupabaseClient;
+	user: User | null;
 };
 
 const Context = createContext<SupabaseContext | undefined>(undefined);
 
-export default function SupabaseProvider({ children, session }: { children: React.ReactNode; session: Session | null }) {
+export default function SupabaseProvider({ children, initialUser }: { children: React.ReactNode; initialUser: User | null }) {
 	const supabase = createClientComponentClient();
 	const router = useRouter();
+	const [user, setUser] = useState<User | null>(initialUser);
 
 	useEffect(() => {
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange((event, session) => {
-			if (session?.access_token !== session?.access_token) {
+		} = supabase.auth.onAuthStateChange(async (event, session) => {
+			if (event === "SIGNED_OUT") {
+				setUser(null);
+				router.push("/login");
+			} else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				setUser(user);
 				router.refresh();
 			}
 		});
@@ -28,9 +36,9 @@ export default function SupabaseProvider({ children, session }: { children: Reac
 		return () => {
 			subscription.unsubscribe();
 		};
-	}, [router, supabase]);
+	}, [supabase, router]);
 
-	return <Context.Provider value={{ supabase }}>{children}</Context.Provider>;
+	return <Context.Provider value={{ supabase, user }}>{children}</Context.Provider>;
 }
 
 export const useSupabase = () => {

@@ -1,7 +1,7 @@
 import { SearchResults } from "./typings";
 
 async function fetchFromTMDB(url: URL, page = 1) {
-	url.searchParams.set("include_adult", "false");
+	url.searchParams.set("include_adult", "true");
 	url.searchParams.set("include_video", "false");
 	url.searchParams.set("language", "en-US");
 	url.searchParams.set("page", page.toString());
@@ -82,6 +82,9 @@ export async function getPopularMovies(page = 1) {
 
 export async function getDiscoverMovies(id?: string, keywords?: string, page = 1) {
 	const url = new URL("https://api.themoviedb.org/3/discover/movie");
+	url.searchParams.set("sort_by", "popularity.desc");
+	url.searchParams.set("vote_count.gte", "20");
+	url.searchParams.set("with_release_type", "1|2|3|4|5|6");
 	if (id) {
 		url.searchParams.set("with_genres", id);
 	}
