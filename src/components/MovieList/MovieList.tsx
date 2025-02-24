@@ -307,10 +307,11 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 										movie_id: movie.id.toString(),
 										title: movie.title,
 										poster_path: movie.poster_path || "",
-										watched: false,
 										added_at: movieDetails[movie.id.toString()]?.added_at,
 										added_by: movieDetails[movie.id.toString()]?.added_by,
-										added_by_email: movieDetails[movie.id.toString()]?.added_by_email,
+										added_by_displayname: movieDetails[movie.id.toString()]?.added_by_email,
+										watched_by: [],
+										is_watched_by_me: false,
 									}}
 									isInList={!!movieListMap[movie.id.toString()]?.length}
 									lists={lists}
