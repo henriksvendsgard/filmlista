@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import SearchBox from "../Search/SearchBox";
 import NavItems from "./NavItems";
 import { useSupabase } from "../SupabaseProvider";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
 	const [scrollDirection, setScrollDirection] = useState<"up" | "down">("up");
@@ -12,7 +12,7 @@ export default function Header() {
 	const [showInfoBar, setShowInfoBar] = useState(false);
 
 	const pathname = usePathname();
-	const { supabase } = useSupabase();
+	const { user } = useSupabase();
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -34,23 +34,15 @@ export default function Header() {
 	}, [lastScrollY]);
 
 	useEffect(() => {
-		const fetchUserProfile = async () => {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			if (user) {
-				const displayName = user.user_metadata?.display_name;
-
-				// Show toast if displayname is not set
-				if (!displayName && pathname !== "/profile") {
-					setShowInfoBar(true);
-				} else {
-					setShowInfoBar(false);
-				}
+		if (user) {
+			const displayName = user.user_metadata?.display_name;
+			if (!displayName && pathname !== "/profile") {
+				setShowInfoBar(true);
+			} else {
+				setShowInfoBar(false);
 			}
-		};
-		fetchUserProfile();
-	}, [supabase, pathname]);
+		}
+	}, [user, pathname]);
 
 	return (
 		<div className={`fixed top-[-1px] w-full z-50 ${scrollDirection === "down" ? "pb-3" : "pb-6"} sm:pb-0 transition-all duration-300 `}>

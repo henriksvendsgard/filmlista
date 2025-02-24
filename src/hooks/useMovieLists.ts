@@ -13,11 +13,16 @@ export function useMovieLists() {
 		const fetchLists = async () => {
 			const {
 				data: { user },
+				error: userError,
 			} = await supabase.auth.getUser();
+			if (userError) {
+				console.error("Error fetching user:", userError);
+				return;
+			}
 			if (!user) return;
 
 			try {
-				const { data: sharedListIds, error: sharedError } = await supabase.from("shared_lists").select("list_id").eq("user_id", user.id); // Changed from shared_with to user_id
+				const { data: sharedListIds, error: sharedError } = await supabase.from("shared_lists").select("list_id").eq("user_id", user.id);
 
 				if (sharedError) throw sharedError;
 

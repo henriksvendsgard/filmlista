@@ -46,7 +46,12 @@ export default function Lists() {
 	const fetchLists = useCallback(async () => {
 		const {
 			data: { user },
+			error: userError,
 		} = await supabase.auth.getUser();
+		if (userError) {
+			console.error("Error fetching user:", userError);
+			return;
+		}
 		if (user) {
 			const displayName = user.user_metadata?.display_name;
 			setUser({ ...user, displayName: displayName });

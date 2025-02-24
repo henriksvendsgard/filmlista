@@ -25,9 +25,14 @@ export default function Profile() {
 		const fetchUserProfile = async () => {
 			const {
 				data: { user },
+				error: userError,
 			} = await supabase.auth.getUser();
+			if (userError) {
+				console.error("Error fetching user:", userError);
+				return;
+			}
 			if (user) {
-				const displayName = user.user_metadata?.display_name; // Access the metadata
+				const displayName = user.user_metadata?.display_name;
 				setUser({ ...user, display_name: displayName });
 			}
 		};
@@ -38,50 +43,50 @@ export default function Profile() {
 		e.preventDefault();
 		const {
 			data: { user },
+			error: userError,
 		} = await supabase.auth.getUser();
-		if (user) {
-			if (!user) {
-				setMessage("Ingen bruker funnet");
-				return;
-			}
-
-			// First update the user metadata
-			const { error: updateError } = await supabase.auth.updateUser({
-				data: { display_name: displayName },
-			});
-
-			if (updateError) {
-				setMessage("Feil ved oppdatering av brukerdata");
-				return;
-			}
-
-			if (/[^a-zA-Z]/.test(displayName)) {
-				toast({
-					title: "Feil ved oppdatering av visningsnavn",
-					description: "Visningsnavn kan ikke inneholde spesialtegn",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			// Then update the profiles table
-			const { error: profileError } = await supabase.from("profiles").update({ displayname: displayName }).eq("id", user.id);
-
-			if (profileError) {
-				setMessage("Feil ved oppdatering av visningsnavn");
-				// Don't return here, as the metadata was already updated
-				console.error("Error updating profile:", profileError);
-			}
-
-			toast({
-				title: "Visningsnavn oppdatert",
-				description: `visningsnavnet ditt er nå "${displayName}"`,
-				variant: "default",
-				className: "bg-green-800 text-white",
-			});
-			setTempDisplayName(displayName);
-			setEditingDisplayName(false);
+		if (userError) {
+			console.error("Error fetching user:", userError);
+			return;
 		}
+		if (!user) return;
+
+		// First update the user metadata
+		const { error: updateError } = await supabase.auth.updateUser({
+			data: { display_name: displayName },
+		});
+
+		if (updateError) {
+			setMessage("Feil ved oppdatering av brukerdata");
+			return;
+		}
+
+		if (/[^a-zA-Z]/.test(displayName)) {
+			toast({
+				title: "Feil ved oppdatering av visningsnavn",
+				description: "Visningsnavn kan ikke inneholde spesialtegn",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		// Then update the profiles table
+		const { error: profileError } = await supabase.from("profiles").update({ displayname: displayName }).eq("id", user.id);
+
+		if (profileError) {
+			setMessage("Feil ved oppdatering av visningsnavn");
+			// Don't return here, as the metadata was already updated
+			console.error("Error updating profile:", profileError);
+		}
+
+		toast({
+			title: "Visningsnavn oppdatert",
+			description: `visningsnavnet ditt er nå "${displayName}"`,
+			variant: "default",
+			className: "bg-green-800 text-white",
+		});
+		setTempDisplayName(displayName);
+		setEditingDisplayName(false);
 	};
 
 	return (
