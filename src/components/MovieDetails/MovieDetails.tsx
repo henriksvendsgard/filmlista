@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useMovieLists } from "@/hooks/useMovieLists";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ArrowLeft, ListPlus } from "lucide-react";
+import { ArrowLeft, BookmarkPlus, Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -254,12 +254,14 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 
 			<div className="grid gap-8 md:grid-cols-[2fr,1fr]">
 				<div className="space-y-8">
-					<div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+					<div className="flex flex-col gap-4 mb-6">
 						<h1 className="text-4xl font-bold">{movie.title}</h1>
+
 						<DropdownMenu>
 							<DropdownMenuTrigger className="flex-shrink-0" asChild>
-								<Button variant="secondary" className="w-10 h-10">
-									<ListPlus size={24} />
+								<Button variant={"secondary"} size={"icon"} className="rounded-full w-12 h-12 p-5 bg-filmlista-primary hover:bg-filmlista-hover text-white border-background">
+									<BookmarkPlus />
+									{/* Legg tilk */}
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">
@@ -514,6 +516,7 @@ function MovieDetailsSkeleton() {
 				<div className="space-y-6">
 					<div>
 						<Skeleton className="h-12 w-3/4 mb-4" />
+						<Skeleton className="h-12 w-12 rounded-full mb-10" />
 						<Skeleton className="h-4 w-1/2" />
 					</div>
 					<div className="flex flex-wrap gap-2">

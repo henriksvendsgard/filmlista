@@ -57,7 +57,12 @@ export default function NavItems() {
 					<>
 						<NavigationMenuItem>
 							<Link href="/watchlist" legacyBehavior passHref>
-								<NavigationMenuLink active={isActivePage("/watchlist")} className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent`}>
+								<NavigationMenuLink
+									// active={isActivePage("/watchlist")}
+									className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent  ${
+										isActivePage("/watchlist") ? "bg-filmlista-primary hover:bg-filmlista-hover focus:bg-filmlista-primary" : ""
+									}`}
+								>
 									<CircleCheckBig className="w-5 h-5 pr-1" />
 									<span>Lista</span>
 								</NavigationMenuLink>
@@ -65,7 +70,7 @@ export default function NavItems() {
 						</NavigationMenuItem>
 						<NavigationMenuItem>
 							<DropdownMenu>
-								<DropdownMenuTrigger className={navigationMenuTriggerStyle()}>
+								<DropdownMenuTrigger className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent`}>
 									<UserIcon className="w-5 h-5 pr-1" />
 									<span>Profil</span>
 								</DropdownMenuTrigger>
