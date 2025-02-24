@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useMovieLists } from "@/hooks/useMovieLists";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ArrowLeft, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, BookmarkPlus, Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -101,8 +101,8 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 			}
 
 			try {
-				// Fetch movie details, cast, and providers as before...
-				const [movieResponse, creditsResponse, providersResponse, similarResponse] = await Promise.all([
+				// First fetch movie details, cast, and providers
+				const [movieResponse, creditsResponse, providersResponse] = await Promise.all([
 					fetch(`https://api.themoviedb.org/3/movie/${params.id}`, {
 						headers: {
 							Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
@@ -121,24 +121,40 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 							accept: "application/json",
 						},
 					}),
-					fetch(`https://api.themoviedb.org/3/movie/${params.id}/similar`, {
-						headers: {
-							Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-							accept: "application/json",
-						},
-					}),
 				]);
 
-				if (!movieResponse.ok || !creditsResponse.ok || !providersResponse.ok || !similarResponse.ok) {
+				if (!movieResponse.ok || !creditsResponse.ok || !providersResponse.ok) {
 					throw new Error("Failed to fetch movie data");
 				}
 
-				const [movieData, creditsData, providersData, similarData] = await Promise.all([movieResponse.json(), creditsResponse.json(), providersResponse.json(), similarResponse.json()]);
+				const [movieData, creditsData, providersData] = await Promise.all([movieResponse.json(), creditsResponse.json(), providersResponse.json()]);
 
 				setMovie(movieData);
 				setCast(creditsData.cast?.slice(0, 6) || []); // First 6 cast members
 				setWatchProviders(providersData.results?.NO || null); // Norwegian providers
-				setSimilarMovies(similarData.results?.slice(0, 6) || []); // First 6 similar movies
+
+				// Now fetch similar movies using the movie's genres - get 5 pages to ensure we have enough movies
+				const similarMoviesPromises = [1, 2, 3, 4, 5].map((page) =>
+					fetch(
+						`https://api.themoviedb.org/3/discover/movie?with_genres=${movieData.genres
+							.map((g: { id: number }) => g.id)
+							.join(",")}&sort_by=popularity.desc&page=${page}&without_genres=99,10755`,
+						{
+							headers: {
+								Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+								accept: "application/json",
+							},
+						}
+					).then((res) => res.json())
+				);
+
+				const similarPagesData = await Promise.all(similarMoviesPromises);
+				const allSimilarMovies = similarPagesData.flatMap((page) => page.results);
+
+				// Filter out the current movie and take first 100
+				const filteredSimilarMovies = allSimilarMovies.filter((m: any) => m.id !== movieData.id).slice(0, 100);
+
+				setSimilarMovies(filteredSimilarMovies);
 			} catch (error) {
 				console.error("Error:", error);
 				setError(error instanceof Error ? error.message : "Klarte ikke hente filmdetaljer");
@@ -254,12 +270,14 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 
 			<div className="grid gap-8 md:grid-cols-[2fr,1fr]">
 				<div className="space-y-8">
-					<div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+					<div className="flex flex-col gap-4 mb-6">
 						<h1 className="text-4xl font-bold">{movie.title}</h1>
+
 						<DropdownMenu>
 							<DropdownMenuTrigger className="flex-shrink-0" asChild>
-								<Button variant="secondary" size="icon">
-									<BookmarkPlus className="h-4 w-4" />
+								<Button variant={"secondary"} size={"icon"} className="rounded-full w-12 h-12 p-5 bg-filmlista-primary hover:bg-filmlista-hover text-white border-background">
+									<BookmarkPlus />
+									{/* Legg tilk */}
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">
@@ -465,7 +483,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 			{similarMovies.length > 0 && (
 				<div className="mt-8 space-y-6 border-t pt-16">
 					<h2 className="text-2xl font-semibold">Lignende filmer</h2>
-					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
 						{similarMovies.map((movie) => (
 							<div key={movie.id} className="cursor-pointer group" onClick={() => router.push(`/movie/${movie.id}`)}>
 								<div className="relative aspect-[2/3] overflow-hidden rounded-lg">
@@ -514,6 +532,7 @@ function MovieDetailsSkeleton() {
 				<div className="space-y-6">
 					<div>
 						<Skeleton className="h-12 w-3/4 mb-4" />
+						<Skeleton className="h-12 w-12 rounded-full mb-10" />
 						<Skeleton className="h-4 w-1/2" />
 					</div>
 					<div className="flex flex-wrap gap-2">
@@ -547,12 +566,10 @@ function MovieDetailsSkeleton() {
 			</div>
 			<div className="space-y-4">
 				<Skeleton className="h-8 w-40" />
-				<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-					{[1, 2, 3, 4, 5, 6].map((i) => (
+				<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+					{[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
 						<div key={i} className="space-y-2">
 							<Skeleton className="aspect-[2/3] w-full rounded-lg" />
-							<Skeleton className="h-4 w-3/4" />
-							<Skeleton className="h-3 w-1/2" />
 						</div>
 					))}
 				</div>

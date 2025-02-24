@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
+import { PencilIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 interface CustomUser extends User {
@@ -19,7 +20,7 @@ export default function Profile() {
 	const [user, setUser] = useState<CustomUser | null>(null);
 
 	const [tempDisplayName, setTempDisplayName] = useState("");
-
+	const [editingDisplayName, setEditingDisplayName] = useState(false);
 	useEffect(() => {
 		const fetchUserProfile = async () => {
 			const {
@@ -44,6 +45,7 @@ export default function Profile() {
 				return;
 			}
 
+			// First update the user metadata
 			const { error: updateError } = await supabase.auth.updateUser({
 				data: { display_name: displayName },
 			});
@@ -53,11 +55,22 @@ export default function Profile() {
 				return;
 			}
 
+			if (/[^a-zA-Z]/.test(displayName)) {
+				toast({
+					title: "Feil ved oppdatering av visningsnavn",
+					description: "Visningsnavn kan ikke inneholde spesialtegn",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			// Then update the profiles table
 			const { error: profileError } = await supabase.from("profiles").update({ displayname: displayName }).eq("id", user.id);
 
 			if (profileError) {
 				setMessage("Feil ved oppdatering av visningsnavn");
-				return;
+				// Don't return here, as the metadata was already updated
+				console.error("Error updating profile:", profileError);
 			}
 
 			toast({
@@ -67,6 +80,7 @@ export default function Profile() {
 				className: "bg-green-800 text-white",
 			});
 			setTempDisplayName(displayName);
+			setEditingDisplayName(false);
 		}
 	};
 
@@ -74,21 +88,49 @@ export default function Profile() {
 		<div className="px-5 container ">
 			<Card className="max-w-lg w-full mx-auto mt-10 p-6 rounded-lg shadow-md">
 				<h1 className="text-2xl font-bold mb-4">Din profil</h1>
-				<strong className="mb-4">E-post: {user?.email}</strong>
-				<p className="mb-4 mt-4">Visningsnavn: {tempDisplayName ? tempDisplayName : user?.display_name}</p>
-				<form onSubmit={handleUpdate} className="space-y-4">
-					<Input
-						type="text"
-						placeholder="Endre visningsnavn"
-						value={displayName}
-						onChange={(e) => setDisplayName(e.target.value)}
-						required
-						className="w-full p-2 border border-gray-300 rounded"
-					/>
-					<Button type="submit" className="w-full bg-blue-800 hover:bg-blue-900 text-white py-2 rounded">
-						Endre
-					</Button>
-				</form>
+				<strong className="mb-4">E-post: </strong>
+				<p className="mb-4 mt-4">{user?.email}</p>
+				<div>
+					<strong className="mb-4">Visningsnavn: </strong>
+					{!editingDisplayName ? (
+						<div className="flex items-center gap-2 mt-4">
+							<p>{tempDisplayName ? tempDisplayName : user?.display_name}</p>
+							{user?.display_name && (
+								<Button variant="outline" size={"icon"} onClick={() => setEditingDisplayName(true)}>
+									<PencilIcon className="w-4 h-4" />
+								</Button>
+							)}
+						</div>
+					) : (
+						<form onSubmit={handleUpdate} className="space-y-4 mt-4">
+							<Input
+								type="text"
+								placeholder={user?.display_name ? user?.display_name : "Visningsnavn"}
+								value={displayName}
+								onChange={(e) => setDisplayName(e.target.value)}
+								required
+								className="w-full max-w-72 text-base p-2 border border-gray-300 rounded"
+								autoFocus
+							/>
+							<div>
+								<Button
+									variant="outline"
+									type="button"
+									onClick={() => {
+										setEditingDisplayName(false);
+										setDisplayName(tempDisplayName);
+									}}
+									className="mr-2"
+								>
+									Avbryt
+								</Button>
+								<Button type="submit" disabled={!displayName} className="bg-blue-800 hover:bg-blue-900 text-white py-2 rounded">
+									Endre
+								</Button>
+							</div>
+						</form>
+					)}
+				</div>
 				{message && <p className="mt-4 text-red-500">{message}</p>}
 			</Card>
 		</div>

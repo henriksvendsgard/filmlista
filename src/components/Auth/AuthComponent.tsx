@@ -81,11 +81,18 @@ export default function AuthComponent() {
 					setError(error.message);
 				}
 			} else if (data.user) {
-				const { error: profileError } = await supabase.from("profiles").update({ displayname: displayName }).eq("id", data.user.id);
-				if (profileError) {
-					setError("Feil ved oppdatering av visningsnavn");
-					return;
+				// Get the display name from user metadata
+				const displayName = data.user.user_metadata?.display_name;
+
+				if (displayName) {
+					// Update the profiles table with the display name from metadata
+					const { error: profileError } = await supabase.from("profiles").update({ displayname: displayName }).eq("id", data.user.id);
+
+					if (profileError) {
+						console.error("Error updating profile displayname:", profileError);
+					}
 				}
+
 				router.push("/");
 				router.refresh();
 			}
