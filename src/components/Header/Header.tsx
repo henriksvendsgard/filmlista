@@ -53,7 +53,7 @@ export default function Header() {
 	}, [supabase, pathname]);
 
 	return (
-		<div className={`fixed w-full z-50 ${scrollDirection === "down" ? "pb-3" : "pb-6"} sm:pb-0 transition-all duration-300 `}>
+		<div className={`fixed top-[-1px] w-full z-50 ${scrollDirection === "down" ? "pb-3" : "pb-6"} sm:pb-0 transition-all duration-300 `}>
 			{showInfoBar && (
 				<div className="bg-blue-800 text-white text-center py-3">
 					<p>

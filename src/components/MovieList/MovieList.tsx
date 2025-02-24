@@ -327,16 +327,14 @@ export default function MovieList({ movies, title, isOnFrontPage }: MovieListPro
 			</div>
 
 			{isOnFrontPage && maxPages > 1 && (
-				<div className="flex justify-center items-center gap-2 mt-8 mb-12">
+				<div className="flex justify-center items-center gap-6 mt-8 mb-12">
 					<Button variant="outline" onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || isLoading} className="h-10">
 						<ChevronLeft className="h-4 w-4 sm:mr-2" />
 						<span className="hidden sm:inline">Forrige</span>
 					</Button>
 
-					<div className="flex items-center gap-2">
-						<span className="text-sm">
-							Side {currentPage} av {maxPages}
-						</span>
+					<div className="flex items-center">
+						<span className="text-sm">Side {currentPage}</span>
 					</div>
 
 					<Button variant="outline" onClick={() => paginate(currentPage + 1)} disabled={currentPage === maxPages || isLoading} className="h-10">
