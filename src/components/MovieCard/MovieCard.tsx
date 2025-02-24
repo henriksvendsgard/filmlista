@@ -1,3 +1,4 @@
+import { useSupabase } from "@/components/SupabaseProvider";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -9,14 +10,12 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Check, Ellipsis } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
-import { useSupabase } from "@/components/SupabaseProvider";
-import { Badge } from "@/components/ui/badge";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 interface List {
 	id: string;
@@ -84,18 +83,21 @@ export function MovieCard({
 				<Image src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} width={500} height={750} className="object-cover transition-all hover:scale-105 cursor-pointer " />
 			</div>
 
-			<div className="absolute bottom-0 left-0 right-0 p-4">
+			<div className="absolute bottom-0 left-0 right-0 p-2">
 				<div className="flex justify-between items-end">
 					<div className="flex-1">
 						{hasOthersWatched && (
 							<div className="mb-1">
-								<HoverCard>
-									<HoverCardTrigger>
-										<Badge variant="secondary" className="text-xs">
+								<Dialog>
+									<DialogTrigger asChild>
+										<Badge variant="secondary" className="text-xs cursor-pointer hover:bg-secondary/80">
 											Sett av {othersWhoWatched.length} {othersWhoWatched.length === 1 ? "annen" : "andre"}
 										</Badge>
-									</HoverCardTrigger>
-									<HoverCardContent className="w-auto">
+									</DialogTrigger>
+									<DialogContent>
+										<DialogHeader>
+											<DialogTitle>Sett av</DialogTitle>
+										</DialogHeader>
 										<div className="space-y-2">
 											{othersWhoWatched.map((watcher) => (
 												<div key={watcher.user_id} className="text-sm">
@@ -104,8 +106,8 @@ export function MovieCard({
 												</div>
 											))}
 										</div>
-									</HoverCardContent>
-								</HoverCard>
+									</DialogContent>
+								</Dialog>
 							</div>
 						)}
 						{showAddedBy && <p className="text-xs text-white bg-black/60 rounded-md px-2 py-1 w-fit">Lagt til av {movie.added_by_displayname}</p>}
