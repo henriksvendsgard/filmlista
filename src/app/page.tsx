@@ -133,7 +133,6 @@ export default function Home() {
 								<div className="flex justify-end">
 									<Button variant="outline" onClick={handleClearGenres} className="w-fit">
 										Tøm
-										<X className="w-4 h-4" />
 									</Button>
 								</div>
 							)}
