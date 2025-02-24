@@ -80,7 +80,7 @@ export function MovieCard({
 
 	return (
 		<div className="group relative">
-			<div className={`relative overflow-hidden rounded-lg border bg-muted/50 cursor-pointer transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`} onClick={onClick}>
+			<div className={`relative overflow-hidden rounded-lg bg-muted/50 cursor-pointer transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`} onClick={onClick}>
 				<Image src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} width={500} height={750} className="object-cover transition-all hover:scale-105 cursor-pointer " />
 			</div>
 
@@ -108,7 +108,7 @@ export function MovieCard({
 								</HoverCard>
 							</div>
 						)}
-						{showAddedBy && <p className="text-xs text-white bg-black/80 rounded-md px-2 py-1 w-fit">Lagt til av {movie.added_by_displayname}</p>}
+						{showAddedBy && <p className="text-xs text-white bg-black/60 rounded-md px-2 py-1 w-fit">Lagt til av {movie.added_by_displayname}</p>}
 					</div>
 				</div>
 			</div>
