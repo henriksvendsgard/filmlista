@@ -287,33 +287,35 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 				{isLoading ? (
 					<MovieGridSkeleton />
 				) : (
-					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
-						{movies.results.map((movie) => (
-							<MovieCard
-								key={movie.id}
-								movie={{
-									id: movie.id.toString(),
-									movie_id: movie.id.toString(),
-									title: movie.title,
-									poster_path: movie.poster_path || "",
-									watched: false,
-									added_at: movieDetails[movie.id.toString()]?.added_at,
-									added_by: movieDetails[movie.id.toString()]?.added_by,
-									added_by_email: movieDetails[movie.id.toString()]?.added_by_email,
-								}}
-								isInList={!!movieListMap[movie.id.toString()]?.length}
-								lists={lists}
-								movieLists={movieListMap[movie.id.toString()] || []}
-								onAddToList={(listId) => handleAddToList(movie, listId)}
-								onRemoveFromList={(listId) => handleRemoveFromList(movie, listId)}
-								onToggleWatched={() => {}}
-								onClick={() => router.push(`/movie/${movie.id}`)}
-								currentListId={undefined}
-								isWatchList={false}
-								showAddedBy={false}
-							/>
-						))}
-					</div>
+					<>
+						<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
+							{movies.results.map((movie) => (
+								<MovieCard
+									key={movie.id}
+									movie={{
+										id: movie.id.toString(),
+										movie_id: movie.id.toString(),
+										title: movie.title,
+										poster_path: movie.poster_path || "",
+										watched: false,
+										added_at: movieDetails[movie.id.toString()]?.added_at,
+										added_by: movieDetails[movie.id.toString()]?.added_by,
+										added_by_email: movieDetails[movie.id.toString()]?.added_by_email,
+									}}
+									isInList={!!movieListMap[movie.id.toString()]?.length}
+									lists={lists}
+									movieLists={movieListMap[movie.id.toString()] || []}
+									onAddToList={(listId) => handleAddToList(movie, listId)}
+									onRemoveFromList={(listId) => handleRemoveFromList(movie, listId)}
+									onToggleWatched={() => {}}
+									onClick={() => router.push(`/movie/${movie.id}`)}
+									currentListId={undefined}
+									isWatchList={false}
+									showAddedBy={false}
+								/>
+							))}
+						</div>
+					</>
 				)}
 			</div>
 
