@@ -331,18 +331,12 @@ export default function Watchlist() {
 
 	return (
 		<div>
+			<h2 className="text-3xl font-bold tracking-tight mb-6">Filmlista</h2>
+
 			{isLoading ? (
 				<div className="space-y-6">
 					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-						<Skeleton className="h-9 w-40" />
-						<Select disabled>
-							<SelectTrigger className="w-[200px]">
-								<SelectValue placeholder="Laster lister..." />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="loading">Laster...</SelectItem>
-							</SelectContent>
-						</Select>
+						<Skeleton className="h-9 w-52" />
 					</div>
 
 					<Tabs defaultValue="all" className="w-full">
@@ -368,7 +362,6 @@ export default function Watchlist() {
 			) : (
 				<div className="space-y-6">
 					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-						<h2 className="text-3xl font-bold tracking-tight">Filmlista</h2>
 						<Select value={selectedList || undefined} onValueChange={handleListSelection}>
 							<SelectTrigger className="w-[200px]">
 								<SelectValue placeholder="Velg en liste" />

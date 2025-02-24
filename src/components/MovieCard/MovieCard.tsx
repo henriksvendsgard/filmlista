@@ -145,8 +145,8 @@ export function MovieCard({
 													<AlertDialogDescription>Dette vil fjerne {movie.title} fra listen.</AlertDialogDescription>
 												</AlertDialogHeader>
 												<AlertDialogFooter>
-													<AlertDialogCancel>Avbryt</AlertDialogCancel>
-													<AlertDialogAction onClick={() => onRemoveFromList(currentListId)} className="bg-red-600 hover:bg-red-700 text-white">
+													<AlertDialogCancel className="rounded-full">Avbryt</AlertDialogCancel>
+													<AlertDialogAction onClick={() => onRemoveFromList(currentListId)} className="bg-red-600 hover:bg-red-700 text-white rounded-full">
 														Fjern
 													</AlertDialogAction>
 												</AlertDialogFooter>
