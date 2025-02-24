@@ -264,8 +264,8 @@ export default function Lists() {
 				</Dialog>
 			</div>
 
-			<Tabs defaultValue="owned" className="w-full">
-				<TabsList className="grid w-full grid-cols-2">
+			<Tabs defaultValue="owned">
+				<TabsList>
 					<TabsTrigger value="owned">Mine lister</TabsTrigger>
 					<TabsTrigger value="shared">Delt med meg</TabsTrigger>
 				</TabsList>
