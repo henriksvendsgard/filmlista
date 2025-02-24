@@ -5,11 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Movie } from "@/types/movie";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Film } from "lucide-react";
+import { ArrowRight, Film } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
 import { Skeleton } from "../ui/skeleton";
+import { useSupabase } from "@/components/SupabaseProvider";
+import Link from "next/link";
 
 interface List {
 	id: string;
@@ -17,18 +19,35 @@ interface List {
 	owner_id: string;
 }
 
-interface WatchListMovie {
+interface DatabaseMovie {
 	movie_id: string;
 	title: string;
 	poster_path: string;
-	watched: boolean;
 	added_at: string;
 	added_by: string;
 	profiles: {
+		displayname: string;
 		email: string;
+	};
+}
+
+interface DatabaseWatchedMovie {
+	user_id: string;
+	movie_id: string;
+	watched_at: string;
+	profiles: {
 		displayname: string;
 	};
 }
+
+type ProcessedMovie = Movie & {
+	watched_by: {
+		user_id: string;
+		displayname: string;
+		watched_at: string;
+	}[];
+	is_watched_by_me: boolean;
+};
 
 type MovieListAction = {
 	type: "added" | "removed";
@@ -37,37 +56,39 @@ type MovieListAction = {
 };
 
 export default function Watchlist() {
-	const [isLoading, setIsLoading] = useState(true);
-	const [movies, setMovies] = useState<Movie[] | undefined>(undefined);
+	const [isLoadingLists, setIsLoadingLists] = useState(true);
+	const [isLoadingMovies, setIsLoadingMovies] = useState(false);
+	const [movies, setMovies] = useState<ProcessedMovie[]>([]);
 	const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
 	const [selectedList, setSelectedList] = useState<string | null>(null);
 
 	const supabase = createClientComponentClient();
+	const { user } = useSupabase();
 	const router = useRouter();
 	const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
 	const listIdFromUrl = searchParams.get("list");
 
-	const updateUrlWithList = (listId: string | null) => {
-		const newUrl = listId ? `${window.location.pathname}?list=${listId}` : window.location.pathname;
-		router.replace(newUrl);
-	};
+	const updateUrlWithList = useCallback(
+		(listId: string | null) => {
+			const newUrl = listId ? `${window.location.pathname}?list=${listId}` : window.location.pathname;
+			router.replace(newUrl);
+		},
+		[router]
+	);
 
 	// Update the list selection handler
-	const handleListSelection = (listId: string) => {
-		setSelectedList(listId);
-		updateUrlWithList(listId);
-	};
+	const handleListSelection = useCallback(
+		(listId: string) => {
+			if (listId === "_header_owned" || listId === "_header_shared" || listId === "_no_lists") return;
+			setSelectedList(listId);
+			updateUrlWithList(listId);
+		},
+		[updateUrlWithList]
+	);
 
 	const fetchLists = useCallback(async () => {
-		const {
-			data: { user },
-			error: userError,
-		} = await supabase.auth.getUser();
-		if (userError) {
-			console.error("Error fetching user:", userError);
-			return;
-		}
 		if (!user) return;
+		setIsLoadingLists(true);
 
 		try {
 			const { data: sharedListIds, error: sharedError } = await supabase.from("shared_lists").select("list_id").eq("user_id", user.id);
@@ -89,11 +110,13 @@ export default function Watchlist() {
 			});
 
 			// Set initial list selection from URL or default to first list
-			if (!selectedList && (ownedLists.length > 0 || sharedLists.length > 0)) {
+			if (!selectedList) {
 				const initialList = listIdFromUrl || ownedLists[0]?.id || sharedLists[0]?.id;
-				setSelectedList(initialList);
-				if (!listIdFromUrl) {
-					updateUrlWithList(initialList);
+				if (initialList) {
+					setSelectedList(initialList);
+					if (!listIdFromUrl) {
+						updateUrlWithList(initialList);
+					}
 				}
 			}
 		} catch (error) {
@@ -104,21 +127,23 @@ export default function Watchlist() {
 				variant: "destructive",
 			});
 		} finally {
-			setIsLoading(false);
+			setIsLoadingLists(false);
 		}
-	}, [selectedList, supabase, listIdFromUrl]);
+	}, [supabase, user, listIdFromUrl, updateUrlWithList, selectedList]);
 
-	// Hent filmer fra valgt liste
 	const fetchMovies = useCallback(async () => {
+		if (!selectedList || !user) return;
+		setIsLoadingMovies(true);
+
 		try {
-			const { data, error } = await supabase
+			// Get all movies in the list
+			const { data: rawMoviesData, error: moviesError } = await supabase
 				.from("list_movies")
 				.select(
 					`
 					movie_id,
 					title,
 					poster_path,
-					watched,
 					added_at,
 					added_by,
 					profiles (displayname, email)
@@ -127,40 +152,68 @@ export default function Watchlist() {
 				.eq("list_id", selectedList)
 				.order("added_at", { ascending: false });
 
-			if (error) throw error;
+			if (moviesError) throw moviesError;
 
-			// Cast the data into a specific type
-			const typedData = data as unknown as WatchListMovie[];
+			// Get watched status for all users
+			const { data: watchedData, error: watchedError } = await supabase.from("watched_movies").select("user_id, movie_id, watched_at").eq("list_id", selectedList);
 
-			// Process movies and include the display name
-			const processedMovies = typedData.map((item) => ({
-				id: item.movie_id,
-				movie_id: item.movie_id,
-				title: item.title,
-				poster_path: item.poster_path,
-				watched: item.watched || false,
-				added_at: item.added_at,
-				added_by: item.added_by,
-				added_by_displayname: item.profiles?.displayname || item.profiles?.email || "Unknown",
-			}));
+			if (watchedError) throw watchedError;
 
-			// Update state with the processed movie list
+			// Get profiles for all users who have watched movies
+			const userIds = Array.from(new Set(watchedData?.map((w) => w.user_id) || []));
+			const { data: profilesData, error: profilesError } = await supabase.from("profiles").select("id, displayname").in("id", userIds);
+
+			if (profilesError) throw profilesError;
+
+			// Create a map of user_id to displayname
+			const profileMap = new Map(profilesData?.map((p) => [p.id, p.displayname]) || []);
+
+			const moviesData = rawMoviesData as unknown as DatabaseMovie[];
+
+			// Process movies with watched information
+			const processedMovies = moviesData.map((movie) => {
+				const watchedByUsers =
+					watchedData
+						?.filter((w) => w.movie_id === movie.movie_id)
+						.map((w) => ({
+							user_id: w.user_id,
+							displayname: profileMap.get(w.user_id) || "Unknown",
+							watched_at: w.watched_at,
+						})) || [];
+
+				return {
+					id: movie.movie_id,
+					movie_id: movie.movie_id,
+					title: movie.title,
+					poster_path: movie.poster_path,
+					added_at: movie.added_at,
+					added_by: movie.added_by,
+					added_by_displayname: movie.profiles?.displayname || movie.profiles?.email || "Unknown",
+					watched_by: watchedByUsers,
+					is_watched_by_me: watchedByUsers.some((w) => w.user_id === user.id),
+				};
+			});
+
 			setMovies(processedMovies);
 		} catch (error) {
 			console.error("Error fetching movies:", error);
-			setMovies([]); // Reset movies on error
+			setMovies([]);
 		} finally {
-			setIsLoading(false); // Stop loading state
+			setIsLoadingMovies(false);
 		}
-	}, [selectedList, supabase]);
+	}, [selectedList, supabase, user]);
 
 	const handleRemoveFromList = async (listId: string, movieId: string, movieTitle: string) => {
 		try {
-			const { error } = await supabase.from("list_movies").delete().eq("list_id", listId).eq("movie_id", movieId);
+			// Delete the movie from the list
+			const { error: removeError } = await supabase.from("list_movies").delete().eq("list_id", listId).eq("movie_id", movieId);
+			if (removeError) throw removeError;
 
-			if (error) throw error;
+			// Also delete any watched status for this movie in this list
+			const { error: watchedError } = await supabase.from("watched_movies").delete().eq("list_id", listId).eq("movie_id", movieId);
+			if (watchedError) throw watchedError;
 
-			// Emit så andre komponenter kan oppdatere seg
+			// Emit so other components can update
 			const event = new CustomEvent("movieListUpdate", {
 				detail: {
 					type: "removed",
@@ -170,7 +223,7 @@ export default function Watchlist() {
 			});
 			window.dispatchEvent(event);
 
-			// Refresh listen
+			// Refresh the list
 			fetchMovies();
 
 			toast({
@@ -190,13 +243,47 @@ export default function Watchlist() {
 
 	const handleToggleWatched = async (movieId: string, currentWatchedStatus: boolean) => {
 		try {
-			const { error } = await supabase.from("list_movies").update({ watched: !currentWatchedStatus }).eq("movie_id", movieId).eq("list_id", selectedList);
+			if (currentWatchedStatus) {
+				// Remove watched status
+				const { error } = await supabase.from("watched_movies").delete().eq("movie_id", movieId).eq("list_id", selectedList).eq("user_id", user?.id);
 
-			if (error) throw error;
+				if (error) throw error;
+			} else {
+				// Add watched status
+				const { error } = await supabase.from("watched_movies").insert({
+					movie_id: movieId,
+					list_id: selectedList,
+					user_id: user?.id,
+				});
+
+				if (error) throw error;
+			}
 
 			// Update local state
 			if (movies) {
-				setMovies(movies.map((movie) => (movie.movie_id === movieId ? { ...movie, watched: !movie.watched } : movie)));
+				setMovies(
+					movies.map((movie) => {
+						if (movie.movie_id === movieId) {
+							const updatedWatchedBy = currentWatchedStatus
+								? movie.watched_by.filter((w) => w.user_id !== user?.id)
+								: [
+										...movie.watched_by,
+										{
+											user_id: user?.id || "",
+											displayname: user?.user_metadata?.displayname || "Unknown",
+											watched_at: new Date().toISOString(),
+										},
+								  ];
+
+							return {
+								...movie,
+								watched_by: updatedWatchedBy,
+								is_watched_by_me: !currentWatchedStatus,
+							};
+						}
+						return movie;
+					})
+				);
 			}
 
 			toast({
@@ -215,8 +302,12 @@ export default function Watchlist() {
 	};
 
 	useEffect(() => {
-		fetchLists();
-	}, [fetchLists]);
+		if (user) {
+			fetchLists();
+		} else {
+			setIsLoadingLists(false);
+		}
+	}, [fetchLists, user]);
 
 	useEffect(() => {
 		if (selectedList) {
@@ -234,29 +325,22 @@ export default function Watchlist() {
 			}
 		};
 
-		// Add event listener
 		window.addEventListener("movieListUpdate", handleMovieListUpdate as EventListener);
-
-		// Cleanup
 		return () => {
 			window.removeEventListener("movieListUpdate", handleMovieListUpdate as EventListener);
 		};
 	}, [selectedList, fetchMovies]);
 
+	const isLoading = isLoadingLists || isLoadingMovies;
+
 	return (
 		<div>
-			{isLoading || !selectedList || movies === undefined ? (
+			<h2 className="text-3xl font-bold tracking-tight mb-6">Filmlista</h2>
+
+			{isLoading ? (
 				<div className="space-y-6">
 					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-						<Skeleton className="h-9 w-40" />
-						<Select disabled>
-							<SelectTrigger className="w-[200px]">
-								<SelectValue placeholder="Laster lister..." />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="loading">Laster...</SelectItem>
-							</SelectContent>
-						</Select>
+						<Skeleton className="h-9 w-52" />
 					</div>
 
 					<Tabs defaultValue="all" className="w-full">
@@ -282,7 +366,6 @@ export default function Watchlist() {
 			) : (
 				<div className="space-y-6">
 					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-						<h2 className="text-3xl font-bold tracking-tight">Filmlista</h2>
 						<Select value={selectedList || undefined} onValueChange={handleListSelection}>
 							<SelectTrigger className="w-[200px]">
 								<SelectValue placeholder="Velg en liste" />
@@ -324,13 +407,29 @@ export default function Watchlist() {
 						</Select>
 					</div>
 
-					{!movies || movies.length === 0 ? (
-						<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
-							<Film className="h-16 w-16 mb-4 opacity-50" />
-							<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
-							<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
-						</div>
-					) : (
+					{!isLoading && (
+						<>
+							{lists.owned.length === 0 && lists.shared.length === 0 ? (
+								<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
+									<Film className="h-16 w-16 mb-4 opacity-50" />
+									<h3 className="text-lg font-semibold">Du har ingen lister enda</h3>
+									<p className="text-muted-foreground">Opprett en liste for å komme i gang!</p>
+									<Link href="/lists" className="mt-8 px-4 py-2 rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 transition-colors text-white flex items-center">
+										Opprett en liste
+										<ArrowRight className="w-4 h-4 ml-2" />
+									</Link>
+								</div>
+							) : selectedList && !isLoadingMovies && (!movies || movies.length === 0) ? (
+								<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
+									<Film className="h-16 w-16 mb-4 opacity-50" />
+									<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
+									<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
+								</div>
+							) : null}
+						</>
+					)}
+
+					{selectedList && movies && movies.length > 0 && !isLoading && (
 						<Tabs defaultValue="all" className="w-full">
 							<TabsList className="mb-6">
 								<TabsTrigger value="all">Alle</TabsTrigger>
@@ -347,7 +446,7 @@ export default function Watchlist() {
 											isInList={true}
 											lists={lists}
 											onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title)}
-											onToggleWatched={() => handleToggleWatched(movie.id, movie.watched)}
+											onToggleWatched={() => handleToggleWatched(movie.id, movie.is_watched_by_me)}
 											onClick={() => router.push(`/movie/${movie.movie_id}`)}
 											isWatchList={true}
 											currentListId={selectedList || undefined}
@@ -360,7 +459,7 @@ export default function Watchlist() {
 							<TabsContent value="unwatched">
 								<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
 									{movies
-										.filter((m) => !m.watched)
+										.filter((m) => !m.is_watched_by_me)
 										.map((movie) => (
 											<MovieCard
 												key={movie.id}
@@ -368,7 +467,7 @@ export default function Watchlist() {
 												isInList={true}
 												lists={lists}
 												onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title)}
-												onToggleWatched={() => handleToggleWatched(movie.id, movie.watched)}
+												onToggleWatched={() => handleToggleWatched(movie.id, true)}
 												onClick={() => router.push(`/movie/${movie.movie_id}`)}
 												isWatchList={true}
 												currentListId={selectedList || undefined}
@@ -381,7 +480,7 @@ export default function Watchlist() {
 							<TabsContent value="watched">
 								<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
 									{movies
-										.filter((m) => m.watched)
+										.filter((m) => m.is_watched_by_me)
 										.map((movie) => (
 											<MovieCard
 												key={movie.id}
@@ -389,7 +488,7 @@ export default function Watchlist() {
 												isInList={true}
 												lists={lists}
 												onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title)}
-												onToggleWatched={() => handleToggleWatched(movie.id, movie.watched)}
+												onToggleWatched={() => handleToggleWatched(movie.id, false)}
 												onClick={() => router.push(`/movie/${movie.movie_id}`)}
 												isWatchList={true}
 												currentListId={selectedList || undefined}

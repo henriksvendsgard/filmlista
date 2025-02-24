@@ -8,18 +8,26 @@ export async function middleware(req: NextRequest) {
 
 	const {
 		data: { session },
+		error,
 	} = await supabase.auth.getSession();
 
 	// Public paths that don't require authentication
 	const publicPaths = ["/login", "/register"];
 	const isPublicPath = publicPaths.includes(req.nextUrl.pathname);
 
-	if (!session && !isPublicPath) {
+	// Handle errors or missing session
+	if (error || (!session && !isPublicPath)) {
 		return NextResponse.redirect(new URL("/login", req.url));
 	}
 
+	// If user is signed in and tries to access auth pages, redirect to home
 	if (session && isPublicPath) {
 		return NextResponse.redirect(new URL("/", req.url));
+	}
+
+	// Update session if it exists
+	if (session) {
+		res.headers.set("x-middleware-cache", "no-cache");
 	}
 
 	return res;

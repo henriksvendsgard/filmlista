@@ -16,8 +16,13 @@ export default function SupabaseProvider({ children, initialUser }: { children: 
 	const supabase = createClientComponentClient();
 	const router = useRouter();
 	const [user, setUser] = useState<User | null>(initialUser);
+	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
+		// Set initial user state
+		setUser(initialUser);
+		setIsLoading(false);
+
 		const {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -25,10 +30,9 @@ export default function SupabaseProvider({ children, initialUser }: { children: 
 				setUser(null);
 				router.push("/login");
 			} else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-				const {
-					data: { user },
-				} = await supabase.auth.getUser();
-				setUser(user);
+				if (session?.user) {
+					setUser(session.user);
+				}
 				router.refresh();
 			}
 		});
@@ -36,7 +40,11 @@ export default function SupabaseProvider({ children, initialUser }: { children: 
 		return () => {
 			subscription.unsubscribe();
 		};
-	}, [supabase, router]);
+	}, [supabase, router, initialUser]);
+
+	if (isLoading) {
+		return null; // or a loading spinner
+	}
 
 	return <Context.Provider value={{ supabase, user }}>{children}</Context.Provider>;
 }

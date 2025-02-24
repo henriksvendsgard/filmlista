@@ -105,6 +105,11 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 			} = await supabase.auth.getUser();
 			if (!user) return;
 
+			// First, delete any existing watched status for this movie in this list
+			const { error: watchedError } = await supabase.from("watched_movies").delete().eq("list_id", listId).eq("movie_id", movie.id.toString());
+			if (watchedError) throw watchedError;
+
+			// Then add the movie to the list
 			const { error } = await supabase.from("list_movies").insert({
 				list_id: listId,
 				movie_id: movie.id.toString(),
@@ -307,10 +312,11 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 										movie_id: movie.id.toString(),
 										title: movie.title,
 										poster_path: movie.poster_path || "",
-										watched: false,
 										added_at: movieDetails[movie.id.toString()]?.added_at,
 										added_by: movieDetails[movie.id.toString()]?.added_by,
-										added_by_email: movieDetails[movie.id.toString()]?.added_by_email,
+										added_by_displayname: movieDetails[movie.id.toString()]?.added_by_email,
+										watched_by: [],
+										is_watched_by_me: false,
 									}}
 									isInList={!!movieListMap[movie.id.toString()]?.length}
 									lists={lists}

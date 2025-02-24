@@ -234,13 +234,13 @@ export default function Lists() {
 				<h2 className="text-3xl font-bold tracking-tight">Listene til {`${user?.displayName ? user?.displayName : "..."}`}</h2>
 				<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
 					<DialogTrigger asChild>
-						<Button>
+						<Button className="flex items-center rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 text-white">
 							<PlusCircle className="h-4 w-4" />
 							Ny liste
 						</Button>
 					</DialogTrigger>
 					<DialogContent>
-						<DialogHeader className="mb-6">
+						<DialogHeader className="mb-4">
 							<DialogTitle className="mb-4">Opprett ny liste</DialogTitle>
 							<DialogDescription>Gi listen din et navn. Filmer legger du til senere.</DialogDescription>
 						</DialogHeader>
@@ -252,10 +252,10 @@ export default function Lists() {
 								<Input className="text-base" id="name" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="F.eks. Favorittfilmer" />
 							</div>
 							<DialogFooter>
-								<Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+								{/* <Button className="rounded-full" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
 									Avbryt
-								</Button>
-								<Button onClick={handleCreateList} disabled={!newListName.trim()}>
+								</Button> */}
+								<Button className="rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 text-white" onClick={handleCreateList} disabled={!newListName.trim()}>
 									Opprett liste
 								</Button>
 							</DialogFooter>
@@ -291,6 +291,7 @@ export default function Lists() {
 										<Button
 											variant="ghost"
 											size="icon"
+											className="rounded-full"
 											onClick={() => {
 												setSelectedList(list.id);
 												setIsShareDialogOpen(true);
@@ -301,6 +302,7 @@ export default function Lists() {
 										<Button
 											variant="destructive"
 											size="icon"
+											className="rounded-full"
 											onClick={() => {
 												setListToDelete({ id: list.id, name: list.name });
 												setIsDeleteDialogOpen(true);
@@ -342,13 +344,16 @@ export default function Lists() {
 			<Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
 				<DialogContent className="flex-col gap-8">
 					<DialogHeader>
-						<DialogTitle>Del listen din med andre brukere</DialogTitle>
+						<DialogTitle className="mb-4">Del listen din med andre brukere</DialogTitle>
+						<DialogDescription>Del listen din med andre slik at dere kan dele filmer med hverandre.</DialogDescription>
 					</DialogHeader>
 					<form onSubmit={handleShareList} className="space-y-6">
 						<Input type="email" value={shareEmail} onChange={(e) => setShareEmail(e.target.value)} placeholder="Brukerens e-post" required />
-						<Button type="submit" className="w-full">
-							Del liste
-						</Button>
+						<div className="flex justify-end">
+							<Button disabled={!shareEmail.trim()} type="submit" className="rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 text-white">
+								Del liste
+							</Button>
+						</div>
 					</form>
 				</DialogContent>
 			</Dialog>
