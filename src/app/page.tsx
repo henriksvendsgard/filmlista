@@ -129,13 +129,6 @@ export default function Home() {
 									<ChevronDown className="h-4 w-4 opacity-50" />
 								</Button>
 							</DropdownMenuTrigger>
-							{currentParams.selectedGenres.length > 0 && (
-								<div className="flex justify-end">
-									<Button variant="outline" onClick={handleClearGenres} className="w-fit">
-										Tøm
-									</Button>
-								</div>
-							)}
 						</div>
 						<DropdownMenuContent className="w-[400px] p-4">
 							<div className="grid grid-cols-2 gap-4">
@@ -162,7 +155,7 @@ export default function Home() {
 									return (
 										<Badge key={genreId} variant="secondary" className="pl-3 pr-2 py-1.5">
 											{translateGenre(genre.name)}
-											<button onClick={() => handleRemoveGenre(genreId)} className="ml-1 hover:text-destructive focus:outline-none">
+											<button onClick={() => handleRemoveGenre(genreId)} className="ml-1 hover:text-secondary-foreground">
 												<X className="w-4 h-4" />
 											</button>
 										</Badge>

@@ -76,7 +76,9 @@ export default function NavItems() {
 						</NavigationMenuItem>
 					</>
 				)}
-				<ModeToggle />
+				<div className="pl-2 sm:pl-4">
+					<ModeToggle />
+				</div>
 			</NavigationMenuList>
 		</NavigationMenu>
 	);
