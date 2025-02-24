@@ -122,7 +122,7 @@ export function MovieCard({
 			<div className="absolute top-2 right-2">
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button variant="outline" size="icon" className="rounded-full bg-black">
+						<Button variant="outline" size="icon" className="rounded-full">
 							<Ellipsis className="h-4 w-4" />
 						</Button>
 					</DropdownMenuTrigger>

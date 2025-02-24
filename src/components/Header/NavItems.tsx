@@ -39,7 +39,7 @@ export default function NavItems() {
 							<Link href="/watchlist" legacyBehavior passHref>
 								<NavigationMenuLink
 									className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent  ${
-										isActivePage("/watchlist") ? "bg-filmlista-primary hover:bg-filmlista-hover focus:bg-filmlista-primary" : ""
+										isActivePage("/watchlist") ? "bg-filmlista-primary focus:bg-filmlista-primary hover:bg-filmlista-primary/80 text-white hover:text-white focus:text-white" : ""
 									}`}
 								>
 									<CircleCheckBig className="w-5 h-5 pr-1" />

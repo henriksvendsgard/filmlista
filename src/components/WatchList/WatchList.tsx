@@ -5,12 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Movie } from "@/types/movie";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Film } from "lucide-react";
+import { ArrowRight, Film } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
 import { Skeleton } from "../ui/skeleton";
 import { useSupabase } from "@/components/SupabaseProvider";
+import Link from "next/link";
 
 interface List {
 	id: string;
@@ -55,7 +56,8 @@ type MovieListAction = {
 };
 
 export default function Watchlist() {
-	const [isLoading, setIsLoading] = useState(true);
+	const [isLoadingLists, setIsLoadingLists] = useState(true);
+	const [isLoadingMovies, setIsLoadingMovies] = useState(false);
 	const [movies, setMovies] = useState<ProcessedMovie[]>([]);
 	const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
 	const [selectedList, setSelectedList] = useState<string | null>(null);
@@ -65,13 +67,6 @@ export default function Watchlist() {
 	const router = useRouter();
 	const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
 	const listIdFromUrl = searchParams.get("list");
-
-	// Reset loading state when user changes
-	useEffect(() => {
-		if (!user) {
-			setIsLoading(true);
-		}
-	}, [user]);
 
 	const updateUrlWithList = useCallback(
 		(listId: string | null) => {
@@ -93,6 +88,7 @@ export default function Watchlist() {
 
 	const fetchLists = useCallback(async () => {
 		if (!user) return;
+		setIsLoadingLists(true);
 
 		try {
 			const { data: sharedListIds, error: sharedError } = await supabase.from("shared_lists").select("list_id").eq("user_id", user.id);
@@ -130,12 +126,14 @@ export default function Watchlist() {
 				description: "Failed to fetch lists",
 				variant: "destructive",
 			});
+		} finally {
+			setIsLoadingLists(false);
 		}
 	}, [supabase, user, listIdFromUrl, updateUrlWithList, selectedList]);
 
 	const fetchMovies = useCallback(async () => {
 		if (!selectedList || !user) return;
-		setIsLoading(true); // Set loading when starting to fetch movies
+		setIsLoadingMovies(true);
 
 		try {
 			// Get all movies in the list
@@ -201,7 +199,7 @@ export default function Watchlist() {
 			console.error("Error fetching movies:", error);
 			setMovies([]);
 		} finally {
-			setIsLoading(false); // Only set loading to false after movies are processed
+			setIsLoadingMovies(false);
 		}
 	}, [selectedList, supabase, user]);
 
@@ -302,6 +300,8 @@ export default function Watchlist() {
 	useEffect(() => {
 		if (user) {
 			fetchLists();
+		} else {
+			setIsLoadingLists(false);
 		}
 	}, [fetchLists, user]);
 
@@ -327,9 +327,11 @@ export default function Watchlist() {
 		};
 	}, [selectedList, fetchMovies]);
 
+	const isLoading = isLoadingLists || isLoadingMovies;
+
 	return (
 		<div>
-			{isLoading || !selectedList || !movies ? ( // Updated condition to include !movies
+			{isLoading ? (
 				<div className="space-y-6">
 					<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 						<Skeleton className="h-9 w-40" />
@@ -408,13 +410,29 @@ export default function Watchlist() {
 						</Select>
 					</div>
 
-					{!movies || movies.length === 0 ? (
-						<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
-							<Film className="h-16 w-16 mb-4 opacity-50" />
-							<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
-							<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
-						</div>
-					) : (
+					{!isLoading && (
+						<>
+							{lists.owned.length === 0 && lists.shared.length === 0 ? (
+								<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
+									<Film className="h-16 w-16 mb-4 opacity-50" />
+									<h3 className="text-lg font-semibold">Du har ingen lister enda</h3>
+									<p className="text-muted-foreground">Opprett en liste for å komme i gang!</p>
+									<Link href="/lists" className="mt-8 px-4 py-2 rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 transition-colors text-white flex items-center">
+										Opprett en liste
+										<ArrowRight className="w-4 h-4 ml-2" />
+									</Link>
+								</div>
+							) : selectedList && !isLoadingMovies && (!movies || movies.length === 0) ? (
+								<div className="text-center pt-16 sm:py-32 flex flex-col items-center">
+									<Film className="h-16 w-16 mb-4 opacity-50" />
+									<h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
+									<p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
+								</div>
+							) : null}
+						</>
+					)}
+
+					{selectedList && movies && movies.length > 0 && !isLoading && (
 						<Tabs defaultValue="all" className="w-full">
 							<TabsList className="mb-6">
 								<TabsTrigger value="all">Alle</TabsTrigger>
