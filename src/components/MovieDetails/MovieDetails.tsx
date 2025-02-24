@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useMovieLists } from "@/hooks/useMovieLists";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ArrowLeft, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, ListPlus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -258,8 +258,8 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 						<h1 className="text-4xl font-bold">{movie.title}</h1>
 						<DropdownMenu>
 							<DropdownMenuTrigger className="flex-shrink-0" asChild>
-								<Button variant="secondary" size="icon">
-									<BookmarkPlus className="h-4 w-4" />
+								<Button variant="secondary" className="w-10 h-10">
+									<ListPlus size={24} />
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">

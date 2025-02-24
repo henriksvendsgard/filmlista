@@ -44,6 +44,7 @@ export default function Profile() {
 				return;
 			}
 
+			// First update the user metadata
 			const { error: updateError } = await supabase.auth.updateUser({
 				data: { display_name: displayName },
 			});
@@ -53,11 +54,13 @@ export default function Profile() {
 				return;
 			}
 
+			// Then update the profiles table
 			const { error: profileError } = await supabase.from("profiles").update({ displayname: displayName }).eq("id", user.id);
 
 			if (profileError) {
 				setMessage("Feil ved oppdatering av visningsnavn");
-				return;
+				// Don't return here, as the metadata was already updated
+				console.error("Error updating profile:", profileError);
 			}
 
 			toast({
@@ -83,7 +86,7 @@ export default function Profile() {
 						value={displayName}
 						onChange={(e) => setDisplayName(e.target.value)}
 						required
-						className="w-full p-2 border border-gray-300 rounded"
+						className="w-full text-base p-2 border border-gray-300 rounded"
 					/>
 					<Button type="submit" className="w-full bg-blue-800 hover:bg-blue-900 text-white py-2 rounded">
 						Endre
