@@ -188,6 +188,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 				title: movie?.title,
 				poster_path: movie?.poster_path,
 				added_by: user.id,
+				release_date: movie?.release_date,
 			});
 
 			if (error) throw error;
@@ -282,7 +283,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 							<DropdownMenuTrigger className="flex-shrink-0" asChild>
 								<Button variant={"secondary"} size={"icon"} className="rounded-full w-12 h-12 p-5 bg-filmlista-primary hover:bg-filmlista-hover text-white border-background">
 									<BookmarkPlus />
-									{/* Legg tilk */}
+									{/* Legg til */}
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">

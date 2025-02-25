@@ -116,6 +116,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 				title: movie.title,
 				poster_path: movie.poster_path,
 				added_by: user.id,
+				release_date: movie.release_date,
 			});
 
 			if (error) throw error;
@@ -315,6 +316,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 										added_at: movieDetails[movie.id.toString()]?.added_at,
 										added_by: movieDetails[movie.id.toString()]?.added_by,
 										added_by_displayname: movieDetails[movie.id.toString()]?.added_by_email,
+										release_date: movie.release_date,
 										watched_by: [],
 										is_watched_by_me: false,
 									}}

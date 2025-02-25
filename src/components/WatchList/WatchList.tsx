@@ -25,6 +25,7 @@ interface DatabaseMovie {
 	poster_path: string;
 	added_at: string;
 	added_by: string;
+	release_date: string;
 	profiles: {
 		displayname: string;
 		email: string;
@@ -146,6 +147,7 @@ export default function Watchlist() {
 					poster_path,
 					added_at,
 					added_by,
+					release_date,
 					profiles (displayname, email)
 				`
 				)
@@ -189,6 +191,7 @@ export default function Watchlist() {
 					added_at: movie.added_at,
 					added_by: movie.added_by,
 					added_by_displayname: movie.profiles?.displayname || movie.profiles?.email || "Unknown",
+					release_date: movie.release_date,
 					watched_by: watchedByUsers,
 					is_watched_by_me: watchedByUsers.some((w) => w.user_id === user.id),
 				};

@@ -31,6 +31,7 @@ interface Movie {
 	added_at: string;
 	added_by: string;
 	added_by_displayname?: string;
+	release_date?: string;
 	watched_by: {
 		user_id: string;
 		displayname: string;
@@ -79,8 +80,14 @@ export function MovieCard({
 
 	return (
 		<div className="group relative">
-			<div className={`relative overflow-hidden rounded-lg bg-muted/50 cursor-pointer transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`} onClick={onClick}>
-				<Image src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} width={500} height={750} className="object-cover transition-all hover:scale-105 cursor-pointer " />
+			<div className={`relative overflow-hidden rounded-lg aspect-[2/3] bg-muted/50 cursor-pointer transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`} onClick={onClick}>
+				<Image
+					src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+					alt={movie.title}
+					width={500}
+					height={750}
+					className="object-cover transition-all hover:scale-105 cursor-pointer h-full w-full"
+				/>
 			</div>
 
 			<div className="absolute bottom-0 left-0 right-0 p-2">
