@@ -59,6 +59,7 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 	const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
 	const [tvshowListMap, setTVShowListMap] = useState<{ [key: string]: string[] }>({});
 	const [tvshowDetails, setTVShowDetails] = useState<{ [key: string]: TVShowDetails }>({});
+	const [isLoadingListMap, setIsLoadingListMap] = useState(true);
 
 	const supabase = createClientComponentClient();
 
@@ -98,9 +99,11 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 				variant: "destructive",
 			});
 		}
-	}, [supabase, lists]);
+	}, [supabase]);
 
 	const fetchTVShowListMap = useCallback(async () => {
+		if (!tvshows.results.length) return;
+
 		const {
 			data: { user },
 			error: userError,
@@ -155,7 +158,7 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 		} catch (error) {
 			console.error("Error fetching TV show list map:", error);
 		}
-	}, [tvshows.results, supabase]);
+	}, [supabase, tvshows.results]);
 
 	const handleAddToList = async (tvshow: TMDBTVShow, listId: string) => {
 		try {
@@ -271,10 +274,20 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 		}
 	};
 
+	// Initial data fetch
 	useEffect(() => {
 		fetchLists();
-		fetchTVShowListMap();
-	}, [fetchLists, fetchTVShowListMap]);
+	}, [fetchLists]);
+
+	// Update list mapping when TV shows change
+	useEffect(() => {
+		if (!isLoading) {
+			setIsLoadingListMap(true);
+			fetchTVShowListMap().finally(() => {
+				setIsLoadingListMap(false);
+			});
+		}
+	}, [fetchTVShowListMap, tvshows.results, isLoading]);
 
 	useEffect(() => {
 		const handleTVShowListUpdate = (event: CustomEvent<TVShowListAction>) => {
@@ -325,6 +338,7 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 									hasOthersWatched={false}
 									othersWhoWatched={[]}
 									showAddedBy={undefined}
+									isLoadingListMap={isLoadingListMap}
 								/>
 							))}
 						</div>

@@ -27,6 +27,7 @@ interface TVShowCardProps {
 	hasOthersWatched: boolean;
 	othersWhoWatched: { user_id: string; displayname: string; watched_at: string }[];
 	showAddedBy?: string;
+	isLoadingListMap: boolean;
 }
 
 export function TVShowCard({ tvshow, lists, onAddToList, onRemoveFromList, isInLists, hasOthersWatched, othersWhoWatched, showAddedBy }: TVShowCardProps) {

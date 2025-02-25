@@ -59,6 +59,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 	const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
 	const [movieListMap, setMovieListMap] = useState<{ [key: string]: string[] }>({});
 	const [movieDetails, setMovieDetails] = useState<{ [key: string]: MovieDetails }>({});
+	const [isLoadingListMap, setIsLoadingListMap] = useState(true);
 
 	const supabase = createClientComponentClient();
 
@@ -98,7 +99,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 				variant: "destructive",
 			});
 		}
-	}, [supabase, lists]);
+	}, [supabase]);
 
 	const handleAddToList = async (movie: TMDBMovie, listId: string) => {
 		try {
@@ -215,6 +216,8 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 	};
 
 	const fetchMovieListMap = useCallback(async () => {
+		if (!movies.results.length) return;
+
 		const {
 			data: { user },
 			error: userError,
@@ -249,7 +252,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 
 			const typedData = data as unknown as RawListMovie[];
 			const movieMap: { [key: string]: string[] } = {};
-			const movieDetails: { [key: string]: MovieDetails } = {};
+			const details: { [key: string]: MovieDetails } = {};
 
 			typedData.forEach((item) => {
 				if (!movieMap[item.movie_id]) {
@@ -257,7 +260,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 				}
 				movieMap[item.movie_id].push(item.list_id);
 
-				movieDetails[item.movie_id] = {
+				details[item.movie_id] = {
 					added_at: item.added_at,
 					added_by: item.added_by,
 					added_by_email: item.profiles.email,
@@ -265,16 +268,26 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 			});
 
 			setMovieListMap(movieMap);
-			setMovieDetails(movieDetails);
+			setMovieDetails(details);
 		} catch (error) {
 			console.error("Error fetching movie list map:", error);
 		}
-	}, [movies.results, supabase]);
+	}, [supabase, movies.results]);
 
+	// Initial data fetch
 	useEffect(() => {
 		fetchLists();
-		fetchMovieListMap();
-	}, [fetchLists, fetchMovieListMap]);
+	}, [fetchLists]);
+
+	// Update list mapping when movies change
+	useEffect(() => {
+		if (!isLoading) {
+			setIsLoadingListMap(true);
+			fetchMovieListMap().finally(() => {
+				setIsLoadingListMap(false);
+			});
+		}
+	}, [fetchMovieListMap, movies.results, isLoading]);
 
 	useEffect(() => {
 		const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
@@ -339,6 +352,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 									currentListId={undefined}
 									isWatchList={false}
 									showAddedBy={false}
+									isLoadingListMap={isLoadingListMap}
 								/>
 							))}
 						</div>
