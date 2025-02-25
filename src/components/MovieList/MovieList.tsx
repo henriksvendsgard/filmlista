@@ -26,6 +26,8 @@ interface MovieListProps {
 	title: string;
 	isOnFrontPage?: boolean;
 	isLoading?: boolean;
+	onPageChange?: (page: number) => void;
+	currentPage?: number;
 }
 
 interface MovieDetails {
@@ -50,7 +52,7 @@ type MovieListAction = {
 	movieId: string;
 };
 
-export default function MovieList({ movies, title, isOnFrontPage, isLoading }: MovieListProps) {
+export default function MovieList({ movies, title, isOnFrontPage, isLoading, onPageChange, currentPage }: MovieListProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -201,11 +203,15 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 	};
 
 	const paginate = (pageNumber: number) => {
-		router.push(createPageURL(pageNumber));
-		window.scrollTo({
-			top: 0,
-			behavior: "smooth",
-		});
+		if (onPageChange) {
+			onPageChange(pageNumber);
+		} else {
+			router.push(createPageURL(pageNumber));
+			window.scrollTo({
+				top: 0,
+				behavior: "smooth",
+			});
+		}
 	};
 
 	const fetchMovieListMap = useCallback(async () => {
@@ -342,16 +348,16 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 
 			{isOnFrontPage && movies.total_pages > 1 && !isLoading && (
 				<div className="flex justify-center items-center gap-6 mt-8 mb-12">
-					<Button variant="outline" onClick={() => paginate(movies.page - 1)} disabled={movies.page === 1} className="h-10">
+					<Button variant="outline" onClick={() => paginate((currentPage || movies.page) - 1)} disabled={(currentPage || movies.page) === 1} className="h-10">
 						<ChevronLeft className="h-4 w-4 sm:mr-2" />
 						<span className="hidden sm:inline">Forrige</span>
 					</Button>
 
 					<div className="flex items-center">
-						<span className="text-sm">Side {movies.page}</span>
+						<span className="text-sm">Side {currentPage || movies.page}</span>
 					</div>
 
-					<Button variant="outline" onClick={() => paginate(movies.page + 1)} disabled={movies.page === Math.min(movies.total_pages, 500)} className="h-10">
+					<Button variant="outline" onClick={() => paginate((currentPage || movies.page) + 1)} disabled={(currentPage || movies.page) === Math.min(movies.total_pages, 500)} className="h-10">
 						<span className="hidden sm:inline">Neste</span>
 						<ChevronRight className="h-4 w-4 sm:ml-2" />
 					</Button>

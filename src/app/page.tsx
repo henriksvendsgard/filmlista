@@ -10,24 +10,32 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDiscoverMovies, getMovieGenres, getPopularMovies } from "@/lib/getMovies";
 import { getDiscoverTVShows, getPopularTVShows, getTVShowGenres } from "@/lib/getTVShows";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, Loader2, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+interface ContentResults {
+	results: any[];
+	total_pages: number;
+	page: number;
+	total_results: number;
+}
 
 export default function Home() {
-	const [movies, setMovies] = useState<any>(null);
-	const [tvshows, setTVShows] = useState<any>(null);
+	const [movies, setMovies] = useState<ContentResults | null>(null);
+	const [tvshows, setTVShows] = useState<ContentResults | null>(null);
 	const [movieGenres, setMovieGenres] = useState<any[]>([]);
 	const [tvshowGenres, setTVShowGenres] = useState<any[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [isFetchingMore, setIsFetchingMore] = useState(false);
 	const searchParams = useSearchParams();
 	const router = useRouter();
+	const loadMoreRef = useRef<HTMLDivElement>(null);
 
 	const currentParams = useMemo(() => {
-		const page = Number(searchParams.get("page")) || 1;
 		const selectedGenres = searchParams.get("genres")?.split(",").filter(Boolean) || [];
 		const mediaType = searchParams.get("type") || "movie";
-		return { page, selectedGenres, mediaType };
+		return { selectedGenres, mediaType };
 	}, [searchParams]);
 
 	const updateUrl = useCallback(
@@ -36,38 +44,69 @@ export default function Home() {
 			if (newGenres.length > 0) {
 				params.set("genres", newGenres.join(","));
 			}
-			params.set("page", "1");
 			params.set("type", mediaType || currentParams.mediaType);
 			router.push(`/?${params.toString()}`);
 		},
 		[router, currentParams.mediaType]
 	);
 
-	const fetchContent = useCallback(async () => {
-		setIsLoading(true);
-		try {
-			if (currentParams.mediaType === "movie") {
-				let movieData;
-				if (currentParams.selectedGenres.length === 0) {
-					movieData = await getPopularMovies(currentParams.page);
-				} else {
-					movieData = await getDiscoverMovies(currentParams.selectedGenres.join(","), undefined, currentParams.page);
-				}
-				setMovies(movieData);
-			} else {
-				let tvshowData;
-				if (currentParams.selectedGenres.length === 0) {
-					tvshowData = await getPopularTVShows(currentParams.page);
-				} else {
-					tvshowData = await getDiscoverTVShows(currentParams.selectedGenres.join(","), currentParams.page);
-				}
-				setTVShows(tvshowData);
+	const fetchContent = useCallback(
+		async (page: number, isLoadingMore = false) => {
+			if (!isLoadingMore) {
+				setIsLoading(true);
 			}
-		} catch (error) {
-			console.error("Error fetching content:", error);
-		}
-		setIsLoading(false);
-	}, [currentParams]);
+			try {
+				if (currentParams.mediaType === "movie") {
+					let movieData;
+					if (currentParams.selectedGenres.length === 0) {
+						movieData = await getPopularMovies(page);
+					} else {
+						movieData = await getDiscoverMovies(currentParams.selectedGenres.join(","), undefined, page);
+					}
+
+					if (isLoadingMore) {
+						setMovies((prev: ContentResults | null) =>
+							prev
+								? {
+										...prev,
+										results: [...prev.results, ...movieData.results],
+										page: movieData.page,
+								  }
+								: movieData
+						);
+					} else {
+						setMovies(movieData);
+					}
+				} else {
+					let tvshowData;
+					if (currentParams.selectedGenres.length === 0) {
+						tvshowData = await getPopularTVShows(page);
+					} else {
+						tvshowData = await getDiscoverTVShows(currentParams.selectedGenres.join(","), page);
+					}
+
+					if (isLoadingMore) {
+						setTVShows((prev: ContentResults | null) =>
+							prev
+								? {
+										...prev,
+										results: [...prev.results, ...tvshowData.results],
+										page: tvshowData.page,
+								  }
+								: tvshowData
+						);
+					} else {
+						setTVShows(tvshowData);
+					}
+				}
+			} catch (error) {
+				console.error("Error fetching content:", error);
+			}
+			setIsLoading(false);
+			setIsFetchingMore(false);
+		},
+		[currentParams.mediaType, currentParams.selectedGenres]
+	);
 
 	const fetchGenres = useCallback(async () => {
 		try {
@@ -84,8 +123,30 @@ export default function Home() {
 	}, [fetchGenres]);
 
 	useEffect(() => {
-		fetchContent();
+		fetchContent(1);
 	}, [fetchContent]);
+
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const first = entries[0];
+				if (first.isIntersecting && !isFetchingMore) {
+					const currentResults = currentParams.mediaType === "movie" ? movies : tvshows;
+					if (currentResults && currentResults.page < currentResults.total_pages) {
+						setIsFetchingMore(true);
+						fetchContent(currentResults.page + 1, true);
+					}
+				}
+			},
+			{ threshold: 0.1 }
+		);
+
+		if (loadMoreRef.current) {
+			observer.observe(loadMoreRef.current);
+		}
+
+		return () => observer.disconnect();
+	}, [fetchContent, isFetchingMore, currentParams.mediaType, movies, tvshows]);
 
 	const handleGenreChange = useCallback(
 		(genreId: string, checked: boolean | "indeterminate") => {
@@ -199,7 +260,7 @@ export default function Home() {
 						<MovieList
 							title={currentParams.selectedGenres.length === 0 ? "Populære filmer" : "Filmer i valgte sjangere"}
 							movies={movies || { results: [], total_pages: 0, page: 1, total_results: 0 }}
-							isOnFrontPage
+							isOnFrontPage={false}
 							isLoading={isLoading}
 						/>
 					</TabsContent>
@@ -208,11 +269,20 @@ export default function Home() {
 						<TVShowList
 							title={currentParams.selectedGenres.length === 0 ? "Populære TV-serier" : "TV-serier i valgte sjangere"}
 							tvshows={tvshows || { results: [], total_pages: 0, page: 1, total_results: 0 }}
-							isOnFrontPage
+							isOnFrontPage={false}
 							isLoading={isLoading}
 						/>
 					</TabsContent>
 				</Tabs>
+
+				{/* Infinite scroll trigger */}
+				<div ref={loadMoreRef} className="h-10 w-full">
+					{isFetchingMore && (
+						<div className="flex justify-center items-center py-4">
+							<Loader2 className="w-10 h-10 animate-spin text-filmlista-primary" />
+						</div>
+					)}
+				</div>
 			</div>
 		</div>
 	);

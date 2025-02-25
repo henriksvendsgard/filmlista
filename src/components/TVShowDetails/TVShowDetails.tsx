@@ -192,7 +192,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 		};
 
 		fetchSimilarShows();
-	}, []);
+	}, [fetchLists, fetchTVShowListMap, tvshow.id]);
 
 	return (
 		<div className="space-y-12">
