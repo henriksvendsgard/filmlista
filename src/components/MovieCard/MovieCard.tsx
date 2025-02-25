@@ -122,7 +122,7 @@ export function MovieCard({
 				</div>
 			</div>
 			{isWatchList && movie.is_watched_by_me && (
-				<div className="absolute top-2 left-2 rounded-full bg-green-700 p-2">
+				<div className="absolute top-2 left-2 rounded-full bg-green-700 text-white p-2">
 					<Check className="h-4 w-4" />
 				</div>
 			)}
