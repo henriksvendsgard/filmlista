@@ -31,6 +31,7 @@ interface Movie {
 	added_at: string;
 	added_by: string;
 	added_by_displayname?: string;
+	release_date?: string;
 	watched_by: {
 		user_id: string;
 		displayname: string;
@@ -49,7 +50,7 @@ interface MovieCardProps {
 	movieLists?: string[];
 	onAddToList?: (listId: string) => void;
 	onRemoveFromList?: (listId: string) => void;
-	onToggleWatched?: () => void;
+	onToggleWatched?: (currentWatchedStatus: boolean) => void;
 	onClick: () => void;
 	currentListId?: string;
 	isWatchList?: boolean;
@@ -79,8 +80,14 @@ export function MovieCard({
 
 	return (
 		<div className="group relative">
-			<div className={`relative overflow-hidden rounded-lg bg-muted/50 cursor-pointer transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`} onClick={onClick}>
-				<Image src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} width={500} height={750} className="object-cover transition-all hover:scale-105 cursor-pointer " />
+			<div className={`relative overflow-hidden rounded-lg aspect-[2/3] bg-muted/50 cursor-pointer transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`} onClick={onClick}>
+				<Image
+					src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+					alt={movie.title}
+					width={500}
+					height={750}
+					className="object-cover transition-all hover:scale-105 cursor-pointer h-full w-full"
+				/>
 			</div>
 
 			<div className="absolute bottom-0 left-0 right-0 p-2">
@@ -115,7 +122,7 @@ export function MovieCard({
 				</div>
 			</div>
 			{isWatchList && movie.is_watched_by_me && (
-				<div className="absolute top-2 left-2 rounded-full bg-green-700 p-2">
+				<div className="absolute top-2 left-2 rounded-full bg-green-700 text-white p-2">
 					<Check className="h-4 w-4" />
 				</div>
 			)}
@@ -129,7 +136,9 @@ export function MovieCard({
 					<DropdownMenuContent align="end" className="w-56">
 						{isWatchList ? (
 							<>
-								{onToggleWatched && <DropdownMenuItem onClick={onToggleWatched}>{movie.is_watched_by_me ? "Marker som usett" : "Marker som sett"}</DropdownMenuItem>}
+								{onToggleWatched && (
+									<DropdownMenuItem onClick={() => onToggleWatched(movie.is_watched_by_me)}>{movie.is_watched_by_me ? "Marker som usett" : "Marker som sett"}</DropdownMenuItem>
+								)}
 								{currentListId && onRemoveFromList && (
 									<>
 										<DropdownMenuSeparator />

@@ -26,6 +26,8 @@ interface MovieListProps {
 	title: string;
 	isOnFrontPage?: boolean;
 	isLoading?: boolean;
+	onPageChange?: (page: number) => void;
+	currentPage?: number;
 }
 
 interface MovieDetails {
@@ -39,7 +41,7 @@ type RawListMovie = {
 	list_id: string;
 	added_at: string;
 	added_by: string;
-	profile: {
+	profiles: {
 		email: string;
 	};
 };
@@ -50,7 +52,7 @@ type MovieListAction = {
 	movieId: string;
 };
 
-export default function MovieList({ movies, title, isOnFrontPage, isLoading }: MovieListProps) {
+export default function MovieList({ movies, title, isOnFrontPage, isLoading, onPageChange, currentPage }: MovieListProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -106,16 +108,19 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 			if (!user) return;
 
 			// First, delete any existing watched status for this movie in this list
-			const { error: watchedError } = await supabase.from("watched_movies").delete().eq("list_id", listId).eq("movie_id", movie.id.toString());
+			const { error: watchedError } = await supabase.from("watched_media").delete().eq("list_id", listId).eq("movie_id", movie.id.toString()).eq("media_type", "movie");
+
 			if (watchedError) throw watchedError;
 
 			// Then add the movie to the list
-			const { error } = await supabase.from("list_movies").insert({
+			const { error } = await supabase.from("media_items").insert({
 				list_id: listId,
 				movie_id: movie.id.toString(),
 				title: movie.title,
 				poster_path: movie.poster_path,
 				added_by: user.id,
+				release_date: movie.release_date,
+				media_type: "movie",
 			});
 
 			if (error) throw error;
@@ -151,7 +156,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 
 	const handleRemoveFromList = async (movie: TMDBMovie, listId: string) => {
 		try {
-			const { error } = await supabase.from("list_movies").delete().eq("movie_id", movie.id.toString()).eq("list_id", listId);
+			const { error } = await supabase.from("media_items").delete().eq("movie_id", movie.id.toString()).eq("list_id", listId).eq("media_type", "movie");
 
 			if (error) throw error;
 
@@ -198,11 +203,15 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 	};
 
 	const paginate = (pageNumber: number) => {
-		router.push(createPageURL(pageNumber));
-		window.scrollTo({
-			top: 0,
-			behavior: "smooth",
-		});
+		if (onPageChange) {
+			onPageChange(pageNumber);
+		} else {
+			router.push(createPageURL(pageNumber));
+			window.scrollTo({
+				top: 0,
+				behavior: "smooth",
+			});
+		}
 	};
 
 	const fetchMovieListMap = useCallback(async () => {
@@ -218,18 +227,19 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 
 		try {
 			const { data, error } = await supabase
-				.from("list_movies")
+				.from("media_items")
 				.select(
 					`
 					movie_id, 
 					list_id, 
 					added_at,
 					added_by,
-					profile:profiles!list_movies_added_by_fkey (
+					profiles (
 						email
 					)
 				`
 				)
+				.eq("media_type", "movie")
 				.in(
 					"movie_id",
 					movies.results.map((m) => m.id.toString())
@@ -250,7 +260,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 				movieDetails[item.movie_id] = {
 					added_at: item.added_at,
 					added_by: item.added_by,
-					added_by_email: item.profile.email,
+					added_by_email: item.profiles.email,
 				};
 			});
 
@@ -315,6 +325,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 										added_at: movieDetails[movie.id.toString()]?.added_at,
 										added_by: movieDetails[movie.id.toString()]?.added_by,
 										added_by_displayname: movieDetails[movie.id.toString()]?.added_by_email,
+										release_date: movie.release_date,
 										watched_by: [],
 										is_watched_by_me: false,
 									}}
@@ -337,16 +348,16 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 
 			{isOnFrontPage && movies.total_pages > 1 && !isLoading && (
 				<div className="flex justify-center items-center gap-6 mt-8 mb-12">
-					<Button variant="outline" onClick={() => paginate(movies.page - 1)} disabled={movies.page === 1} className="h-10">
+					<Button variant="outline" onClick={() => paginate((currentPage || movies.page) - 1)} disabled={(currentPage || movies.page) === 1} className="h-10">
 						<ChevronLeft className="h-4 w-4 sm:mr-2" />
 						<span className="hidden sm:inline">Forrige</span>
 					</Button>
 
 					<div className="flex items-center">
-						<span className="text-sm">Side {movies.page}</span>
+						<span className="text-sm">Side {currentPage || movies.page}</span>
 					</div>
 
-					<Button variant="outline" onClick={() => paginate(movies.page + 1)} disabled={movies.page === Math.min(movies.total_pages, 500)} className="h-10">
+					<Button variant="outline" onClick={() => paginate((currentPage || movies.page) + 1)} disabled={(currentPage || movies.page) === Math.min(movies.total_pages, 500)} className="h-10">
 						<span className="hidden sm:inline">Neste</span>
 						<ChevronRight className="h-4 w-4 sm:ml-2" />
 					</Button>

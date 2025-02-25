@@ -72,7 +72,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 
 	const fetchMovieListMap = useCallback(async () => {
 		try {
-			const { data, error } = await supabase.from("list_movies").select("list_id").eq("movie_id", movieId);
+			const { data, error } = await supabase.from("media_items").select("list_id").eq("movie_id", movieId).eq("media_type", "movie");
 
 			if (error) throw error;
 
@@ -178,16 +178,18 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 			if (!user) return;
 
 			// First, delete any existing watched status for this movie in this list
-			const { error: watchedError } = await supabase.from("watched_movies").delete().eq("list_id", listId).eq("movie_id", params.id);
+			const { error: watchedError } = await supabase.from("watched_media").delete().eq("list_id", listId).eq("movie_id", params.id).eq("media_type", "movie");
 			if (watchedError) throw watchedError;
 
 			// Then add the movie to the list
-			const { error } = await supabase.from("list_movies").insert({
+			const { error } = await supabase.from("media_items").insert({
 				list_id: listId,
 				movie_id: params.id,
 				title: movie?.title,
 				poster_path: movie?.poster_path,
 				added_by: user.id,
+				release_date: movie?.release_date,
+				media_type: "movie",
 			});
 
 			if (error) throw error;
@@ -220,7 +222,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 
 	const handleRemoveFromList = async (listId: string, listName: string) => {
 		try {
-			const { error } = await supabase.from("list_movies").delete().eq("movie_id", params.id).eq("list_id", listId);
+			const { error } = await supabase.from("media_items").delete().eq("movie_id", params.id).eq("list_id", listId).eq("media_type", "movie");
 
 			if (error) throw error;
 
@@ -282,7 +284,7 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 							<DropdownMenuTrigger className="flex-shrink-0" asChild>
 								<Button variant={"secondary"} size={"icon"} className="rounded-full w-12 h-12 p-5 bg-filmlista-primary hover:bg-filmlista-hover text-white border-background">
 									<BookmarkPlus />
-									{/* Legg tilk */}
+									{/* Legg til */}
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">

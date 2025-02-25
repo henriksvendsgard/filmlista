@@ -8,15 +8,26 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { useEffect, useState } from "react";
 import { TMDBMovie } from "@/types/movie";
+import { TMDBTVShow } from "@/types/tvshow";
 import Image from "next/image";
 
 const SearchInputSchema = z.object({
 	search: z.string().min(2).max(50),
 });
 
+type SearchResult = {
+	id: number;
+	title: string;
+	name?: string;
+	poster_path: string | null;
+	release_date?: string;
+	first_air_date?: string;
+	media_type: "movie" | "tv";
+};
+
 export default function SearchInput() {
 	const router = useRouter();
-	const [suggestions, setSuggestions] = useState<TMDBMovie[]>([]);
+	const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
 	const [showSuggestions, setShowSuggestions] = useState(false);
 
 	const form = useForm<z.infer<typeof SearchInputSchema>>({
@@ -27,7 +38,8 @@ export default function SearchInput() {
 	});
 
 	function onSubmit(values: z.infer<typeof SearchInputSchema>) {
-		router.push(`/search/${values.search}`);
+		const encodedTerm = encodeURIComponent(values.search);
+		router.push(`/search/${encodedTerm}`);
 		form.reset();
 		setShowSuggestions(false);
 		(document.activeElement as HTMLElement)?.blur();
@@ -41,9 +53,9 @@ export default function SearchInput() {
 		}
 
 		try {
-			const url = new URL("https://api.themoviedb.org/3/search/movie");
+			const url = new URL("https://api.themoviedb.org/3/search/multi");
 			url.searchParams.set("query", value);
-			url.searchParams.set("language", "en-US");
+			url.searchParams.set("language", "no-NO");
 			url.searchParams.set("page", "1");
 			url.searchParams.set("include_adult", "false");
 
@@ -55,31 +67,29 @@ export default function SearchInput() {
 			});
 
 			const data = await response.json();
-			setSuggestions(data.results?.slice(0, 5) || []);
+			const filteredResults = data.results?.filter((result: any) => (result.media_type === "movie" || result.media_type === "tv") && result.poster_path).slice(0, 5);
+			setSuggestions(filteredResults || []);
 			setShowSuggestions(true);
 		} catch (error) {
 			console.error("Error fetching suggestions:", error);
 		}
 	};
 
-	// Følger søkefeltet
 	const searchValue = form.watch("search");
 
-	// Debounce the input to prevent too many API calls
 	useEffect(() => {
-		const handler = setTimeout(() => {
-			const currentValue = form.getValues("search");
-			if (currentValue) {
-				handleInputChange(currentValue);
+		const debounceTimer = setTimeout(() => {
+			if (searchValue) {
+				handleInputChange(searchValue);
 			}
 		}, 300);
 
-		return () => clearTimeout(handler);
-	}, [searchValue, form]);
+		return () => clearTimeout(debounceTimer);
+	}, [searchValue]);
 
 	return (
 		<Form {...form}>
-			<form action={"."} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+			<form onSubmit={form.handleSubmit(onSubmit)} className="w-full">
 				<FormField
 					control={form.control}
 					name="search"
@@ -88,49 +98,49 @@ export default function SearchInput() {
 							<FormControl>
 								<div className="relative">
 									<Input
+										placeholder="Søk etter filmer og TV-serier..."
 										{...field}
-										className="text-base after:hidden"
-										type="search"
-										placeholder="Søk etter en film..."
-										autoComplete="off"
-										autoCorrect="off"
-										autoCapitalize="off"
-										spellCheck="false"
+										className="w-full"
 										onFocus={() => {
-											if (field.value) setShowSuggestions(true);
-										}}
-										onChange={(e) => {
-											field.onChange(e);
-											// The debounced effect will handle the API call
+											if (suggestions.length > 0) {
+												setShowSuggestions(true);
+											}
 										}}
 										onBlur={() => {
-											setTimeout(() => setShowSuggestions(false), 200);
+											setTimeout(() => {
+												setShowSuggestions(false);
+											}, 200);
 										}}
 									/>
+
 									{showSuggestions && suggestions.length > 0 && (
 										<div className="absolute w-full bg-background border rounded-md mt-1 shadow-lg z-50 max-h-[300px] overflow-y-auto">
-											{suggestions.map((movie) => (
+											{suggestions.map((result) => (
 												<div
-													key={movie.id}
+													key={result.id}
 													className="px-4 py-2 hover:bg-accent cursor-pointer flex items-center gap-2"
 													onClick={() => {
-														router.push(`/movie/${movie.id}`);
+														router.push(`/${result.media_type === "movie" ? "movie" : "tvshow"}/${result.id}`);
 														setShowSuggestions(false);
 														form.reset();
 													}}
 												>
-													{movie.poster_path && (
+													{result.poster_path && (
 														<Image
-															src={`https://image.tmdb.org/t/p/w45${movie.poster_path}`}
-															alt={movie.title}
+															src={`https://image.tmdb.org/t/p/w45${result.poster_path}`}
+															alt={result.title || result.name || ""}
 															className="h-12 w-8 object-cover rounded"
 															width={100}
 															height={100}
 														/>
 													)}
 													<div>
-														<div className="font-medium">{movie.title}</div>
-														<div className="text-sm text-muted-foreground">{new Date(movie.release_date).getFullYear()}</div>
+														<div className="font-medium">{result.title || result.name}</div>
+														<div className="text-sm text-muted-foreground">
+															{result.release_date || result.first_air_date ? new Date(result.release_date || result.first_air_date || "").getFullYear() : ""}
+															{" • "}
+															{result.media_type === "movie" ? "Film" : "TV-serie"}
+														</div>
 													</div>
 												</div>
 											))}
