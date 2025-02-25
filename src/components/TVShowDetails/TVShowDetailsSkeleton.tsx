@@ -39,15 +39,32 @@ export function TVShowDetailsSkeleton() {
 					</div>
 
 					{/* Cast */}
-					<div className="mb-8">
-						<Skeleton className="h-8 w-1/4 mb-4" />
-						<div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-							{Array.from({ length: 6 }).map((_, i) => (
-								<div key={i} className="flex items-center space-x-4">
-									<Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
-									<div className="space-y-2 min-w-0 flex-1">
-										<Skeleton className="h-4 w-full" />
-										<Skeleton className="h-3 w-4/5" />
+					<div className="space-y-4">
+						<Skeleton className="h-8 w-40" />
+						<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+							{[1, 2, 3, 4, 5, 6].map((i) => (
+								<div key={i} className="flex items-center space-x-3">
+									<Skeleton className="h-[45px] w-[45px] rounded-full" />
+									<div className="space-y-2">
+										<Skeleton className="h-4 w-24" />
+										<Skeleton className="h-3 w-20" />
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+
+					{/* Watch Providers */}
+					<div className="mt-8 space-y-6 border-t pt-8">
+						<Skeleton className="h-8 w-40" />
+						<div className="grid gap-8 sm:grid-cols-3">
+							{[1, 2, 3].map((section) => (
+								<div key={section}>
+									<Skeleton className="h-6 w-24 mb-4" />
+									<div className="flex flex-wrap gap-3">
+										{[1, 2, 3].map((provider) => (
+											<Skeleton key={provider} className="h-[50px] w-[50px] rounded-lg" />
+										))}
 									</div>
 								</div>
 							))}

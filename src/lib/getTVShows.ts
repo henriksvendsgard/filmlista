@@ -127,10 +127,17 @@ export async function getTVShowGenres() {
 export async function getTVShowDetails(id: string): Promise<TMDBTVShow> {
 	const url = new URL(`https://api.themoviedb.org/3/tv/${id}`);
 	const creditsUrl = new URL(`https://api.themoviedb.org/3/tv/${id}/credits`);
+	const providersUrl = new URL(`https://api.themoviedb.org/3/tv/${id}/watch/providers`);
 
-	const [show, credits] = await Promise.all([
+	const [show, credits, providers] = await Promise.all([
 		fetchTVShowFromTMDB(url),
 		fetch(creditsUrl, {
+			headers: {
+				Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+				accept: "application/json",
+			},
+		}).then((res) => res.json()),
+		fetch(providersUrl, {
 			headers: {
 				Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
 				accept: "application/json",
@@ -141,6 +148,7 @@ export async function getTVShowDetails(id: string): Promise<TMDBTVShow> {
 	return {
 		...show,
 		cast: credits.cast?.slice(0, 6) || [],
+		watch_providers: providers.results?.NO || null,
 	};
 }
 

@@ -302,7 +302,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 					</div>
 
 					{tvshow.cast && tvshow.cast.length > 0 && (
-						<div className="mb-8">
+						<div>
 							<h2 className="text-2xl font-semibold mb-4">Skuespillere</h2>
 							<div className="grid grid-cols-2 md:grid-cols-3 gap-6">
 								{tvshow.cast.map((actor) => (
@@ -323,6 +323,76 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 									</div>
 								))}
 							</div>
+						</div>
+					)}
+
+					{!tvshow.watch_providers && <h3 className="text-muted-foreground">Fant ikke tilgjengelige strømmetjenester for denne serien</h3>}
+					{tvshow.watch_providers && (
+						<div className="my-8 space-y-6 border-t py-8 border-b">
+							<h2 className="text-2xl font-semibold">Tilgjengelig på</h2>
+
+							<div className="grid gap-8 sm:grid-cols-3">
+								{tvshow.watch_providers.flatrate && (
+									<div>
+										<h3 className="text-lg font-medium mb-4">Strøm</h3>
+										<div className="flex flex-wrap gap-3">
+											{tvshow.watch_providers.flatrate.map((provider) => (
+												<div key={provider.provider_name} className="tooltip" data-tip={provider.provider_name}>
+													<Image
+														src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+														alt={provider.provider_name}
+														width={50}
+														height={50}
+														className="rounded-lg shadow-md hover:shadow-lg transition-shadow"
+													/>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+
+								{tvshow.watch_providers.rent && (
+									<div>
+										<h3 className="text-lg font-medium mb-4">Leie</h3>
+										<div className="flex flex-wrap gap-3">
+											{tvshow.watch_providers.rent.map((provider) => (
+												<div key={provider.provider_name} className="tooltip" data-tip={provider.provider_name}>
+													<Image
+														src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+														alt={provider.provider_name}
+														width={50}
+														height={50}
+														className="rounded-lg shadow-md hover:shadow-lg transition-shadow"
+													/>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+
+								{tvshow.watch_providers.buy && (
+									<div>
+										<h3 className="text-lg font-medium mb-4">Kjøp</h3>
+										<div className="flex flex-wrap gap-3">
+											{tvshow.watch_providers.buy.map((provider) => (
+												<div key={provider.provider_name} className="tooltip" data-tip={provider.provider_name}>
+													<Image
+														src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+														alt={provider.provider_name}
+														width={50}
+														height={50}
+														className="rounded-lg shadow-md hover:shadow-lg transition-shadow"
+													/>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
+
+							{!tvshow.watch_providers.flatrate && !tvshow.watch_providers.rent && !tvshow.watch_providers.buy && (
+								<p className="text-muted-foreground">Ikke tilgjengelig på noen strømmetjenester i Norge for øyeblikket.</p>
+							)}
 						</div>
 					)}
 
