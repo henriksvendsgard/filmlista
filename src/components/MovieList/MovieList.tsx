@@ -98,7 +98,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 				variant: "destructive",
 			});
 		}
-	}, [supabase]);
+	}, [supabase, lists]);
 
 	const handleAddToList = async (movie: TMDBMovie, listId: string) => {
 		try {
