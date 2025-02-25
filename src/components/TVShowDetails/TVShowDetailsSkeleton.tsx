@@ -55,7 +55,7 @@ export function TVShowDetailsSkeleton() {
 					</div>
 
 					{/* Watch Providers */}
-					<div className="mt-8 space-y-6 border-t pt-8">
+					<div className="my-8 space-y-6 border-t pt-8">
 						<Skeleton className="h-8 w-40" />
 						<div className="grid gap-8 sm:grid-cols-3">
 							{[1, 2, 3].map((section) => (

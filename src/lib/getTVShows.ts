@@ -182,9 +182,9 @@ export async function getSimilarTVShows(id: string) {
 	const similarPagesData = await Promise.all(similarShowsPromises);
 	const allSimilarShows = similarPagesData.flatMap((page) => page.results);
 
-	// Filter out the current show and take first 50
+	// Filter out the current show, shows without posters, and take first 50
 	const filteredSimilarShows = allSimilarShows
-		.filter((s: any) => s.id !== show.id)
+		.filter((s: any) => s.id !== show.id && s.poster_path !== null)
 		.slice(0, 50)
 		.map((show: any) => ({
 			id: show.id,
