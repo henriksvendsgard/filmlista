@@ -151,8 +151,8 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 				const similarPagesData = await Promise.all(similarMoviesPromises);
 				const allSimilarMovies = similarPagesData.flatMap((page) => page.results);
 
-				// Filter out the current movie and take first 100
-				const filteredSimilarMovies = allSimilarMovies.filter((m: any) => m.id !== movieData.id).slice(0, 100);
+				// Filter out the current movie, movies without posters, and take first 100
+				const filteredSimilarMovies = allSimilarMovies.filter((m: any) => m.id !== movieData.id && m.poster_path !== null).slice(0, 100);
 
 				setSimilarMovies(filteredSimilarMovies);
 			} catch (error) {

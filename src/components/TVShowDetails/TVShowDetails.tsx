@@ -1,7 +1,7 @@
 import { TMDBTVShow } from "@/types/tvshow";
 import Image from "next/image";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -62,11 +62,12 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 	const [lists, setLists] = useState<ListsState>({ owned: [], shared: [] });
 	const [tvshowListMap, setTVShowListMap] = useState<{ [key: string]: string[] }>({});
 	const [similarShows, setSimilarShows] = useState<TMDBTVShow[]>([]);
+	const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
 	const [showAllSeasons, setShowAllSeasons] = useState(false);
 	const supabase = createClientComponentClient();
 	const router = useRouter();
 
-	const fetchLists = async () => {
+	const fetchLists = useCallback(async () => {
 		const {
 			data: { user },
 			error: userError,
@@ -91,9 +92,9 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 		} catch (error) {
 			console.error("Error fetching lists:", error);
 		}
-	};
+	}, [supabase]);
 
-	const fetchTVShowListMap = async () => {
+	const fetchTVShowListMap = useCallback(async () => {
 		try {
 			const { data, error } = await supabase.from("media_items").select("list_id").eq("movie_id", tvshow.id.toString()).eq("media_type", "tv");
 
@@ -104,7 +105,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 		} catch (error) {
 			console.error("Error fetching TV show list map:", error);
 		}
-	};
+	}, [supabase, tvshow.id]);
 
 	const handleAddToList = async (listId: string) => {
 		try {
@@ -183,11 +184,17 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 
 		// Fetch similar shows
 		const fetchSimilarShows = async () => {
+			setIsLoadingSimilar(true);
 			try {
 				const shows = await getSimilarTVShows(tvshow.id.toString());
-				setSimilarShows(shows);
+				if (shows && Array.isArray(shows)) {
+					setSimilarShows(shows);
+				}
 			} catch (error) {
 				console.error("Error fetching similar shows:", error);
+				setSimilarShows([]);
+			} finally {
+				setIsLoadingSimilar(false);
 			}
 		};
 
@@ -196,9 +203,9 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 
 	return (
 		<div className="space-y-12">
-			<div className="relative lg:hidden w-full aspect-[2.76/1] overflow-hidden rounded-xl">
+			<div className="relative xl:hidden w-full aspect-[2.76/1] overflow-hidden rounded-xl">
 				{tvshow.backdrop_path ? (
-					<Image src={`https://image.tmdb.org/t/p/original${tvshow.backdrop_path}`} alt={tvshow.name} fill className="object-cover" priority />
+					<Image src={`https://image.tmdb.org/t/p/original${tvshow.backdrop_path || tvshow.poster_path}`} alt={tvshow.name} fill className="object-cover" priority />
 				) : (
 					<div className="w-full h-full bg-muted flex items-center justify-center">
 						<span className="text-muted-foreground">Ingen bakgrunnsbilde tilgjengelig</span>
@@ -326,7 +333,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 						</div>
 					)}
 
-					{!tvshow.watch_providers && <h3 className="text-muted-foreground">Fant ikke tilgjengelige strømmetjenester for denne serien</h3>}
+					{!tvshow.watch_providers && <h3 className="text-muted-foreground my-8">Fant ikke tilgjengelige strømmetjenester for denne serien</h3>}
 					{tvshow.watch_providers && (
 						<div className="my-8 space-y-6 border-t py-8 border-b">
 							<h2 className="text-2xl font-semibold">Tilgjengelig på</h2>
@@ -437,7 +444,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 				</div>
 			</div>
 
-			{similarShows.length > 0 && (
+			{!isLoadingSimilar && similarShows.length > 0 && (
 				<div className="mt-8 space-y-6 border-t pt-16">
 					<h2 className="text-2xl font-semibold">Lignende TV-serier</h2>
 					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
