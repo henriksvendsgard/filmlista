@@ -126,8 +126,22 @@ export async function getTVShowGenres() {
 
 export async function getTVShowDetails(id: string): Promise<TMDBTVShow> {
 	const url = new URL(`https://api.themoviedb.org/3/tv/${id}`);
-	const show = await fetchTVShowFromTMDB(url);
-	return show;
+	const creditsUrl = new URL(`https://api.themoviedb.org/3/tv/${id}/credits`);
+
+	const [show, credits] = await Promise.all([
+		fetchTVShowFromTMDB(url),
+		fetch(creditsUrl, {
+			headers: {
+				Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+				accept: "application/json",
+			},
+		}).then((res) => res.json()),
+	]);
+
+	return {
+		...show,
+		cast: credits.cast?.slice(0, 6) || [],
+	};
 }
 
 export async function getSearchedTVShows(term: string, page = 1) {
@@ -140,4 +154,43 @@ export async function getSearchedTVShows(term: string, page = 1) {
 		total_results: data.total_results,
 		page: data.page,
 	};
+}
+
+export async function getSimilarTVShows(id: string) {
+	// First get the TV show details to get its genres
+	const url = new URL(`https://api.themoviedb.org/3/tv/${id}`);
+	const show = await fetchTVShowFromTMDB(url);
+
+	// Now fetch similar shows using the show's genres - get 3 pages to ensure we have enough shows
+	const similarShowsPromises = [1, 2, 3].map((page) =>
+		fetch(`https://api.themoviedb.org/3/discover/tv?with_genres=${show.genres.map((g: { id: number }) => g.id).join(",")}&sort_by=popularity.desc&page=${page}&without_genres=99,10755`, {
+			headers: {
+				Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+				accept: "application/json",
+			},
+		}).then((res) => res.json())
+	);
+
+	const similarPagesData = await Promise.all(similarShowsPromises);
+	const allSimilarShows = similarPagesData.flatMap((page) => page.results);
+
+	// Filter out the current show and take first 50
+	const filteredSimilarShows = allSimilarShows
+		.filter((s: any) => s.id !== show.id)
+		.slice(0, 50)
+		.map((show: any) => ({
+			id: show.id,
+			name: show.name,
+			poster_path: show.poster_path,
+			first_air_date: show.first_air_date,
+			overview: show.overview,
+			number_of_seasons: show.number_of_seasons || 0,
+			number_of_episodes: show.number_of_episodes || 0,
+			genres: show.genres || [],
+			seasons: show.seasons || [],
+			backdrop_path: show.backdrop_path,
+			vote_average: show.vote_average,
+		}));
+
+	return filteredSimilarShows;
 }

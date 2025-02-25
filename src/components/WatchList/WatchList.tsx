@@ -458,7 +458,7 @@ export default function Watchlist() {
 											lists={lists}
 											onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)}
 											onToggleWatched={(currentWatchedStatus) => handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)}
-											onClick={() => router.push(`/movie/${movie.movie_id}`)}
+											onClick={() => router.push(`/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`)}
 											isWatchList={true}
 											currentListId={selectedList || undefined}
 											showAddedBy={true}
@@ -479,7 +479,7 @@ export default function Watchlist() {
 												lists={lists}
 												onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)}
 												onToggleWatched={(currentWatchedStatus) => handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)}
-												onClick={() => router.push(`/movie/${movie.movie_id}`)}
+												onClick={() => router.push(`/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`)}
 												isWatchList={true}
 												currentListId={selectedList || undefined}
 												showAddedBy={true}
@@ -500,7 +500,7 @@ export default function Watchlist() {
 												lists={lists}
 												onRemoveFromList={(listId) => handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)}
 												onToggleWatched={(currentWatchedStatus) => handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)}
-												onClick={() => router.push(`/movie/${movie.movie_id}`)}
+												onClick={() => router.push(`/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`)}
 												isWatchList={true}
 												currentListId={selectedList || undefined}
 												showAddedBy={true}

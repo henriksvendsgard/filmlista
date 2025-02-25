@@ -33,4 +33,10 @@ export interface TMDBTVShow {
 		season_number: number;
 		air_date: string;
 	}[];
+	cast?: {
+		id: number;
+		name: string;
+		character: string;
+		profile_path: string | null;
+	}[];
 }

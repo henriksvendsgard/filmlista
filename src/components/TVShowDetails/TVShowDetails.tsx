@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BookmarkPlus } from "lucide-react";
+import { BookmarkPlus, ChevronDown, ChevronUp } from "lucide-react";
+import { getSimilarTVShows } from "@/lib/getTVShows";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface List {
 	id: string;
@@ -58,7 +61,10 @@ const translateGenre = (genre: string): string => {
 export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 	const [lists, setLists] = useState<ListsState>({ owned: [], shared: [] });
 	const [tvshowListMap, setTVShowListMap] = useState<{ [key: string]: string[] }>({});
+	const [similarShows, setSimilarShows] = useState<TMDBTVShow[]>([]);
+	const [showAllSeasons, setShowAllSeasons] = useState(false);
 	const supabase = createClientComponentClient();
+	const router = useRouter();
 
 	const fetchLists = async () => {
 		const {
@@ -174,118 +180,219 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 	useEffect(() => {
 		fetchLists();
 		fetchTVShowListMap();
+
+		// Fetch similar shows
+		const fetchSimilarShows = async () => {
+			try {
+				const shows = await getSimilarTVShows(tvshow.id.toString());
+				setSimilarShows(shows);
+			} catch (error) {
+				console.error("Error fetching similar shows:", error);
+			}
+		};
+
+		fetchSimilarShows();
 	}, []);
 
 	return (
-		<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-			<div className="md:col-span-1">
-				{tvshow.poster_path ? (
-					<Image src={`https://image.tmdb.org/t/p/w500${tvshow.poster_path}`} alt={tvshow.name} width={500} height={750} className="rounded-lg shadow-lg" />
+		<div className="space-y-12">
+			<div className="relative lg:hidden w-full aspect-[2.76/1] overflow-hidden rounded-xl">
+				{tvshow.backdrop_path ? (
+					<Image src={`https://image.tmdb.org/t/p/original${tvshow.backdrop_path}`} alt={tvshow.name} fill className="object-cover" priority />
 				) : (
-					<div className="aspect-[2/3] bg-gray-200 rounded-lg flex items-center justify-center">
-						<span className="text-gray-400">No image available</span>
+					<div className="w-full h-full bg-muted flex items-center justify-center">
+						<span className="text-muted-foreground">Ingen bakgrunnsbilde tilgjengelig</span>
 					</div>
 				)}
 			</div>
 
-			<div className="md:col-span-2">
-				<div className="flex flex-col gap-4 mb-6">
-					<h1 className="text-4xl font-bold">{tvshow.name}</h1>
+			<div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+				<div className="hidden xl:block xl:col-span-1">
+					{tvshow.poster_path ? (
+						<Image src={`https://image.tmdb.org/t/p/w500${tvshow.poster_path}`} alt={tvshow.name} width={500} height={750} className="rounded-lg shadow-lg" />
+					) : (
+						<div className="aspect-[2/3] bg-gray-200 rounded-lg flex items-center justify-center">
+							<span className="text-gray-400">Ingen plakat</span>
+						</div>
+					)}
+				</div>
 
-					<p className="text-muted-foreground mb-2">
-						{tvshow.first_air_date?.split("-")[0]} • {tvshow.number_of_seasons} sesong{tvshow.number_of_seasons !== 1 ? "er" : ""} • {tvshow.number_of_episodes} episode
-						{tvshow.number_of_episodes !== 1 ? "r" : ""}
-					</p>
-					<DropdownMenu>
-						<DropdownMenuTrigger className="flex-shrink-0 mb-4" asChild>
-							<Button variant={"secondary"} size={"icon"} className="rounded-full w-12 h-12 p-5 bg-filmlista-primary hover:bg-filmlista-hover text-white border-background">
-								<BookmarkPlus />
+				<div className="col-span-1 md:col-span-2">
+					<div className="flex flex-col gap-4 mb-6">
+						<h1 className="text-4xl font-bold">{tvshow.name}</h1>
+
+						<p className="text-muted-foreground mb-2">
+							{tvshow.first_air_date?.split("-")[0]} • {tvshow.number_of_seasons} sesong{tvshow.number_of_seasons !== 1 ? "er" : ""} • {tvshow.number_of_episodes} episode
+							{tvshow.number_of_episodes !== 1 ? "r" : ""}
+						</p>
+						<DropdownMenu>
+							<DropdownMenuTrigger className="flex-shrink-0 mb-4" asChild>
+								<Button variant={"secondary"} size={"icon"} className="rounded-full w-12 h-12 p-5 bg-filmlista-primary hover:bg-filmlista-hover text-white border-background">
+									<BookmarkPlus />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-56">
+								{lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0 && (
+									<>
+										<DropdownMenuItem disabled className="text-muted-foreground">
+											Dine lister
+										</DropdownMenuItem>
+										{lists.owned
+											.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
+											.map((list) => (
+												<DropdownMenuItem key={list.id} onClick={() => handleAddToList(list.id)}>
+													Legg til i {list.name}
+												</DropdownMenuItem>
+											))}
+									</>
+								)}
+
+								{lists.shared.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0 && (
+									<>
+										{lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0 && <DropdownMenuSeparator />}
+										<DropdownMenuItem disabled className="text-muted-foreground">
+											Delte lister
+										</DropdownMenuItem>
+										{lists.shared
+											.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
+											.map((list) => (
+												<DropdownMenuItem key={list.id} onClick={() => handleAddToList(list.id)}>
+													Legg til i {list.name}
+												</DropdownMenuItem>
+											))}
+									</>
+								)}
+
+								{tvshowListMap[tvshow.id]?.length > 0 && (
+									<>
+										{(lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0 ||
+											lists.shared.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0) && <DropdownMenuSeparator />}
+										<DropdownMenuItem disabled className="text-muted-foreground">
+											Fjern fra listen
+										</DropdownMenuItem>
+										{[...lists.owned, ...lists.shared]
+											.filter((list) => tvshowListMap[tvshow.id]?.includes(list.id))
+											.map((list) => (
+												<DropdownMenuItem key={list.id} onClick={() => handleRemoveFromList(list.id, list.name)} className="text-red-600">
+													{list.name}
+												</DropdownMenuItem>
+											))}
+									</>
+								)}
+
+								{!lists.owned.length && !lists.shared.length && <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+
+					<div className="mb-8">
+						<h2 className="text-2xl font-semibold mb-2">Oversikt</h2>
+						<p className="text-muted-foreground">{tvshow.overview || "Ingen beskrivelse tilgjengelig."}</p>
+					</div>
+
+					<div className="mb-8">
+						<h2 className="text-2xl font-semibold mb-4">Sjangere</h2>
+						<div className="flex flex-wrap gap-2">
+							{tvshow.genres.map((genre) => (
+								<span key={genre.id} className="px-3 py-1 rounded-full bg-muted text-sm">
+									{translateGenre(genre.name)}
+								</span>
+							))}
+						</div>
+					</div>
+
+					{tvshow.cast && tvshow.cast.length > 0 && (
+						<div className="mb-8">
+							<h2 className="text-2xl font-semibold mb-4">Skuespillere</h2>
+							<div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+								{tvshow.cast.map((actor) => (
+									<div key={actor.id} className="flex items-center space-x-4">
+										<div className="flex-shrink-0 w-12 h-12 relative">
+											{actor.profile_path ? (
+												<Image src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`} alt={actor.name} fill sizes="50px" className="rounded-full object-cover" />
+											) : (
+												<div className="w-full h-full rounded-full bg-muted flex items-center justify-center">
+													<span className="text-xl">👤</span>
+												</div>
+											)}
+										</div>
+										<div className="min-w-0">
+											<p className="font-medium truncate">{actor.name}</p>
+											<p className="text-sm text-muted-foreground truncate">{actor.character}</p>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+
+					<div>
+						<h2 className="text-2xl font-semibold mb-4">Sesonger</h2>
+						<div className="space-y-4">
+							{(showAllSeasons ? tvshow.seasons : tvshow.seasons.slice(0, 4)).map((season) => (
+								<div key={season.id} className="p-4 border rounded-lg hover:bg-muted transition-colors">
+									<h3 className="font-semibold">{season.name}</h3>
+									<p className="text-sm text-muted-foreground">
+										{season.episode_count} episode{season.episode_count !== 1 ? "r" : ""} • {season.air_date ? new Date(season.air_date).getFullYear() : "Ukjent dato"}
+									</p>
+								</div>
+							))}
+							{!showAllSeasons && tvshow.seasons.length > 4 && (
+								<div className="relative">
+									<div className="p-4 border rounded-lg hover:bg-muted transition-colors opacity-50">
+										<h3 className="font-semibold">{tvshow.seasons[4].name}</h3>
+										<p className="text-sm text-muted-foreground">
+											{tvshow.seasons[4].episode_count} episode{tvshow.seasons[4].episode_count !== 1 ? "r" : ""} •{" "}
+											{tvshow.seasons[4].air_date ? new Date(tvshow.seasons[4].air_date).getFullYear() : "Ukjent dato"}
+										</p>
+									</div>
+									<div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+								</div>
+							)}
+						</div>
+						{tvshow.seasons.length > 4 && (
+							<Button variant="ghost" className="mt-4 w-full flex items-center justify-center gap-2" onClick={() => setShowAllSeasons(!showAllSeasons)}>
+								{showAllSeasons ? (
+									<>
+										Vis mindre <ChevronUp className="h-4 w-4" />
+									</>
+								) : (
+									<>
+										Vis alle sesonger <ChevronDown className="h-4 w-4" />
+									</>
+								)}
 							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-56">
-							{lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0 && (
-								<>
-									<DropdownMenuItem disabled className="text-muted-foreground">
-										Dine lister
-									</DropdownMenuItem>
-									{lists.owned
-										.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
-										.map((list) => (
-											<DropdownMenuItem key={list.id} onClick={() => handleAddToList(list.id)}>
-												Legg til i {list.name}
-											</DropdownMenuItem>
-										))}
-								</>
-							)}
-
-							{lists.shared.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0 && (
-								<>
-									{lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0 && <DropdownMenuSeparator />}
-									<DropdownMenuItem disabled className="text-muted-foreground">
-										Delte lister
-									</DropdownMenuItem>
-									{lists.shared
-										.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
-										.map((list) => (
-											<DropdownMenuItem key={list.id} onClick={() => handleAddToList(list.id)}>
-												Legg til i {list.name}
-											</DropdownMenuItem>
-										))}
-								</>
-							)}
-
-							{tvshowListMap[tvshow.id]?.length > 0 && (
-								<>
-									{(lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0 ||
-										lists.shared.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length > 0) && <DropdownMenuSeparator />}
-									<DropdownMenuItem disabled className="text-muted-foreground">
-										Fjern fra listen
-									</DropdownMenuItem>
-									{[...lists.owned, ...lists.shared]
-										.filter((list) => tvshowListMap[tvshow.id]?.includes(list.id))
-										.map((list) => (
-											<DropdownMenuItem key={list.id} onClick={() => handleRemoveFromList(list.id, list.name)} className="text-red-600">
-												{list.name}
-											</DropdownMenuItem>
-										))}
-								</>
-							)}
-
-							{!lists.owned.length && !lists.shared.length && <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>}
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
-
-				<div className="mb-8">
-					<h2 className="text-2xl font-semibold mb-2">Oversikt</h2>
-					<p className="text-muted-foreground">{tvshow.overview || "Ingen beskrivelse tilgjengelig."}</p>
-				</div>
-
-				<div className="mb-8">
-					<h2 className="text-2xl font-semibold mb-4">Sjangere</h2>
-					<div className="flex flex-wrap gap-2">
-						{tvshow.genres.map((genre) => (
-							<span key={genre.id} className="px-3 py-1 rounded-full bg-muted text-sm">
-								{translateGenre(genre.name)}
-							</span>
-						))}
+						)}
 					</div>
 				</div>
+			</div>
 
-				<div>
-					<h2 className="text-2xl font-semibold mb-4">Sesonger</h2>
-					<div className="space-y-4">
-						{tvshow.seasons.map((season) => (
-							<div key={season.id} className="p-4 border rounded-lg hover:bg-muted transition-colors">
-								<h3 className="font-semibold">{season.name}</h3>
-								<p className="text-sm text-muted-foreground">
-									{season.episode_count} episode{season.episode_count !== 1 ? "r" : ""} • {season.air_date ? new Date(season.air_date).getFullYear() : "Ukjent dato"}
-								</p>
+			{similarShows.length > 0 && (
+				<div className="mt-8 space-y-6 border-t pt-16">
+					<h2 className="text-2xl font-semibold">Lignende TV-serier</h2>
+					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+						{similarShows.map((show) => (
+							<div key={show.id} className="cursor-pointer group" onClick={() => router.push(`/tvshow/${show.id}`)}>
+								<div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+									{show.poster_path ? (
+										<Image
+											src={`https://image.tmdb.org/t/p/w500${show.poster_path}`}
+											alt={show.name}
+											fill
+											className="object-cover transition-transform group-hover:scale-105"
+											sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 16vw"
+										/>
+									) : (
+										<div className="w-full h-full bg-muted flex items-center justify-center">
+											<span className="text-muted-foreground">Ingen plakat</span>
+										</div>
+									)}
+								</div>
 							</div>
 						))}
 					</div>
 				</div>
-			</div>
+			)}
 		</div>
 	);
 }
