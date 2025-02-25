@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { User, createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { PlusCircle, Share, Share2, Trash2 } from "lucide-react";
+import { PlusCircle, Share, Share2, Trash2, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -33,10 +33,13 @@ export default function Lists() {
 	const [lists, setLists] = useState<ListsState>({ owned: [], shared: [] });
 	const [user, setUser] = useState<CustomUser | null>(null);
 	const [newListName, setNewListName] = useState("");
+	const [editListName, setEditListName] = useState("");
+	const [editListId, setEditListId] = useState<string | null>(null);
 	const [shareEmail, setShareEmail] = useState("");
 	const [selectedList, setSelectedList] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 	const [listToDelete, setListToDelete] = useState<{ id: string; name: string } | null>(null);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -112,7 +115,7 @@ export default function Lists() {
 
 			toast({
 				title: "Lista er opprettet",
-				description: `Lista "${newListName}" er opprettet, du kan nå legge til filmer i den`,
+				description: `Lista "${newListName}" er opprettet, du kan nå legge til filmer og serier i den`,
 				className: "bg-green-700",
 			});
 			setNewListName("");
@@ -123,6 +126,35 @@ export default function Lists() {
 			toast({
 				title: "Kunne ikke opprette liste",
 				description: "Det oppstod en feil ved å opprette lista",
+				variant: "destructive",
+			});
+		}
+	};
+
+	const handleEditList = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!editListId) return;
+
+		try {
+			const { error } = await supabase.from("lists").update({ name: editListName }).eq("id", editListId);
+
+			if (error) throw error;
+
+			toast({
+				title: "Listens navn er oppdatert",
+				description: `Listens navn er nå endret til "${editListName}"`,
+				className: "bg-green-700",
+			});
+
+			setEditListName("");
+			setEditListId(null);
+			setIsEditDialogOpen(false);
+			fetchLists();
+		} catch (error) {
+			console.error("Error updating list:", error);
+			toast({
+				title: "Kunne ikke oppdatere liste",
+				description: "Det oppstod en feil ved å oppdatere lista",
 				variant: "destructive",
 			});
 		}
@@ -239,7 +271,7 @@ export default function Lists() {
 							<DialogTitle className="mb-4">Opprett ny liste</DialogTitle>
 							<DialogDescription>Gi listen din et navn. Filmer legger du til senere.</DialogDescription>
 						</DialogHeader>
-						<div className="space-y-6">
+						<form onSubmit={handleCreateList} className="space-y-6">
 							<div>
 								<Label className="hidden" htmlFor="name">
 									Listenavn
@@ -247,11 +279,13 @@ export default function Lists() {
 								<Input className="text-base" id="name" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="F.eks. Favorittfilmer eller Serier" />
 							</div>
 							<DialogFooter>
-								<Button className="rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 text-white" onClick={handleCreateList} disabled={!newListName.trim()}>
-									Opprett liste
-								</Button>
+								<div className="flex justify-end">
+									<Button className="rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 text-white" type="submit" disabled={!newListName.trim()}>
+										Opprett liste
+									</Button>
+								</div>
 							</DialogFooter>
-						</div>
+						</form>
 					</DialogContent>
 				</Dialog>
 			</div>
@@ -280,6 +314,18 @@ export default function Lists() {
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-lg font-bold">{list.name}</CardTitle>
 									<div className="flex space-x-2">
+										<Button
+											variant="ghost"
+											size="icon"
+											className="rounded-full"
+											onClick={() => {
+												setEditListId(list.id);
+												setEditListName(list.name);
+												setIsEditDialogOpen(true);
+											}}
+										>
+											<Pencil className="h-4 w-4" />
+										</Button>
 										<Button
 											variant="ghost"
 											size="icon"
@@ -350,14 +396,41 @@ export default function Lists() {
 				</DialogContent>
 			</Dialog>
 
+			<Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+				<DialogContent>
+					<DialogHeader className="mb-4">
+						<DialogTitle className="mb-4">Endre navn på listen</DialogTitle>
+						<DialogDescription>Gi listen din et nytt navn.</DialogDescription>
+					</DialogHeader>
+					<form onSubmit={handleEditList} className="space-y-6">
+						<div>
+							<Label className="hidden" htmlFor="editName">
+								Listenavn
+							</Label>
+							<Input className="text-base" id="editName" value={editListName} onChange={(e) => setEditListName(e.target.value)} placeholder="Nytt navn på listen" />
+						</div>
+						<DialogFooter>
+							<div className="flex justify-end">
+								<Button className="rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 text-white w-fit" type="submit" disabled={!editListName.trim()}>
+									Oppdater navn
+								</Button>
+							</div>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
+
 			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader className="space-y-6">
 						<AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-						<AlertDialogDescription>Dette vil slette {` "${listToDelete?.name}"`} og fjerne alle filmer og serier fra listen. Denne handlingen kan ikke angres.</AlertDialogDescription>
+						<AlertDialogDescription>
+							Dette vil slette {` "${listToDelete?.name}"`} og fjerne alle filmer og serier fra listen. <strong>Denne handlingen kan ikke angres!</strong>
+						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter className="mt-6">
 						<AlertDialogCancel
+							className="rounded-full"
 							onClick={() => {
 								setIsDeleteDialogOpen(false);
 								setListToDelete(null);
@@ -365,7 +438,7 @@ export default function Lists() {
 						>
 							Avbryt
 						</AlertDialogCancel>
-						<AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={() => handleDeleteList(listToDelete!)}>
+						<AlertDialogAction className="bg-red-600 hover:bg-red-700 rounded-full text-white" onClick={() => handleDeleteList(listToDelete!)}>
 							Slett
 						</AlertDialogAction>
 					</AlertDialogFooter>
