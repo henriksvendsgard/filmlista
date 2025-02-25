@@ -25,6 +25,7 @@ export interface TMDBTVShow {
 	number_of_episodes: number;
 	genres: { id: number; name: string }[];
 	overview: string;
+	added_by_displayname?: string;
 	seasons: {
 		id: number;
 		name: string;

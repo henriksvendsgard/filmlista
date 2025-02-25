@@ -50,7 +50,7 @@ interface MovieCardProps {
 	movieLists?: string[];
 	onAddToList?: (listId: string) => void;
 	onRemoveFromList?: (listId: string) => void;
-	onToggleWatched?: () => void;
+	onToggleWatched?: (currentWatchedStatus: boolean) => void;
 	onClick: () => void;
 	currentListId?: string;
 	isWatchList?: boolean;
@@ -136,7 +136,9 @@ export function MovieCard({
 					<DropdownMenuContent align="end" className="w-56">
 						{isWatchList ? (
 							<>
-								{onToggleWatched && <DropdownMenuItem onClick={onToggleWatched}>{movie.is_watched_by_me ? "Marker som usett" : "Marker som sett"}</DropdownMenuItem>}
+								{onToggleWatched && (
+									<DropdownMenuItem onClick={() => onToggleWatched(movie.is_watched_by_me)}>{movie.is_watched_by_me ? "Marker som usett" : "Marker som sett"}</DropdownMenuItem>
+								)}
 								{currentListId && onRemoveFromList && (
 									<>
 										<DropdownMenuSeparator />

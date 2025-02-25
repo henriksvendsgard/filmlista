@@ -6,6 +6,8 @@ import { TMDBTVShow } from "@/types/tvshow";
 import { Ellipsis } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface List {
 	id: string;
@@ -22,9 +24,12 @@ interface TVShowCardProps {
 	onAddToList: (tvshow: TMDBTVShow, listId: string) => void;
 	onRemoveFromList: (tvshow: TMDBTVShow, listId: string) => void;
 	isInLists: string[];
+	hasOthersWatched: boolean;
+	othersWhoWatched: { user_id: string; displayname: string; watched_at: string }[];
+	showAddedBy?: string;
 }
 
-export function TVShowCard({ tvshow, lists, onAddToList, onRemoveFromList, isInLists }: TVShowCardProps) {
+export function TVShowCard({ tvshow, lists, onAddToList, onRemoveFromList, isInLists, hasOthersWatched, othersWhoWatched, showAddedBy }: TVShowCardProps) {
 	const allLists = [...lists.owned, ...lists.shared];
 	const availableOwnedLists = lists.owned.filter((list) => !isInLists.includes(list.id));
 	const availableSharedLists = lists.shared.filter((list) => !isInLists.includes(list.id));
@@ -103,6 +108,38 @@ export function TVShowCard({ tvshow, lists, onAddToList, onRemoveFromList, isInL
 						{!availableOwnedLists.length && !availableSharedLists.length && !isInLists.length && <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>}
 					</DropdownMenuContent>
 				</DropdownMenu>
+			</div>
+
+			<div className="absolute bottom-0 left-0 right-0 p-2">
+				<div className="flex justify-between items-end">
+					<div className="flex-1">
+						{hasOthersWatched && (
+							<div className="mb-1">
+								<Dialog>
+									<DialogTrigger asChild>
+										<Badge variant="secondary" className="text-xs cursor-pointer hover:bg-secondary/80">
+											Sett av {othersWhoWatched.length} {othersWhoWatched.length === 1 ? "annen" : "andre"}
+										</Badge>
+									</DialogTrigger>
+									<DialogContent>
+										<DialogHeader>
+											<DialogTitle>Sett av</DialogTitle>
+										</DialogHeader>
+										<div className="space-y-2">
+											{othersWhoWatched.map((watcher) => (
+												<div key={watcher.user_id} className="text-sm">
+													{watcher.displayname}
+													<span className="text-muted-foreground ml-2">{new Date(watcher.watched_at).toLocaleDateString()}</span>
+												</div>
+											))}
+										</div>
+									</DialogContent>
+								</Dialog>
+							</div>
+						)}
+						{showAddedBy && <p className="text-xs text-white bg-black/60 rounded-md px-2 py-1 w-fit">Lagt til av {showAddedBy}</p>}
+					</div>
+				</div>
 			</div>
 		</div>
 	);

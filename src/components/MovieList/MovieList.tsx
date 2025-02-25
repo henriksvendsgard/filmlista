@@ -39,7 +39,7 @@ type RawListMovie = {
 	list_id: string;
 	added_at: string;
 	added_by: string;
-	profile: {
+	profiles: {
 		email: string;
 	};
 };
@@ -106,17 +106,19 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 			if (!user) return;
 
 			// First, delete any existing watched status for this movie in this list
-			const { error: watchedError } = await supabase.from("watched_movies").delete().eq("list_id", listId).eq("movie_id", movie.id.toString());
+			const { error: watchedError } = await supabase.from("watched_media").delete().eq("list_id", listId).eq("movie_id", movie.id.toString()).eq("media_type", "movie");
+
 			if (watchedError) throw watchedError;
 
 			// Then add the movie to the list
-			const { error } = await supabase.from("list_movies").insert({
+			const { error } = await supabase.from("media_items").insert({
 				list_id: listId,
 				movie_id: movie.id.toString(),
 				title: movie.title,
 				poster_path: movie.poster_path,
 				added_by: user.id,
 				release_date: movie.release_date,
+				media_type: "movie",
 			});
 
 			if (error) throw error;
@@ -152,7 +154,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 
 	const handleRemoveFromList = async (movie: TMDBMovie, listId: string) => {
 		try {
-			const { error } = await supabase.from("list_movies").delete().eq("movie_id", movie.id.toString()).eq("list_id", listId);
+			const { error } = await supabase.from("media_items").delete().eq("movie_id", movie.id.toString()).eq("list_id", listId).eq("media_type", "movie");
 
 			if (error) throw error;
 
@@ -219,18 +221,19 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 
 		try {
 			const { data, error } = await supabase
-				.from("list_movies")
+				.from("media_items")
 				.select(
 					`
 					movie_id, 
 					list_id, 
 					added_at,
 					added_by,
-					profile:profiles!list_movies_added_by_fkey (
+					profiles (
 						email
 					)
 				`
 				)
+				.eq("media_type", "movie")
 				.in(
 					"movie_id",
 					movies.results.map((m) => m.id.toString())
@@ -251,7 +254,7 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading }: M
 				movieDetails[item.movie_id] = {
 					added_at: item.added_at,
 					added_by: item.added_by,
-					added_by_email: item.profile.email,
+					added_by_email: item.profiles.email,
 				};
 			});
 

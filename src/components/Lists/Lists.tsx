@@ -15,9 +15,9 @@ import { Skeleton } from "../ui/skeleton";
 interface List {
 	id: string;
 	name: string;
-	owner_id: string;
-	created_at: string;
-	owner_email: string;
+	owner_id?: string;
+	created_at?: string;
+	owner_email?: string;
 }
 
 interface ListsState {
@@ -128,47 +128,42 @@ export default function Lists() {
 		}
 	};
 
-	const handleDeleteList = () => {
-		if (!listToDelete) return;
+	const handleDeleteList = async (listToDelete: List) => {
+		try {
+			// Delete all movies in the list
+			const { error: moviesError } = await supabase.from("media_items").delete().eq("list_id", listToDelete.id);
 
-		const deleteList = async () => {
-			try {
-				const { error: moviesError } = await supabase.from("list_movies").delete().eq("list_id", listToDelete.id);
+			if (moviesError) throw moviesError;
 
-				if (moviesError) throw moviesError;
+			const { error: sharedError } = await supabase.from("shared_lists").delete().eq("list_id", listToDelete.id);
 
-				const { error: sharedError } = await supabase.from("shared_lists").delete().eq("list_id", listToDelete.id);
+			if (sharedError) throw sharedError;
 
-				if (sharedError) throw sharedError;
+			const { error: listError } = await supabase.from("lists").delete().eq("id", listToDelete.id);
 
-				const { error: listError } = await supabase.from("lists").delete().eq("id", listToDelete.id);
+			if (listError) throw listError;
 
-				if (listError) throw listError;
+			setLists((prev) => ({
+				...prev,
+				owned: prev.owned.filter((list) => list.id !== listToDelete.id),
+			}));
 
-				setLists((prev) => ({
-					...prev,
-					owned: prev.owned.filter((list) => list.id !== listToDelete.id),
-				}));
-
-				toast({
-					title: "Lista ble slettet",
-					description: `Lista "${listToDelete.name}" har nå blitt slettet`,
-					variant: "destructive",
-				});
-			} catch (error) {
-				console.error("Error deleting list:", error);
-				toast({
-					title: "Noe gikk galt...",
-					description: "Kunne ikke slette lista",
-					variant: "destructive",
-				});
-			} finally {
-				setIsDeleteDialogOpen(false);
-				setListToDelete(null);
-			}
-		};
-
-		deleteList();
+			toast({
+				title: "Lista ble slettet",
+				description: `Lista "${listToDelete.name}" har nå blitt slettet`,
+				variant: "destructive",
+			});
+		} catch (error) {
+			console.error("Error deleting list:", error);
+			toast({
+				title: "Noe gikk galt...",
+				description: "Kunne ikke slette lista",
+				variant: "destructive",
+			});
+		} finally {
+			setIsDeleteDialogOpen(false);
+			setListToDelete(null);
+		}
 	};
 
 	const handleShareList = async (e: React.FormEvent) => {
@@ -249,12 +244,9 @@ export default function Lists() {
 								<Label className="hidden" htmlFor="name">
 									Listenavn
 								</Label>
-								<Input className="text-base" id="name" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="F.eks. Favorittfilmer" />
+								<Input className="text-base" id="name" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="F.eks. Favorittfilmer eller Serier" />
 							</div>
 							<DialogFooter>
-								{/* <Button className="rounded-full" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-									Avbryt
-								</Button> */}
 								<Button className="rounded-full bg-filmlista-primary hover:bg-filmlista-primary/80 text-white" onClick={handleCreateList} disabled={!newListName.trim()}>
 									Opprett liste
 								</Button>
@@ -313,7 +305,7 @@ export default function Lists() {
 									</div>
 								</CardHeader>
 								<CardContent>
-									<p className="text-sm text-muted-foreground">Opprettet: {new Date(list.created_at).toLocaleDateString()}</p>
+									<p className="text-sm text-muted-foreground">Opprettet: {new Date(list.created_at || "").toLocaleDateString()}</p>
 								</CardContent>
 							</Card>
 						))}
@@ -333,7 +325,7 @@ export default function Lists() {
 									<CardTitle className="text-lg font-bold">{list.name}</CardTitle>
 								</CardHeader>
 								<CardContent>
-									<p className="text-sm text-muted-foreground">Opprettet: {new Date(list.created_at).toLocaleDateString()}</p>
+									<p className="text-sm text-muted-foreground">Opprettet: {new Date(list.created_at || "").toLocaleDateString()}</p>
 								</CardContent>
 							</Card>
 						))}
@@ -362,7 +354,7 @@ export default function Lists() {
 				<AlertDialogContent>
 					<AlertDialogHeader className="space-y-6">
 						<AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-						<AlertDialogDescription>Dette vil slette {` "${listToDelete?.name}"`} og fjerne alle filmene fra listen. Denne handlingen kan ikke angres.</AlertDialogDescription>
+						<AlertDialogDescription>Dette vil slette {` "${listToDelete?.name}"`} og fjerne alle filmer og serier fra listen. Denne handlingen kan ikke angres.</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter className="mt-6">
 						<AlertDialogCancel
@@ -373,7 +365,7 @@ export default function Lists() {
 						>
 							Avbryt
 						</AlertDialogCancel>
-						<AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDeleteList}>
+						<AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={() => handleDeleteList(listToDelete!)}>
 							Slett
 						</AlertDialogAction>
 					</AlertDialogFooter>
