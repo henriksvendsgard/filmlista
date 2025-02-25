@@ -337,7 +337,7 @@ export default function Lists() {
 				<DialogContent className="flex-col gap-8">
 					<DialogHeader>
 						<DialogTitle className="mb-4">Del listen din med andre brukere</DialogTitle>
-						<DialogDescription>Del listen din med andre slik at dere kan dele filmer med hverandre.</DialogDescription>
+						<DialogDescription>Del listen din med andre slik at dere kan dele filmer og serier med hverandre.</DialogDescription>
 					</DialogHeader>
 					<form onSubmit={handleShareList} className="space-y-6">
 						<Input type="email" value={shareEmail} onChange={(e) => setShareEmail(e.target.value)} placeholder="Brukerens e-post" required />
