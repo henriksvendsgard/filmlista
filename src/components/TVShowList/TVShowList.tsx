@@ -266,7 +266,7 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 									isInLists={tvshowListMap[tvshow.id.toString()] || []}
 									hasOthersWatched={false}
 									othersWhoWatched={[]}
-									showAddedBy={tvshowDetails[tvshow.id.toString()]?.added_by_email}
+									showAddedBy={undefined}
 								/>
 							))}
 						</div>
