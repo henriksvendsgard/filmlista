@@ -200,7 +200,7 @@ export default function Home() {
 	const currentGenres = currentParams.mediaType === "movie" ? movieGenres : tvshowGenres;
 
 	return (
-		<div className="px-5 lg:px-10 mb-20">
+		<div className="px-5 lg:px-10 mb-20 w-full">
 			<div className="flex flex-col gap-6 mb-8">
 				<h1 className="text-4xl font-bold">Utforsk</h1>
 
