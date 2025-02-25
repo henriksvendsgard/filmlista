@@ -41,55 +41,42 @@ interface Movie {
 }
 
 interface MovieCardProps {
-	movie: {
-		id: string;
-		movie_id: string;
-		title: string;
-		poster_path: string;
-		added_at?: string;
-		added_by?: string;
-		added_by_displayname?: string;
-		release_date: string;
-		watched_by: { user_id: string; displayname: string; watched_at: string }[];
-		is_watched_by_me: boolean;
-	};
+	movie: Movie;
 	isInList: boolean;
-	lists: {
+	lists?: {
 		owned: List[];
 		shared: List[];
 	};
-	movieLists: string[];
-	onAddToList: (listId: string) => void;
-	onRemoveFromList: (listId: string) => void;
-	onToggleWatched: (currentWatchedStatus: boolean) => void;
+	movieLists?: string[];
+	onAddToList?: (listId: string) => void;
+	onRemoveFromList?: (listId: string) => void;
+	onToggleWatched?: (currentWatchedStatus: boolean) => void;
 	onClick: () => void;
 	currentListId?: string;
 	isWatchList?: boolean;
 	showAddedBy?: boolean;
-	isLoadingListMap: boolean;
 }
 
 export function MovieCard({
 	movie,
 	isInList,
-	lists,
+	lists = { owned: [], shared: [] },
 	movieLists = [],
 	onAddToList,
 	onRemoveFromList,
 	onToggleWatched,
 	onClick,
 	currentListId,
-	isWatchList,
-	showAddedBy,
-	isLoadingListMap,
+	isWatchList = false,
+	showAddedBy = false,
 }: MovieCardProps) {
 	const { user } = useSupabase();
 
 	const othersWhoWatched = movie.watched_by?.filter((w) => w.user_id !== user?.id) || [];
 	const hasOthersWatched = othersWhoWatched.length > 0;
 
-	const availableOwnedLists = lists?.owned?.filter((list) => !movieLists?.includes(list.id)) || [];
-	const availableSharedLists = lists?.shared?.filter((list) => !movieLists?.includes(list.id)) || [];
+	const availableOwnedLists = lists.owned.filter((list) => !movieLists.includes(list.id));
+	const availableSharedLists = lists.shared.filter((list) => !movieLists.includes(list.id));
 
 	return (
 		<div className="group relative">
@@ -147,12 +134,12 @@ export function MovieCard({
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-56">
-						{isLoadingListMap ? (
-							<DropdownMenuItem disabled>Laster inn...</DropdownMenuItem>
-						) : isWatchList ? (
+						{isWatchList ? (
 							<>
-								<DropdownMenuItem onClick={() => onToggleWatched(movie.is_watched_by_me)}>{movie.is_watched_by_me ? "Marker som usett" : "Marker som sett"}</DropdownMenuItem>
-								{currentListId && (
+								{onToggleWatched && (
+									<DropdownMenuItem onClick={() => onToggleWatched(movie.is_watched_by_me)}>{movie.is_watched_by_me ? "Marker som usett" : "Marker som sett"}</DropdownMenuItem>
+								)}
+								{currentListId && onRemoveFromList && (
 									<>
 										<DropdownMenuSeparator />
 										<AlertDialog>
@@ -185,7 +172,7 @@ export function MovieCard({
 											Dine lister
 										</DropdownMenuItem>
 										{availableOwnedLists.map((list) => (
-											<DropdownMenuItem key={list.id} onClick={() => onAddToList(list.id)}>
+											<DropdownMenuItem key={list.id} onClick={() => onAddToList?.(list.id)}>
 												Legg til i {list.name}
 											</DropdownMenuItem>
 										))}
@@ -199,14 +186,14 @@ export function MovieCard({
 											Delte lister
 										</DropdownMenuItem>
 										{availableSharedLists.map((list) => (
-											<DropdownMenuItem key={list.id} onClick={() => onAddToList(list.id)}>
+											<DropdownMenuItem key={list.id} onClick={() => onAddToList?.(list.id)}>
 												Legg til i {list.name}
 											</DropdownMenuItem>
 										))}
 									</>
 								)}
 
-								{movieLists.length > 0 && (
+								{isInList && onRemoveFromList && (
 									<>
 										{(availableOwnedLists.length > 0 || availableSharedLists.length > 0) && <DropdownMenuSeparator />}
 										<DropdownMenuItem disabled className="text-muted-foreground">
@@ -222,7 +209,7 @@ export function MovieCard({
 									</>
 								)}
 
-								{!availableOwnedLists.length && !availableSharedLists.length && !movieLists.length && <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>}
+								{!availableOwnedLists.length && !availableSharedLists.length && !isInList && <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>}
 							</>
 						)}
 					</DropdownMenuContent>

@@ -352,7 +352,6 @@ export default function MovieList({ movies, title, isOnFrontPage, isLoading, onP
 									currentListId={undefined}
 									isWatchList={false}
 									showAddedBy={false}
-									isLoadingListMap={isLoadingListMap}
 								/>
 							))}
 						</div>
