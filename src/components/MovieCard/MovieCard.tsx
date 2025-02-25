@@ -101,9 +101,9 @@ export function MovieCard({
 											Sett av {othersWhoWatched.length} {othersWhoWatched.length === 1 ? "annen" : "andre"}
 										</Badge>
 									</DialogTrigger>
-									<DialogContent>
+									<DialogContent className="rounded-lg max-w-sm">
 										<DialogHeader>
-											<DialogTitle>Sett av</DialogTitle>
+											<DialogTitle className="mb-2">Sett av</DialogTitle>
 										</DialogHeader>
 										<div className="space-y-2">
 											{othersWhoWatched.map((watcher) => (
