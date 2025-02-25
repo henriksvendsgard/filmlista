@@ -42,38 +42,10 @@ interface TVShowWatcher {
 	watched_at: string;
 }
 
-type MediaItemResponse = {
-	movie_id: string;
-	added_by: string;
-	added_at: string;
-	profiles: {
-		email: string;
-	};
-};
-
-type RawListTVShow = {
-	tvshow_id: string;
-	list_id: string;
-	added_at: string;
-	added_by: string;
-	profile: {
-		email: string;
-	};
-};
-
 type TVShowListAction = {
 	type: "added" | "removed";
 	listId: string;
 	tvshowId: string;
-};
-
-type WatchedMediaResponse = {
-	movie_id: string;
-	watched_at: string;
-	profiles: {
-		id: string;
-		email: string;
-	};
 };
 
 export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, onPageChange, currentPage }: TVShowListProps) {
@@ -312,10 +284,6 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 
 		fetchTVShowDetails();
 	}, [fetchLists, supabase]);
-
-	if (isLoading) {
-		return <TVShowGridSkeleton />;
-	}
 
 	return (
 		<section className="tv-show-list w-full h-full max-w-full">
