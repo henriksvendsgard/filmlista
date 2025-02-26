@@ -42,6 +42,16 @@ type TVShowListAction = {
 	tvshowId: string;
 };
 
+type RawTVShowList = {
+	movie_id: string;
+	list_id: string;
+	added_at: string;
+	added_by: string;
+	profiles: {
+		email: string;
+	};
+};
+
 export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, onPageChange, currentPage }: TVShowListProps) {
 	const router = useRouter();
 	const pathname = usePathname();
@@ -49,6 +59,7 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 	const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
 	const [tvshowListMap, setTVShowListMap] = useState<{ [key: string]: string[] }>({});
 	const [tvshowDetails, setTVShowDetails] = useState<{ [key: string]: TVShowDetails }>({});
+	const [isLoadingListMap, setIsLoadingListMap] = useState(true);
 
 	const supabase = createClientComponentClient();
 
@@ -89,6 +100,65 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 			});
 		}
 	}, [supabase]);
+
+	const fetchTVShowListMap = useCallback(async () => {
+		if (!tvshows.results.length) return;
+
+		const {
+			data: { user },
+			error: userError,
+		} = await supabase.auth.getUser();
+		if (userError) {
+			console.error("Error fetching user:", userError);
+			return;
+		}
+		if (!user) return;
+
+		try {
+			const { data, error } = await supabase
+				.from("media_items")
+				.select(
+					`
+					movie_id, 
+					list_id, 
+					added_at,
+					added_by,
+					profiles (
+						email
+					)
+				`
+				)
+				.eq("media_type", "tv")
+				.in(
+					"movie_id",
+					tvshows.results.map((m) => m.id.toString())
+				);
+
+			if (error) throw error;
+
+			const typedData = data as unknown as RawTVShowList[];
+			const tvshowMap: { [key: string]: string[] } = {};
+			const details: { [key: string]: TVShowDetails } = {};
+
+			typedData.forEach((item) => {
+				if (!tvshowMap[item.movie_id]) {
+					tvshowMap[item.movie_id] = [];
+				}
+				tvshowMap[item.movie_id].push(item.list_id);
+
+				details[item.movie_id] = {
+					added_at: item.added_at,
+					added_by: item.added_by,
+					added_by_email: item.profiles.email,
+				};
+			});
+
+			setTVShowListMap(tvshowMap);
+			setTVShowDetails(details);
+		} catch (error) {
+			console.error("Error fetching TV show list map:", error);
+		}
+	}, [supabase, tvshows.results]);
 
 	const handleAddToList = async (tvshow: TMDBTVShow, listId: string) => {
 		try {
@@ -204,47 +274,48 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 		}
 	};
 
+	// Initial data fetch
 	useEffect(() => {
 		fetchLists();
+	}, [fetchLists]);
 
-		// Fetch TV show details including who added them
-		const fetchTVShowDetails = async () => {
-			try {
-				const { data: tvshowData, error } = await supabase
-					.from("media_items")
-					.select(
-						`
-						movie_id,
-						added_by,
-						added_at,
-						profiles (
-							email
-						)
-					`
-					)
-					.eq("media_type", "tv");
+	// Update list mapping when TV shows change
+	useEffect(() => {
+		if (!isLoading) {
+			setIsLoadingListMap(true);
+			fetchTVShowListMap().finally(() => {
+				setIsLoadingListMap(false);
+			});
+		}
+	}, [fetchTVShowListMap, tvshows.results, isLoading]);
 
-				if (error) throw error;
-
-				const details: { [key: string]: TVShowDetails } = {};
-				if (Array.isArray(tvshowData)) {
-					tvshowData.forEach((item: any) => {
-						details[item.movie_id] = {
-							added_at: item.added_at,
-							added_by: item.added_by,
-							added_by_email: item.profiles?.email,
-						};
-					});
+	useEffect(() => {
+		const handleTVShowListUpdate = (event: CustomEvent<TVShowListAction>) => {
+			const { type, tvshowId, listId } = event.detail;
+			setTVShowListMap((prev) => {
+				const newMap = { ...prev };
+				if (type === "removed") {
+					if (newMap[tvshowId]) {
+						newMap[tvshowId] = newMap[tvshowId].filter((id) => id !== listId);
+						if (newMap[tvshowId].length === 0) {
+							delete newMap[tvshowId];
+						}
+					}
+				} else if (type === "added") {
+					if (!newMap[tvshowId]) {
+						newMap[tvshowId] = [];
+					}
+					newMap[tvshowId] = [...newMap[tvshowId], listId];
 				}
-
-				setTVShowDetails(details);
-			} catch (error) {
-				console.error("Error fetching TV show details:", error);
-			}
+				return newMap;
+			});
 		};
 
-		fetchTVShowDetails();
-	}, [fetchLists, supabase]);
+		window.addEventListener("tvshowListUpdate", handleTVShowListUpdate as EventListener);
+		return () => {
+			window.removeEventListener("tvshowListUpdate", handleTVShowListUpdate as EventListener);
+		};
+	}, []);
 
 	return (
 		<section className="tv-show-list w-full h-full max-w-full">
@@ -266,7 +337,8 @@ export default function TVShowList({ tvshows, title, isOnFrontPage, isLoading, o
 									isInLists={tvshowListMap[tvshow.id.toString()] || []}
 									hasOthersWatched={false}
 									othersWhoWatched={[]}
-									showAddedBy={tvshowDetails[tvshow.id.toString()]?.added_by_email}
+									showAddedBy={undefined}
+									isLoadingListMap={isLoadingListMap}
 								/>
 							))}
 						</div>

@@ -100,7 +100,7 @@ export default function SearchInput() {
 									<Input
 										placeholder="Søk etter filmer og TV-serier..."
 										{...field}
-										className="w-full"
+										className="w-full text-base"
 										onFocus={() => {
 											if (suggestions.length > 0) {
 												setShowSuggestions(true);

@@ -25,6 +25,8 @@ interface SearchResults {
 export default function SearchPage({ params }: SearchPageProps) {
 	const [movies, setMovies] = useState<SearchResults | null>(null);
 	const [tvshows, setTVShows] = useState<SearchResults | null>(null);
+	const [movieTotalResults, setMovieTotalResults] = useState(0);
+	const [tvTotalResults, setTvTotalResults] = useState(0);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFetchingMore, setIsFetchingMore] = useState(false);
 	const searchParams = useSearchParams();
@@ -41,31 +43,47 @@ export default function SearchPage({ params }: SearchPageProps) {
 				setIsLoading(true);
 			}
 			try {
-				const [movieResults, tvResults] = await Promise.all([getSearchedMovies(decodedTerm, currentPage), getSearchedTVShows(decodedTerm, currentPage)]);
+				// On first load (page 1), fetch both counts
+				if (currentPage === 1) {
+					const [movieResults, tvResults] = await Promise.all([getSearchedMovies(decodedTerm, 1), getSearchedTVShows(decodedTerm, 1)]);
+					setMovieTotalResults(movieResults.total_results);
+					setTvTotalResults(tvResults.total_results);
 
-				if (isLoadingMore) {
-					setMovies((prev: SearchResults | null) =>
-						prev
-							? {
-									...prev,
-									results: [...prev.results, ...movieResults.results],
-									page: movieResults.page,
-							  }
-							: movieResults
-					);
-
-					setTVShows((prev: SearchResults | null) =>
-						prev
-							? {
-									...prev,
-									results: [...prev.results, ...tvResults.results],
-									page: tvResults.page,
-							  }
-							: tvResults
-					);
+					// Only set full results for current media type
+					if (mediaType === "movie") {
+						setMovies(movieResults);
+					} else {
+						setTVShows(tvResults);
+					}
 				} else {
-					setMovies(movieResults);
-					setTVShows(tvResults);
+					// For subsequent pages, only fetch current media type
+					if (mediaType === "movie") {
+						const movieResults = await getSearchedMovies(decodedTerm, currentPage);
+						if (isLoadingMore) {
+							setMovies((prev: SearchResults | null) =>
+								prev
+									? {
+											...prev,
+											results: [...prev.results, ...movieResults.results],
+											page: movieResults.page,
+									  }
+									: movieResults
+							);
+						}
+					} else {
+						const tvResults = await getSearchedTVShows(decodedTerm, currentPage);
+						if (isLoadingMore) {
+							setTVShows((prev: SearchResults | null) =>
+								prev
+									? {
+											...prev,
+											results: [...prev.results, ...tvResults.results],
+											page: tvResults.page,
+									  }
+									: tvResults
+							);
+						}
+					}
 				}
 			} catch (error) {
 				console.error("Error fetching search results:", error);
@@ -73,12 +91,20 @@ export default function SearchPage({ params }: SearchPageProps) {
 			setIsLoading(false);
 			setIsFetchingMore(false);
 		},
-		[decodedTerm]
+		[decodedTerm, mediaType]
 	);
 
 	useEffect(() => {
+		// Reset states when media type changes
+		setIsLoading(true);
+		setIsFetchingMore(false);
+		if (mediaType === "movie") {
+			setTVShows(null);
+		} else {
+			setMovies(null);
+		}
 		fetchResults(1);
-	}, [fetchResults]);
+	}, [fetchResults, mediaType]);
 
 	useEffect(() => {
 		const observer = new IntersectionObserver(
@@ -106,13 +132,6 @@ export default function SearchPage({ params }: SearchPageProps) {
 		const newParams = new URLSearchParams();
 		newParams.set("type", value);
 		router.push(`/search/${params.term}?${newParams.toString()}`);
-
-		// Reset results when changing tabs
-		if (value === "movie") {
-			setMovies((prev: SearchResults | null) => (prev ? { ...prev, results: prev.results.slice(0, 20) } : null));
-		} else {
-			setTVShows((prev: SearchResults | null) => (prev ? { ...prev, results: prev.results.slice(0, 20) } : null));
-		}
 	};
 
 	return (
@@ -121,8 +140,8 @@ export default function SearchPage({ params }: SearchPageProps) {
 
 			<Tabs value={mediaType} onValueChange={handleTabChange} className="w-full">
 				<TabsList className="mb-8">
-					<TabsTrigger value="movie">Filmer ({movies?.total_results || 0})</TabsTrigger>
-					<TabsTrigger value="tv">TV-serier ({tvshows?.total_results || 0})</TabsTrigger>
+					<TabsTrigger value="movie">Filmer ({movieTotalResults})</TabsTrigger>
+					<TabsTrigger value="tv">TV-serier ({tvTotalResults})</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="movie">

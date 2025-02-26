@@ -1,7 +1,7 @@
 import { SearchResults } from "./typings";
 
 async function fetchFromTMDB(url: URL, page = 1) {
-	url.searchParams.set("include_adult", "true");
+	url.searchParams.set("include_adult", "false");
 	url.searchParams.set("include_video", "false");
 	url.searchParams.set("language", "en-US");
 	url.searchParams.set("page", page.toString());
