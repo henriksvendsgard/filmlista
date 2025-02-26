@@ -6,11 +6,11 @@ A simple watch list application with authentication and shared lists built on Ne
 
 ### **Core Functionality:**
 
--   **Personal Watchlists:** Create, manage, and delete your own movie watchlists
--   **Sharing:** Share your watchlists with other users
--   **Movie Search:** Search for movies and see where they can be streamed
--   **Watchlist Management:** Add and remove movies from specific watchlists
--   **Tracking:** Mark movies as watched in your watchlists
+-   **Personal Watchlists:** Create, manage, and delete your own movie/TV show watchlists
+-   **Sharing and Collab:** Share your watchlists with other users and collaborate
+-   **Movie Search:** Search for movies or TV shows and see where they can be streamed
+-   **Watchlist Management:** Add and remove movies and TV shows from specific watchlists
+-   **Tracking:** Mark movies and TV shows as watched in your watchlists
 -   **Discovery:** Browse and find new movies to watch
 
 ## **Tech Stack**
