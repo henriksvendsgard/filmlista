@@ -11,14 +11,13 @@ A simple watch list application with authentication and shared lists built on Ne
 -   **Movie Search:** Search for movies or TV shows and see where they can be streamed
 -   **Watchlist Management:** Add and remove movies and TV shows from specific watchlists
 -   **Tracking:** Mark movies and TV shows as watched in your watchlists
--   **Discovery:** Browse and find new movies to watch
+-   **Discovery:** Browse and find new movies and TV shows to watch
 
 ## **Tech Stack**
 
 -   **Frontend:** Next.js 14, TypeScript, Tailwind CSS, Shadcn UI
 -   **Backend:** Supabase (Authentication, Database, Storage)
--   **APIs:** TMDB (The Movie Database) for movie information
--   **Security:** hCaptcha for bot protection
+-   **APIs:** TMDB (The Movie Database) for movie and TV show information
 
 ## **Getting Started**
 
@@ -28,7 +27,6 @@ A simple watch list application with authentication and shared lists built on Ne
 -   npm or yarn
 -   Supabase account
 -   TMDB API key
--   hCaptcha site key (optional, for production)
 -   Docker (for local Supabase development)
 
 ### **Installation**
