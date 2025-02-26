@@ -2,7 +2,8 @@
 -- When setting up your local development environment, this will be applied to create the initial schema
 
 -- Enable RLS (Row Level Security)
-ALTER DATABASE postgres SET "app.settings.jwt_secret" TO 'your-super-secret-jwt-secret';
+-- Remove the JWT secret setting as it requires elevated permissions
+-- ALTER DATABASE postgres SET "app.settings.jwt_secret" TO 'your-super-secret-jwt-secret';
 
 -- Create profiles table that extends the auth.users table
 CREATE TABLE IF NOT EXISTS public.profiles (
