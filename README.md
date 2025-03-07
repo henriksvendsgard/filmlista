@@ -2,32 +2,42 @@
 
 A simple watch list application with authentication and shared lists built on Next.js 14 with TypeScript, Tailwind CSS, Shadcn UI components, and Supabase for backend services.
 
+## **Project Overview**
+
+Filmlista is a web application for tracking movies and TV shows you've watched or want to watch. It allows you to:
+
+- Create and manage lists of movies and TV shows
+- Share lists with friends
+- Track what you've watched
+- Discover new content based on popularity and recommendations
+- See where movies and TV shows are available to stream
+
 ## **Features**
 
 ### **Core Functionality:**
 
--   **Personal Watchlists:** Create, manage, and delete your own movie/TV show watchlists
--   **Sharing and Collab:** Share your watchlists with other users and collaborate
--   **Movie Search:** Search for movies or TV shows and see where they can be streamed
--   **Watchlist Management:** Add and remove movies and TV shows from specific watchlists
--   **Tracking:** Mark movies and TV shows as watched in your watchlists
--   **Discovery:** Browse and find new movies and TV shows to watch
+- **Personal Watchlists:** Create, manage, and delete your own movie/TV show watchlists
+- **Sharing and Collab:** Share your watchlists with other users and collaborate
+- **Movie Search:** Search for movies or TV shows and see where they can be streamed
+- **Watchlist Management:** Add and remove movies and TV shows from specific watchlists
+- **Tracking:** Mark movies and TV shows as watched in your watchlists
+- **Discovery:** Browse and find new movies and TV shows to watch
 
 ## **Tech Stack**
 
--   **Frontend:** Next.js 14, TypeScript, Tailwind CSS, Shadcn UI
--   **Backend:** Supabase (Authentication, Database, Storage)
--   **APIs:** TMDB (The Movie Database) for movie and TV show information
+- **Frontend:** Next.js 14, TypeScript, Tailwind CSS, Shadcn UI
+- **Backend:** Supabase (Authentication, Database, Storage)
+- **APIs:** TMDB (The Movie Database) for movie and TV show information
 
 ## **Getting Started**
 
 ### **Prerequisites**
 
--   Node.js 18.x or higher
--   npm or yarn
--   Supabase account
--   TMDB API key
--   Docker (for local Supabase development)
+- Node.js 18.x or higher
+- npm or yarn
+- Supabase account
+- TMDB API key
+- Docker (for local Supabase development)
 
 ### **Installation**
 
@@ -120,6 +130,8 @@ To avoid using the production database during development, you can set up a loca
 
 6. Access the local Supabase Studio at http://localhost:54323 to manage your database, authentication, and storage.
 
+You should create a test user in Supabase Studio (http://127.0.0.1:54323) (Authentication tab -> Add user -> Create new user), with auto-confirm toggled, because no email provider is set up locally.
+
 When you're done developing, you can stop the local instance:
 
 ```bash
@@ -154,19 +166,19 @@ The application is deployed at [https://www.filmlista.no](https://www.filmlista.
 
 ### **Scripts**
 
--   `npm run dev` - Start the development server
--   `npm run build` - Build the application for production
--   `npm start` - Start the production server
--   `npm run lint` - Run ESLint to check code quality
+- `npm run dev` - Start the development server
+- `npm run build` - Build the application for production
+- `npm start` - Start the production server
+- `npm run lint` - Run ESLint to check code quality
 
 ## **Project Structure**
 
--   `/src/app` - Next.js app router pages and layouts
--   `/src/components` - Reusable UI components
--   `/src/lib` - Utility libraries and configuration
--   `/src/hooks` - Custom React hooks
--   `/src/types` - TypeScript type definitions
--   `/supabase` - Supabase migrations and configuration
+- `/src/app` - Next.js app router pages and layouts
+- `/src/components` - Reusable UI components
+- `/src/lib` - Utility libraries and configuration
+- `/src/hooks` - Custom React hooks
+- `/src/types` - TypeScript type definitions
+- `/supabase` - Supabase migrations and configuration
 
 ## **Contributing**
 
@@ -174,10 +186,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## **Acknowledgements**
 
--   My brother, my girlfriend, and friends for testing and contributions
--   [TMDB](https://www.themoviedb.org/) for providing the movie data API
--   [Supabase](https://supabase.io/) for the backend infrastructure
--   [Shadcn UI](https://ui.shadcn.com/) for the component library
+- My brother, my girlfriend, and friends for testing and contributions
+- [TMDB](https://www.themoviedb.org/) for providing the movie data API
+- [Supabase](https://supabase.io/) for the backend infrastructure
+- [Shadcn UI](https://ui.shadcn.com/) for the component library
 
 ## **License**
 
