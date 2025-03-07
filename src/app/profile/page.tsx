@@ -103,11 +103,10 @@ export default function Profile() {
                     {!editingDisplayName ? (
                         <div className="mt-4 flex items-center gap-2">
                             <p>{tempDisplayName ? tempDisplayName : user?.display_name}</p>
-                            {user?.display_name && (
-                                <Button variant="outline" size={"icon"} onClick={() => setEditingDisplayName(true)}>
-                                    <PencilIcon className="h-4 w-4" />
-                                </Button>
-                            )}
+
+                            <Button variant="outline" size={"icon"} onClick={() => setEditingDisplayName(true)}>
+                                <PencilIcon className="h-4 w-4" />
+                            </Button>
                         </div>
                     ) : (
                         <form onSubmit={handleUpdate} className="mt-4 space-y-4">
