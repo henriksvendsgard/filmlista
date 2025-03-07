@@ -130,7 +130,7 @@ To avoid using the production database during development, you can set up a loca
 
 6. Access the local Supabase Studio at http://localhost:54323 to manage your database, authentication, and storage.
 
-A local test user should be created in supabase studio, because no email provider is set up locally.
+You should create a test user in Supabase Studio (http://127.0.0.1:54323) (Authentication tab -> Add user -> Create new user), with auto-confirm toggled, because no email provider is set up locally.
 
 When you're done developing, you can stop the local instance:
 
