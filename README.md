@@ -6,28 +6,28 @@ A simple watch list application with authentication and shared lists built on Ne
 
 ### **Core Functionality:**
 
--   **Personal Watchlists:** Create, manage, and delete your own movie/TV show watchlists
--   **Sharing and Collab:** Share your watchlists with other users and collaborate
--   **Movie Search:** Search for movies or TV shows and see where they can be streamed
--   **Watchlist Management:** Add and remove movies and TV shows from specific watchlists
--   **Tracking:** Mark movies and TV shows as watched in your watchlists
--   **Discovery:** Browse and find new movies and TV shows to watch
+- **Personal Watchlists:** Create, manage, and delete your own movie/TV show watchlists
+- **Sharing and Collab:** Share your watchlists with other users and collaborate
+- **Movie Search:** Search for movies or TV shows and see where they can be streamed
+- **Watchlist Management:** Add and remove movies and TV shows from specific watchlists
+- **Tracking:** Mark movies and TV shows as watched in your watchlists
+- **Discovery:** Browse and find new movies and TV shows to watch
 
 ## **Tech Stack**
 
--   **Frontend:** Next.js 14, TypeScript, Tailwind CSS, Shadcn UI
--   **Backend:** Supabase (Authentication, Database, Storage)
--   **APIs:** TMDB (The Movie Database) for movie and TV show information
+- **Frontend:** Next.js 14, TypeScript, Tailwind CSS, Shadcn UI
+- **Backend:** Supabase (Authentication, Database, Storage)
+- **APIs:** TMDB (The Movie Database) for movie and TV show information
 
 ## **Getting Started**
 
 ### **Prerequisites**
 
--   Node.js 18.x or higher
--   npm or yarn
--   Supabase account
--   TMDB API key
--   Docker (for local Supabase development)
+- Node.js 18.x or higher
+- npm or yarn
+- Supabase account
+- TMDB API key
+- Docker (for local Supabase development)
 
 ### **Installation**
 
@@ -154,19 +154,19 @@ The application is deployed at [https://www.filmlista.no](https://www.filmlista.
 
 ### **Scripts**
 
--   `npm run dev` - Start the development server
--   `npm run build` - Build the application for production
--   `npm start` - Start the production server
--   `npm run lint` - Run ESLint to check code quality
+- `npm run dev` - Start the development server
+- `npm run build` - Build the application for production
+- `npm start` - Start the production server
+- `npm run lint` - Run ESLint to check code quality
 
 ## **Project Structure**
 
--   `/src/app` - Next.js app router pages and layouts
--   `/src/components` - Reusable UI components
--   `/src/lib` - Utility libraries and configuration
--   `/src/hooks` - Custom React hooks
--   `/src/types` - TypeScript type definitions
--   `/supabase` - Supabase migrations and configuration
+- `/src/app` - Next.js app router pages and layouts
+- `/src/components` - Reusable UI components
+- `/src/lib` - Utility libraries and configuration
+- `/src/hooks` - Custom React hooks
+- `/src/types` - TypeScript type definitions
+- `/supabase` - Supabase migrations and configuration
 
 ## **Contributing**
 
@@ -174,10 +174,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## **Acknowledgements**
 
--   My brother, my girlfriend, and friends for testing and contributions
--   [TMDB](https://www.themoviedb.org/) for providing the movie data API
--   [Supabase](https://supabase.io/) for the backend infrastructure
--   [Shadcn UI](https://ui.shadcn.com/) for the component library
+- My brother, my girlfriend, and friends for testing and contributions
+- [TMDB](https://www.themoviedb.org/) for providing the movie data API
+- [Supabase](https://supabase.io/) for the backend infrastructure
+- [Shadcn UI](https://ui.shadcn.com/) for the component library
 
 ## **License**
 

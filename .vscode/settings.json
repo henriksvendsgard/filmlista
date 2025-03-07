@@ -1,7 +1,7 @@
 {
-	"editor.wordWrap": "bounded",
-	"html.format.wrapLineLength": 120,
-	"editor.fontSize": 14,
-	"editor.wordWrapColumn": 200,
-	"prettier.printWidth": 200
+    "editor.wordWrap": "bounded",
+    "html.format.wrapLineLength": 120,
+    "editor.fontSize": 14,
+    "editor.wordWrapColumn": 200,
+    "prettier.printWidth": 200
 }

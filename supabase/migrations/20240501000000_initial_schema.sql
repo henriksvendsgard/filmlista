@@ -8,7 +8,7 @@
 -- Create profiles table that extends the auth.users table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  username TEXT UNIQUE,
+  displayname TEXT UNIQUE,
   avatar_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
@@ -264,7 +264,7 @@ CREATE TRIGGER handle_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, avatar_url)
+  INSERT INTO public.profiles (id, displayname, avatar_url)
   VALUES (NEW.id, NEW.email, '');
   RETURN NEW;
 END;

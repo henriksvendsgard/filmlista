@@ -17,7 +17,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert a profile for the test user
-INSERT INTO public.profiles (id, username, avatar_url, created_at, updated_at)
+INSERT INTO public.profiles (id, displayname, avatar_url, created_at, updated_at)
 VALUES 
   ('00000000-0000-0000-0000-000000000000', 'testuser', '', now(), now())
 ON CONFLICT (id) DO NOTHING;
@@ -44,7 +44,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert a profile for the second test user
-INSERT INTO public.profiles (id, username, avatar_url, created_at, updated_at)
+INSERT INTO public.profiles (id, displayname, avatar_url, created_at, updated_at)
 VALUES 
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'frienduser', '', now(), now())
 ON CONFLICT (id) DO NOTHING;
