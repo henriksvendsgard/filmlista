@@ -17,40 +17,46 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert a profile for the test user
-INSERT INTO public.profiles (id, displayname, avatar_url, created_at, updated_at)
+INSERT INTO public.profiles (id, displayname, email, avatar_url, created_at, updated_at)
 VALUES 
-  ('00000000-0000-0000-0000-000000000000', 'testuser', '', now(), now())
+  ('00000000-0000-0000-0000-000000000000', 'testuser', 'test@example.com', '', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
--- Insert some watchlists for the test user
-INSERT INTO public.watchlists (id, name, description, is_public, owner_id, created_at, updated_at)
+-- Insert some lists for the test user
+INSERT INTO public.lists (id, name, description, is_public, owner_id, created_at, updated_at)
 VALUES
   ('11111111-1111-1111-1111-111111111111', 'My Favorites', 'A collection of my all-time favorite movies', true, '00000000-0000-0000-0000-000000000000', now(), now()),
   ('22222222-2222-2222-2222-222222222222', 'Watch Later', 'Movies I want to watch someday', false, '00000000-0000-0000-0000-000000000000', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
--- Add movies to watchlists
-INSERT INTO public.watchlist_movies (watchlist_id, tmdb_id, added_by, watched, watched_at, notes, created_at, updated_at)
+-- Add movies to the lists
+INSERT INTO public.media_items (list_id, movie_id, title, poster_path, added_by, release_date, media_type)
 VALUES
-  ('11111111-1111-1111-1111-111111111111', 550, '00000000-0000-0000-0000-000000000000', true, now() - interval '10 days', 'Incredible movie, need to watch again', now(), now()),
-  ('11111111-1111-1111-1111-111111111111', 680, '00000000-0000-0000-0000-000000000000', true, now() - interval '30 days', 'Classic Tarantino', now(), now()),
-  ('22222222-2222-2222-2222-222222222222', 13, '00000000-0000-0000-0000-000000000000', false, null, 'Heard this is good', now(), now())
-ON CONFLICT (watchlist_id, tmdb_id) DO NOTHING;
+  ('11111111-1111-1111-1111-111111111111', '550', 'Fight Club', '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg', '00000000-0000-0000-0000-000000000000', '1999-10-15', 'movie'),
+  ('11111111-1111-1111-1111-111111111111', '680', 'Pulp Fiction', '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg', '00000000-0000-0000-0000-000000000000', '1994-09-10', 'movie'),
+  ('22222222-2222-2222-2222-222222222222', '13', 'Forrest Gump', '/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg', '00000000-0000-0000-0000-000000000000', '1994-06-23', 'movie')
+ON CONFLICT DO NOTHING;
 
--- Insert another test user for sharing
+-- Insert a second test user
 INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 VALUES 
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'friend@example.com', '$2a$10$abcdefghijklmnopqrstuvwxyz012345678901234567890123456789', now(), now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert a profile for the second test user
-INSERT INTO public.profiles (id, displayname, avatar_url, created_at, updated_at)
+INSERT INTO public.profiles (id, displayname, email, avatar_url, created_at, updated_at)
 VALUES 
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'frienduser', '', now(), now())
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'frienduser', 'friend@example.com', '', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
--- Share a watchlist with the second user
-INSERT INTO public.watchlist_shares (watchlist_id, shared_with, can_edit, created_at, updated_at)
+-- Share a list with the second user
+INSERT INTO public.shared_lists (list_id, user_id, can_edit)
 VALUES
-  ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true, now(), now())
-ON CONFLICT (watchlist_id, shared_with) DO NOTHING; 
+  ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true)
+ON CONFLICT DO NOTHING;
+
+-- Mark a movie as watched
+INSERT INTO public.watched_media (list_id, movie_id, user_id, media_type)
+VALUES
+  ('11111111-1111-1111-1111-111111111111', '550', '00000000-0000-0000-0000-000000000000', 'movie')
+ON CONFLICT DO NOTHING; 

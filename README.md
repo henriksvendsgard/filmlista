@@ -2,6 +2,16 @@
 
 A simple watch list application with authentication and shared lists built on Next.js 14 with TypeScript, Tailwind CSS, Shadcn UI components, and Supabase for backend services.
 
+## **Project Overview**
+
+Filmlista is a web application for tracking movies and TV shows you've watched or want to watch. It allows you to:
+
+- Create and manage lists of movies and TV shows
+- Share lists with friends
+- Track what you've watched
+- Discover new content based on popularity and recommendations
+- See where movies and TV shows are available to stream
+
 ## **Features**
 
 ### **Core Functionality:**
@@ -119,6 +129,8 @@ To avoid using the production database during development, you can set up a loca
     ```
 
 6. Access the local Supabase Studio at http://localhost:54323 to manage your database, authentication, and storage.
+
+A local test user should be created in supabase studio, because no email provider is set up locally.
 
 When you're done developing, you can stop the local instance:
 
