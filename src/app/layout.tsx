@@ -60,7 +60,7 @@ export default async function RootLayout({
                 )}
             >
                 <SupabaseProvider initialUser={user}>
-                    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+                    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
                         <Header />
                         <div className="flex w-full flex-col items-center pt-40">
                             {children}

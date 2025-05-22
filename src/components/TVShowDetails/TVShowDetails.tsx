@@ -1,8 +1,3 @@
-import { TMDBTVShow } from "@/types/tvshow";
-import Image from "next/image";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useEffect, useState, useCallback } from "react";
-import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -11,10 +6,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BookmarkPlus, ChevronDown, ChevronUp } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { getSimilarTVShows } from "@/lib/getTVShows";
-import Link from "next/link";
+import { TMDBTVShow } from "@/types/tvshow";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { BookmarkPlus, ChevronDown, ChevronUp } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 interface List {
     id: string;
@@ -490,7 +489,10 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                         <h2 className="mb-4 text-2xl font-semibold">Sesonger</h2>
                         <div className="space-y-4">
                             {(showAllSeasons ? tvshow.seasons : tvshow.seasons.slice(0, 4)).map((season) => (
-                                <div key={season.id} className="rounded-lg border p-4 transition-colors hover:bg-muted">
+                                <div
+                                    key={season.id}
+                                    className="rounded-lg border p-4 transition-colors sm:hover:bg-muted"
+                                >
                                     <h3 className="font-semibold">{season.name}</h3>
                                     <p className="text-sm text-muted-foreground">
                                         {season.episode_count} episode{season.episode_count !== 1 ? "r" : ""} •{" "}
@@ -500,7 +502,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             ))}
                             {!showAllSeasons && tvshow.seasons.length > 4 && (
                                 <div className="relative">
-                                    <div className="rounded-lg border p-4 opacity-50 transition-colors hover:bg-muted">
+                                    <div className="rounded-lg border p-4 opacity-50 transition-colors sm:hover:bg-muted">
                                         <h3 className="font-semibold">{tvshow.seasons[4].name}</h3>
                                         <p className="text-sm text-muted-foreground">
                                             {tvshow.seasons[4].episode_count} episode

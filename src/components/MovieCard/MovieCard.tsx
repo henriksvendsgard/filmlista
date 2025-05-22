@@ -95,7 +95,7 @@ export function MovieCard({
                     alt={movie.title}
                     width={500}
                     height={750}
-                    className="h-full w-full cursor-pointer object-cover transition-all hover:scale-105"
+                    className="h-full w-full cursor-pointer object-cover transition-all sm:hover:scale-105"
                 />
             </div>
 
