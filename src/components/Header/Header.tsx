@@ -50,7 +50,7 @@ export default function Header() {
         >
             {showInfoBar && (
                 <div className="bg-blue-800 py-3 text-center text-white">
-                    <p>
+                    <p className="px-4">
                         <strong>Hallo!</strong> Du har ikke satt et visningsnavn enda... Gå til{" "}
                         <a href="/profile" className="underline">
                             profilen din
