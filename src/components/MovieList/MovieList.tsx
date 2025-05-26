@@ -156,8 +156,8 @@ export default function MovieList({
             window.dispatchEvent(event);
 
             toast({
-                title: "Film lagt til i listen",
-                description: `"${movie.title}" er nå lagt til i lista`,
+                title: "Film lagt til",
+                description: `"${movie.title}" er nå lagt til i "${lists.owned.find((list) => list.id === listId)?.name}"`,
                 className: "bg-blue-800",
             });
         } catch (error) {
@@ -203,8 +203,8 @@ export default function MovieList({
             window.dispatchEvent(event);
 
             toast({
-                title: "Film fjernet fra listen",
-                description: `"${movie.title}" er nå fjernet fra lista`,
+                title: "Film fjernet",
+                description: `"${movie.title}" er nå fjernet fra "${lists.owned.find((list) => list.id === listId)?.name}"`,
                 className: "bg-orange-800",
             });
         } catch (error) {
