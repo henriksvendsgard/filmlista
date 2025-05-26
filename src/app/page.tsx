@@ -247,7 +247,7 @@ export default function Home() {
 
                         {currentParams.selectedGenres.length > 0 && (
                             <div className="space-y-4">
-                                <div className="flex max-w-[400px] flex-row gap-2">
+                                <div className="flex max-w-[400px] flex-wrap gap-2">
                                     {currentParams.selectedGenres.map((genreId) => {
                                         const genre = currentGenres.find((g) => g.id.toString() === genreId);
                                         if (!genre) return null;
