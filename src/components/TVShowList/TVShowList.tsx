@@ -215,8 +215,8 @@ export default function TVShowList({
             window.dispatchEvent(event);
 
             toast({
-                title: "TV-serie lagt til i listen",
-                description: `"${tvshow.name}" er nå lagt til i lista`,
+                title: "TV-serie lagt til",
+                description: `"${tvshow.name}" er nå lagt til i "${lists.owned.find((list) => list.id === listId)?.name}"`,
                 className: "bg-blue-800",
             });
         } catch (error) {
@@ -262,8 +262,8 @@ export default function TVShowList({
             window.dispatchEvent(event);
 
             toast({
-                title: "TV-serie fjernet fra listen",
-                description: `"${tvshow.name}" er nå fjernet fra lista`,
+                title: "TV-serie fjernet",
+                description: `"${tvshow.name}" er nå fjernet fra "${lists.owned.find((list) => list.id === listId)?.name}"`,
                 className: "bg-orange-800",
             });
         } catch (error) {

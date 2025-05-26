@@ -66,7 +66,6 @@ export default function MovieList({
     const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
     const [movieListMap, setMovieListMap] = useState<{ [key: string]: string[] }>({});
     const [movieDetails, setMovieDetails] = useState<{ [key: string]: MovieDetails }>({});
-    const [isLoadingListMap, setIsLoadingListMap] = useState(true);
 
     const supabase = createClientComponentClient();
 
@@ -156,8 +155,8 @@ export default function MovieList({
             window.dispatchEvent(event);
 
             toast({
-                title: "Film lagt til i listen",
-                description: `"${movie.title}" er nå lagt til i lista`,
+                title: "Film lagt til",
+                description: `"${movie.title}" er nå lagt til i "${lists.owned.find((list) => list.id === listId)?.name}"`,
                 className: "bg-blue-800",
             });
         } catch (error) {
@@ -203,8 +202,8 @@ export default function MovieList({
             window.dispatchEvent(event);
 
             toast({
-                title: "Film fjernet fra listen",
-                description: `"${movie.title}" er nå fjernet fra lista`,
+                title: "Film fjernet",
+                description: `"${movie.title}" er nå fjernet fra "${lists.owned.find((list) => list.id === listId)?.name}"`,
                 className: "bg-orange-800",
             });
         } catch (error) {
@@ -302,10 +301,7 @@ export default function MovieList({
     // Update list mapping when movies change
     useEffect(() => {
         if (!isLoading) {
-            setIsLoadingListMap(true);
-            fetchMovieListMap().finally(() => {
-                setIsLoadingListMap(false);
-            });
+            fetchMovieListMap();
         }
     }, [fetchMovieListMap, movies.results, isLoading]);
 
