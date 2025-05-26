@@ -66,7 +66,6 @@ export default function MovieList({
     const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
     const [movieListMap, setMovieListMap] = useState<{ [key: string]: string[] }>({});
     const [movieDetails, setMovieDetails] = useState<{ [key: string]: MovieDetails }>({});
-    const [isLoadingListMap, setIsLoadingListMap] = useState(true);
 
     const supabase = createClientComponentClient();
 
@@ -302,10 +301,7 @@ export default function MovieList({
     // Update list mapping when movies change
     useEffect(() => {
         if (!isLoading) {
-            setIsLoadingListMap(true);
-            fetchMovieListMap().finally(() => {
-                setIsLoadingListMap(false);
-            });
+            fetchMovieListMap();
         }
     }, [fetchMovieListMap, movies.results, isLoading]);
 
