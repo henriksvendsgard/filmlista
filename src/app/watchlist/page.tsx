@@ -77,7 +77,7 @@ export default function WatchlistPage() {
     return (
         <div className="container mx-auto px-5 pb-8 transition-all duration-300 lg:px-10">
             <WatchList />
-            <div className="mt-[300px] lg:mt-[300px]">
+            <div className="mt-[300px]">
                 {upcomingMovies && <MovieList title="Kommende filmer" movies={upcomingMovies} isLoading={isLoading} />}
                 <div ref={loadMoreRef} className="flex h-10 w-full items-center justify-center">
                     {isFetchingMore && <Loader2 className="h-10 w-10 animate-spin text-filmlista-primary" />}
