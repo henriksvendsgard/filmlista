@@ -3,8 +3,14 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
+import {
+    getLists,
+    getMediaForList,
+    MediaEntry,
+    removeFromList,
+    toggleWatched,
+} from "@/lib/listRepository";
 import { Movie } from "@/types/movie";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { ArrowRight, Film } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -17,30 +23,6 @@ interface List {
     id: string;
     name: string;
     owner_id: string;
-}
-
-interface DatabaseMovie {
-    movie_id: string;
-    title: string;
-    poster_path: string;
-    added_at: string;
-    added_by: string;
-    release_date: string;
-    media_type: string;
-    profiles: {
-        displayname: string;
-        email: string;
-    };
-}
-
-interface DatabaseWatchedMovie {
-    user_id: string;
-    movie_id: string;
-    watched_at: string;
-    media_type: string;
-    profiles: {
-        displayname: string;
-    };
 }
 
 type ProcessedMovie = Movie & {
@@ -66,8 +48,7 @@ export default function Watchlist() {
     const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
     const [selectedList, setSelectedList] = useState<string | null>(null);
 
-    const supabase = createClientComponentClient();
-    const { user } = useSupabase();
+    const { supabase, user } = useSupabase();
     const router = useRouter();
     const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     const listIdFromUrl = searchParams.get("list");
@@ -80,7 +61,6 @@ export default function Watchlist() {
         [router]
     );
 
-    // Update the list selection handler
     const handleListSelection = useCallback(
         (listId: string) => {
             if (listId === "_header_owned" || listId === "_header_shared" || listId === "_no_lists") return;
@@ -95,35 +75,14 @@ export default function Watchlist() {
         setIsLoadingLists(true);
 
         try {
-            const { data: sharedListIds, error: sharedError } = await supabase
-                .from("shared_lists")
-                .select("list_id")
-                .eq("user_id", user.id);
+            const result = await getLists(supabase, user.id);
+            setLists(result);
 
-            if (sharedError) throw sharedError;
-
-            const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
-
-            if (listsError) throw listsError;
-
-            const sharedListIdsArray = (sharedListIds || []).map((item) => item.list_id);
-
-            const ownedLists = allLists.filter((list) => list.owner_id === user.id);
-            const sharedLists = allLists.filter((list) => sharedListIdsArray.includes(list.id));
-
-            setLists({
-                owned: ownedLists || [],
-                shared: sharedLists || [],
-            });
-
-            // Set initial list selection from URL or default to first list
             if (!selectedList) {
-                const initialList = listIdFromUrl || ownedLists[0]?.id || sharedLists[0]?.id;
+                const initialList = listIdFromUrl || result.owned[0]?.id || result.shared[0]?.id;
                 if (initialList) {
                     setSelectedList(initialList);
-                    if (!listIdFromUrl) {
-                        updateUrlWithList(initialList);
-                    }
+                    if (!listIdFromUrl) updateUrlWithList(initialList);
                 }
             }
         } catch (error) {
@@ -143,74 +102,24 @@ export default function Watchlist() {
         setIsLoadingMovies(true);
 
         try {
-            // Get all media items in the list
-            const { data: rawMoviesData, error: moviesError } = await supabase
-                .from("media_items")
-                .select(
-                    `
-					movie_id,
-					title,
-					poster_path,
-					added_at,
-					added_by,
-					release_date,
-					media_type,
-					profiles (displayname, email)
-				`
-                )
-                .eq("list_id", selectedList)
-                .order("added_at", { ascending: false });
-
-            if (moviesError) throw moviesError;
-
-            // Get watched status for all users
-            const { data: watchedData, error: watchedError } = await supabase
-                .from("watched_media")
-                .select("user_id, movie_id, watched_at, media_type")
-                .eq("list_id", selectedList);
-
-            if (watchedError) throw watchedError;
-
-            // Get profiles for all users who have watched movies
-            const userIds = Array.from(new Set(watchedData?.map((w) => w.user_id) || []));
-            const { data: profilesData, error: profilesError } = await supabase
-                .from("profiles")
-                .select("id, displayname")
-                .in("id", userIds);
-
-            if (profilesError) throw profilesError;
-
-            // Create a map of user_id to displayname
-            const profileMap = new Map(profilesData?.map((p) => [p.id, p.displayname]) || []);
-
-            const moviesData = rawMoviesData as unknown as DatabaseMovie[];
-
-            // Process movies with watched information
-            const processedMovies = moviesData.map((movie) => {
-                const watchedByUsers =
-                    watchedData
-                        ?.filter((w) => w.movie_id === movie.movie_id && w.media_type === movie.media_type)
-                        .map((w) => ({
-                            user_id: w.user_id,
-                            displayname: profileMap.get(w.user_id) || "Unknown",
-                            watched_at: w.watched_at,
-                        })) || [];
-
-                return {
-                    id: movie.movie_id,
-                    movie_id: movie.movie_id,
-                    title: movie.title,
-                    poster_path: movie.poster_path,
-                    added_at: movie.added_at,
-                    added_by: movie.added_by,
-                    added_by_displayname: movie.profiles?.displayname || movie.profiles?.email || "Unknown",
-                    release_date: movie.release_date,
-                    media_type: movie.media_type,
-                    watched_by: watchedByUsers,
-                    is_watched_by_me: watchedByUsers.some((w) => w.user_id === user.id),
-                };
-            });
-
+            const entries = await getMediaForList(supabase, selectedList, user.id);
+            const processedMovies = entries.map((entry: MediaEntry) => ({
+                id: entry.mediaId,
+                movie_id: entry.mediaId,
+                title: entry.title,
+                poster_path: entry.posterPath,
+                added_at: entry.addedAt,
+                added_by: entry.addedBy,
+                added_by_displayname: entry.addedByDisplayname,
+                release_date: entry.releaseDate,
+                media_type: entry.mediaType,
+                watched_by: entry.watchedBy.map((w) => ({
+                    user_id: w.userId,
+                    displayname: w.displayname,
+                    watched_at: w.watchedAt,
+                })),
+                is_watched_by_me: entry.isWatchedByMe,
+            }));
             setMovies(processedMovies);
         } catch (error) {
             console.error("Error fetching movies:", error);
@@ -222,37 +131,18 @@ export default function Watchlist() {
 
     const handleRemoveFromList = async (listId: string, movieId: string, movieTitle: string, mediaType: string) => {
         try {
-            // Delete the movie from the list
-            const { error: removeError } = await supabase
-                .from("media_items")
-                .delete()
-                .eq("list_id", listId)
-                .eq("movie_id", movieId)
-                .eq("media_type", mediaType);
+            await removeFromList(supabase, {
+                mediaId: movieId,
+                listId,
+                mediaType: mediaType as "movie" | "tv",
+                alsoRemoveWatched: true,
+            });
 
-            if (removeError) throw removeError;
-
-            // Also delete any watched status for this movie in this list
-            const { error: watchedError } = await supabase
-                .from("watched_media")
-                .delete()
-                .eq("list_id", listId)
-                .eq("movie_id", movieId)
-                .eq("media_type", mediaType);
-
-            if (watchedError) throw watchedError;
-
-            // Emit so other components can update
             const event = new CustomEvent("movieListUpdate", {
-                detail: {
-                    type: "removed",
-                    listId,
-                    movieId,
-                },
+                detail: { type: "removed", listId, movieId },
             });
             window.dispatchEvent(event);
 
-            // Refresh the list
             fetchMovies();
 
             toast({
@@ -271,56 +161,34 @@ export default function Watchlist() {
     };
 
     const handleToggleWatched = async (movieId: string, currentWatchedStatus: boolean, mediaType: string) => {
+        if (!user || !selectedList) return;
         try {
-            if (currentWatchedStatus) {
-                // Remove watched status
-                const { error } = await supabase
-                    .from("watched_media")
-                    .delete()
-                    .eq("movie_id", movieId)
-                    .eq("list_id", selectedList)
-                    .eq("user_id", user?.id)
-                    .eq("media_type", mediaType);
+            await toggleWatched(supabase, {
+                mediaId: movieId,
+                listId: selectedList,
+                userId: user.id,
+                mediaType: mediaType as "movie" | "tv",
+                isWatched: currentWatchedStatus,
+            });
 
-                if (error) throw error;
-            } else {
-                // Add watched status
-                const { error } = await supabase.from("watched_media").insert({
-                    movie_id: movieId,
-                    list_id: selectedList,
-                    user_id: user?.id,
-                    media_type: mediaType,
-                });
-
-                if (error) throw error;
-            }
-
-            // Update local state
-            if (movies) {
-                setMovies(
-                    movies.map((movie) => {
-                        if (movie.movie_id === movieId) {
-                            const updatedWatchedBy = currentWatchedStatus
-                                ? movie.watched_by.filter((w) => w.user_id !== user?.id)
-                                : [
-                                      ...movie.watched_by,
-                                      {
-                                          user_id: user?.id || "",
-                                          displayname: user?.user_metadata?.displayname || "Unknown",
-                                          watched_at: new Date().toISOString(),
-                                      },
-                                  ];
-
-                            return {
-                                ...movie,
-                                watched_by: updatedWatchedBy,
-                                is_watched_by_me: !currentWatchedStatus,
-                            };
-                        }
-                        return movie;
-                    })
-                );
-            }
+            setMovies(
+                movies.map((movie) => {
+                    if (movie.movie_id === movieId) {
+                        const updatedWatchedBy = currentWatchedStatus
+                            ? movie.watched_by.filter((w) => w.user_id !== user.id)
+                            : [
+                                  ...movie.watched_by,
+                                  {
+                                      user_id: user.id,
+                                      displayname: user.user_metadata?.displayname || "Unknown",
+                                      watched_at: new Date().toISOString(),
+                                  },
+                              ];
+                        return { ...movie, watched_by: updatedWatchedBy, is_watched_by_me: !currentWatchedStatus };
+                    }
+                    return movie;
+                })
+            );
 
             toast({
                 title: currentWatchedStatus ? "Markert som usett" : "Markert som sett",
@@ -353,9 +221,7 @@ export default function Watchlist() {
 
     useEffect(() => {
         const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
-            const { type, listId: updatedListId } = event.detail;
-
-            // Only refresh if the update affects this list
+            const { listId: updatedListId } = event.detail;
             if (updatedListId === selectedList) {
                 fetchMovies();
             }
@@ -514,19 +380,10 @@ export default function Watchlist() {
                                                 isInList={true}
                                                 lists={lists}
                                                 onRemoveFromList={(listId) =>
-                                                    handleRemoveFromList(
-                                                        listId,
-                                                        movie.id,
-                                                        movie.title,
-                                                        movie.media_type
-                                                    )
+                                                    handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)
                                                 }
                                                 onToggleWatched={(currentWatchedStatus) =>
-                                                    handleToggleWatched(
-                                                        movie.id,
-                                                        currentWatchedStatus,
-                                                        movie.media_type
-                                                    )
+                                                    handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)
                                                 }
                                                 onClick={() =>
                                                     router.push(
@@ -552,19 +409,10 @@ export default function Watchlist() {
                                                 isInList={true}
                                                 lists={lists}
                                                 onRemoveFromList={(listId) =>
-                                                    handleRemoveFromList(
-                                                        listId,
-                                                        movie.id,
-                                                        movie.title,
-                                                        movie.media_type
-                                                    )
+                                                    handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)
                                                 }
                                                 onToggleWatched={(currentWatchedStatus) =>
-                                                    handleToggleWatched(
-                                                        movie.id,
-                                                        currentWatchedStatus,
-                                                        movie.media_type
-                                                    )
+                                                    handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)
                                                 }
                                                 onClick={() =>
                                                     router.push(

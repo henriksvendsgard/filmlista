@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
+import { useSupabase } from "@/components/SupabaseProvider";
+import { addToList, getListsForMedia, removeFromList } from "@/lib/listRepository";
 import { useMovieLists } from "@/hooks/useMovieLists";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { ArrowLeft, BookmarkPlus, Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -71,36 +72,20 @@ export default function MovieDetails({ params }: MovieDetailProps) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { lists } = useMovieLists();
+    const { supabase, user } = useSupabase();
     const [movieListMap, setMovieListMap] = useState<Record<string, string[]>>({});
-    const [listsWithMovie, setListsWithMovie] = useState<any[]>([]);
-
-    const supabase = createClientComponentClient();
+    const [listsWithMovie, setListsWithMovie] = useState<{ id: string; name: string }[]>([]);
 
     const fetchMovieListMap = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from("media_items")
-                .select("list_id")
-                .eq("movie_id", movieId)
-                .eq("media_type", "movie");
-
-            if (error) throw error;
-
-            const listIds = data.map((item) => item.list_id);
+            const listIds = await getListsForMedia(supabase, movieId, "movie");
             setMovieListMap({ [movieId]: listIds });
-
-            if (listIds.length > 0) {
-                const { data: listData, error: listError } = await supabase.from("lists").select("*").in("id", listIds);
-
-                if (listError) throw listError;
-                setListsWithMovie(listData || []);
-            } else {
-                setListsWithMovie([]);
-            }
+            const allLists = [...lists.owned, ...lists.shared];
+            setListsWithMovie(allLists.filter((l) => listIds.includes(l.id)));
         } catch (error) {
             console.error("Error fetching movie lists:", error);
         }
-    }, [movieId, supabase]);
+    }, [movieId, supabase, lists]);
 
     useEffect(() => {
         const fetchMovieData = async () => {
@@ -187,45 +172,23 @@ export default function MovieDetails({ params }: MovieDetailProps) {
     }, [fetchMovieListMap]);
 
     const handleAddToList = async (listId: string) => {
+        if (!user) return;
         try {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            if (!user) return;
-
-            // First, delete any existing watched status for this movie in this list
-            const { error: watchedError } = await supabase
-                .from("watched_media")
-                .delete()
-                .eq("list_id", listId)
-                .eq("movie_id", params.id)
-                .eq("media_type", "movie");
-            if (watchedError) throw watchedError;
-
-            // Then add the movie to the list
-            const { error } = await supabase.from("media_items").insert({
-                list_id: listId,
-                movie_id: params.id,
-                title: movie?.title,
-                poster_path: movie?.poster_path,
-                added_by: user.id,
-                release_date: movie?.release_date,
-                media_type: "movie",
+            await addToList(supabase, {
+                mediaId: params.id,
+                listId,
+                mediaType: "movie",
+                title: movie?.title ?? "",
+                posterPath: movie?.poster_path ?? null,
+                addedBy: user.id,
+                releaseDate: movie?.release_date,
             });
-
-            if (error) throw error;
-
             setMovieListMap((prev) => ({
                 ...prev,
                 [params.id]: [...(prev[params.id] || []), listId],
             }));
-
-            // Oppdaterer listsWithMovie
             const newList = [...lists.owned, ...lists.shared].find((l) => l.id === listId);
-            if (newList) {
-                setListsWithMovie((prev) => [...prev, newList]);
-            }
-
+            if (newList) setListsWithMovie((prev) => [...prev, newList]);
             toast({
                 title: "Film lagt til",
                 description: `"${movie?.title}" er nå lagt til i "${newList?.name}"`,
@@ -243,29 +206,16 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 
     const handleRemoveFromList = async (listId: string, listName: string) => {
         try {
-            const { error } = await supabase
-                .from("media_items")
-                .delete()
-                .eq("movie_id", params.id)
-                .eq("list_id", listId)
-                .eq("media_type", "movie");
-
-            if (error) throw error;
-
+            await removeFromList(supabase, { mediaId: params.id, listId, mediaType: "movie" });
             setMovieListMap((prev) => {
                 const newMap = { ...prev };
                 if (newMap[params.id]) {
                     newMap[params.id] = newMap[params.id].filter((id) => id !== listId);
-                    if (newMap[params.id].length === 0) {
-                        delete newMap[params.id];
-                    }
+                    if (newMap[params.id].length === 0) delete newMap[params.id];
                 }
                 return newMap;
             });
-
-            // Oppdater listsWithMovie for å fjerne filmen
             setListsWithMovie((prev) => prev.filter((list) => list.id !== listId));
-
             toast({
                 title: "Film fjernet",
                 description: `"${movie?.title}" er nå fjernet fra "${listName}"`,

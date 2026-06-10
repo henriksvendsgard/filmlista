@@ -20,7 +20,16 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { User, createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import {
+    createList,
+    deleteList,
+    getLists,
+    List,
+    shareList,
+    updateList,
+} from "@/lib/listRepository";
+import { useSupabase } from "@/components/SupabaseProvider";
+import { User } from "@supabase/auth-helpers-nextjs";
 import { PlusCircle, Share, Share2, Trash2, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -28,14 +37,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Skeleton } from "../ui/skeleton";
-
-interface List {
-    id: string;
-    name: string;
-    owner_id?: string;
-    created_at?: string;
-    owner_email?: string;
-}
 
 interface ListsState {
     owned: List[];
@@ -61,7 +62,7 @@ export default function Lists() {
     const [listToDelete, setListToDelete] = useState<{ id: string; name: string } | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-    const supabase = createClientComponentClient();
+    const { supabase } = useSupabase();
 
     const fetchLists = useCallback(async () => {
         const {
@@ -79,29 +80,8 @@ export default function Lists() {
         if (!user) return;
 
         try {
-            // Hent alle delte lister for denne brukeren
-            const { data: sharedListIds, error: sharedError } = await supabase
-                .from("shared_lists")
-                .select("list_id")
-                .eq("user_id", user.id);
-
-            if (sharedError) throw sharedError;
-
-            // Hent alle lister
-            const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
-
-            if (listsError) throw listsError;
-
-            // Filtrer lister inn i owned og shared
-            const sharedListIdsArray = (sharedListIds || []).map((item) => item.list_id);
-
-            const ownedLists = allLists.filter((list) => list.owner_id === user.id);
-            const sharedLists = allLists.filter((list) => sharedListIdsArray.includes(list.id));
-
-            setLists({
-                owned: ownedLists || [],
-                shared: sharedLists || [],
-            });
+            const result = await getLists(supabase, user.id);
+            setLists(result);
         } catch (error) {
             console.error("Error fetching lists:", error);
             toast({
@@ -125,14 +105,7 @@ export default function Lists() {
         if (!user) return;
 
         try {
-            const { data, error } = await supabase
-                .from("lists")
-                .insert([{ name: newListName, owner_id: user.id }])
-                .select()
-                .single();
-
-            if (error) throw error;
-
+            await createList(supabase, { name: newListName, ownerId: user.id });
             toast({
                 title: "Lista er opprettet",
                 description: `Lista "${newListName}" er opprettet, du kan nå legge til filmer og serier i den`,
@@ -156,16 +129,12 @@ export default function Lists() {
         if (!editListId) return;
 
         try {
-            const { error } = await supabase.from("lists").update({ name: editListName }).eq("id", editListId);
-
-            if (error) throw error;
-
+            await updateList(supabase, editListId, editListName);
             toast({
                 title: "Listens navn er oppdatert",
                 description: `Listens navn er nå endret til "${editListName}"`,
                 className: "bg-green-700",
             });
-
             setEditListName("");
             setEditListId(null);
             setIsEditDialogOpen(false);
@@ -180,26 +149,13 @@ export default function Lists() {
         }
     };
 
-    const handleDeleteList = async (listToDelete: List) => {
+    const handleDeleteList = async (listToDelete: { id: string; name: string }) => {
         try {
-            // Delete all movies in the list
-            const { error: moviesError } = await supabase.from("media_items").delete().eq("list_id", listToDelete.id);
-
-            if (moviesError) throw moviesError;
-
-            const { error: sharedError } = await supabase.from("shared_lists").delete().eq("list_id", listToDelete.id);
-
-            if (sharedError) throw sharedError;
-
-            const { error: listError } = await supabase.from("lists").delete().eq("id", listToDelete.id);
-
-            if (listError) throw listError;
-
+            await deleteList(supabase, listToDelete.id);
             setLists((prev) => ({
                 ...prev,
                 owned: prev.owned.filter((list) => list.id !== listToDelete.id),
             }));
-
             toast({
                 title: "Lista ble slettet",
                 description: `Lista "${listToDelete.name}" har nå blitt slettet`,
@@ -223,46 +179,7 @@ export default function Lists() {
         if (!selectedList) return;
 
         try {
-            // Hent brukerens ID fra e-posten ved å bruke profiles-tabellen
-            const { data: userData, error: userError } = await supabase
-                .from("profiles") // profiles-tabellen er en del av Supabase Auth
-                .select("id")
-                .eq("email", shareEmail)
-                .single();
-
-            if (userError || !userData) {
-                toast({
-                    title: "Noe gikk galt...",
-                    description: "Fant ikke brukeren med denne e-posten!",
-                    variant: "destructive",
-                });
-                return;
-            }
-
-            // Sjekker om lista er delt med brukeren allerede
-            const { data: existingShare, error: existingError } = await supabase
-                .from("shared_lists")
-                .select("*")
-                .eq("list_id", selectedList)
-                .eq("user_id", userData.id)
-                .single();
-
-            if (existingShare) {
-                toast({
-                    title: "Allerede delt",
-                    description: "Denne lista er allerede delt med denne brukeren",
-                    variant: "default",
-                    className: "bg-yellow-600",
-                });
-                return;
-            }
-
-            const { error } = await supabase
-                .from("shared_lists")
-                .insert([{ list_id: selectedList, user_id: userData.id }]);
-
-            if (error) throw error;
-
+            await shareList(supabase, { listId: selectedList, email: shareEmail });
             toast({
                 title: "Lista ble delt!",
                 description: `Lista er nå delt med ${shareEmail}`,
@@ -273,6 +190,23 @@ export default function Lists() {
             setIsShareDialogOpen(false);
             fetchLists();
         } catch (error) {
+            if (error instanceof Error && error.message === "USER_NOT_FOUND") {
+                toast({
+                    title: "Noe gikk galt...",
+                    description: "Fant ikke brukeren med denne e-posten!",
+                    variant: "destructive",
+                });
+                return;
+            }
+            if (error instanceof Error && error.message === "ALREADY_SHARED") {
+                toast({
+                    title: "Allerede delt",
+                    description: "Denne lista er allerede delt med denne brukeren",
+                    variant: "default",
+                    className: "bg-yellow-600",
+                });
+                return;
+            }
             console.error("Error sharing list:", error);
             toast({
                 title: "Kunne ikke dele",
