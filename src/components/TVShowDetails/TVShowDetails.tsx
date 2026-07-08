@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -6,29 +8,21 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSupabase } from "@/components/SupabaseProvider";
 import { toast } from "@/hooks/use-toast";
+import { addToList, getLists, getListsForMedia, List, ListsResult, removeFromList } from "@/lib/listRepository";
 import { getSimilarTVShows } from "@/lib/getTVShows";
 import { TMDBTVShow } from "@/types/tvshow";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { BookmarkPlus, ChevronDown, ChevronUp } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-interface List {
-    id: string;
-    name: string;
-    owner_id: string;
-}
-
 interface TVShowDetailsProps {
     tvshow: TMDBTVShow;
 }
 
-interface ListsState {
-    owned: List[];
-    shared: List[];
-}
+type ListsState = ListsResult;
 
 const translateGenre = (genre: string): string => {
     const genreTranslations: { [key: string]: string } = {
@@ -69,50 +63,22 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
     const [similarShows, setSimilarShows] = useState<TMDBTVShow[]>([]);
     const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
     const [showAllSeasons, setShowAllSeasons] = useState(false);
-    const supabase = createClientComponentClient();
+    const { supabase, user } = useSupabase();
     const router = useRouter();
 
     const fetchLists = useCallback(async () => {
-        const {
-            data: { user },
-            error: userError,
-        } = await supabase.auth.getUser();
-        if (userError || !user) return;
-
+        if (!user) return;
         try {
-            const { data: sharedListIds, error: sharedError } = await supabase
-                .from("shared_lists")
-                .select("list_id")
-                .eq("user_id", user.id);
-            if (sharedError) throw sharedError;
-
-            const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
-            if (listsError) throw listsError;
-
-            const sharedListIdsArray = (sharedListIds || []).map((item) => item.list_id);
-            const ownedLists = allLists.filter((list) => list.owner_id === user.id);
-            const sharedLists = allLists.filter((list) => sharedListIdsArray.includes(list.id));
-
-            setLists({
-                owned: ownedLists || [],
-                shared: sharedLists || [],
-            });
+            const result = await getLists(supabase, user.id);
+            setLists(result);
         } catch (error) {
             console.error("Error fetching lists:", error);
         }
-    }, [supabase]);
+    }, [supabase, user]);
 
     const fetchTVShowListMap = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from("media_items")
-                .select("list_id")
-                .eq("movie_id", tvshow.id.toString())
-                .eq("media_type", "tv");
-
-            if (error) throw error;
-
-            const listIds = data.map((item) => item.list_id);
+            const listIds = await getListsForMedia(supabase, tvshow.id.toString(), "tv");
             setTVShowListMap({ [tvshow.id]: listIds });
         } catch (error) {
             console.error("Error fetching TV show list map:", error);
@@ -120,43 +86,25 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
     }, [supabase, tvshow.id]);
 
     const handleAddToList = async (listId: string) => {
+        if (!user) return;
         try {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            if (!user) return;
-
-            // First, delete any existing watched status for this TV show in this list
-            const { error: watchedError } = await supabase
-                .from("watched_media")
-                .delete()
-                .eq("list_id", listId)
-                .eq("movie_id", tvshow.id.toString())
-                .eq("media_type", "tv");
-
-            if (watchedError) throw watchedError;
-
-            // Then add the TV show to the list
-            const { error } = await supabase.from("media_items").insert({
-                list_id: listId,
-                movie_id: tvshow.id.toString(),
+            await addToList(supabase, {
+                mediaId: tvshow.id.toString(),
+                listId,
+                mediaType: "tv",
                 title: tvshow.name,
-                poster_path: tvshow.poster_path,
-                added_by: user.id,
-                media_type: "tv",
-                release_date: tvshow.first_air_date,
+                posterPath: tvshow.poster_path,
+                addedBy: user.id,
+                releaseDate: tvshow.first_air_date,
             });
-
-            if (error) throw error;
-
             setTVShowListMap((prev) => ({
                 ...prev,
                 [tvshow.id]: [...(prev[tvshow.id] || []), listId],
             }));
-
+            const listName = [...lists.owned, ...lists.shared].find((l) => l.id === listId)?.name;
             toast({
                 title: "TV-serie lagt til",
-                description: `"${tvshow.name}" er nå lagt til i "${lists.owned.find((list) => list.id === listId)?.name}"`,
+                description: `"${tvshow.name}" er nå lagt til i "${listName}"`,
                 className: "bg-blue-800",
             });
         } catch (error) {
@@ -171,23 +119,18 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
 
     const handleRemoveFromList = async (listId: string, listName: string) => {
         try {
-            const { error } = await supabase
-                .from("media_items")
-                .delete()
-                .eq("movie_id", tvshow.id.toString())
-                .eq("list_id", listId)
-                .eq("media_type", "tv");
-
-            if (error) throw error;
-
+            await removeFromList(supabase, {
+                mediaId: tvshow.id.toString(),
+                listId,
+                mediaType: "tv",
+            });
             setTVShowListMap((prev) => ({
                 ...prev,
                 [tvshow.id]: prev[tvshow.id].filter((id) => id !== listId),
             }));
-
             toast({
                 title: "TV-serie fjernet",
-                description: `"${tvshow.name}" er nå fjernet fra "${lists.owned.find((list) => list.id === listId)?.name}"`,
+                description: `"${tvshow.name}" er nå fjernet fra "${listName}"`,
                 className: "bg-orange-800",
             });
         } catch (error) {

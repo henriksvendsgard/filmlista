@@ -9,9 +9,8 @@ import { Toaster } from "@/components/ui/toaster";
 import CheckPWA from "@/components/utils/CheckPWA";
 import { cn } from "@/lib/utils";
 import SupabaseProvider from "@/components/SupabaseProvider";
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import ZoomDisabler from "@/components/utils/ZoomDisabler";
+import { createClient } from "@/utils/supabase/server";
 
 const fontSans = FontSans({
     subsets: ["latin"],
@@ -40,14 +39,14 @@ export default async function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const supabase = createServerComponentClient({ cookies });
+    const supabase = await createClient();
 
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang="no" suppressHydrationWarning>
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
             </head>

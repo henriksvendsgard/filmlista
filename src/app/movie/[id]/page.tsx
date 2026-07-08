@@ -1,13 +1,22 @@
-"use client";
-
 import MovieDetails from "@/components/MovieDetails/MovieDetails";
+import { getMoviePageData } from "@/lib/tmdb/movies";
+import { notFound } from "next/navigation";
 
-interface MovieDetailProps {
-    params: {
+interface MovieDetailPageProps {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
-export default function MovieDetailPage({ params }: MovieDetailProps) {
-    return <MovieDetails params={params} />;
+export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
+    const { id } = await params;
+
+    let data;
+    try {
+        data = await getMoviePageData(id);
+    } catch {
+        notFound();
+    }
+
+    return <MovieDetails movieId={id} initialData={data} />;
 }

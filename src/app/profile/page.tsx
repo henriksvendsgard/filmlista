@@ -1,10 +1,12 @@
 "use client";
 
+import { StreamingServicesSelector } from "@/components/StreamingServicesSelector/StreamingServicesSelector";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { useStreamingServices } from "@/hooks/useStreamingServices";
 import { User } from "@supabase/supabase-js";
 import { PencilIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -21,6 +23,12 @@ export default function Profile() {
 
     const [tempDisplayName, setTempDisplayName] = useState("");
     const [editingDisplayName, setEditingDisplayName] = useState(false);
+
+    const { services, isLoading: isLoadingServices, saveServices } = useStreamingServices();
+    const [selectedServices, setSelectedServices] = useState<number[]>([]);
+    const [isSavingServices, setIsSavingServices] = useState(false);
+    const [servicesDirty, setServicesDirty] = useState(false);
+
     useEffect(() => {
         const fetchUserProfile = async () => {
             const {
@@ -39,6 +47,13 @@ export default function Profile() {
         fetchUserProfile();
     }, [supabase]);
 
+    useEffect(() => {
+        if (!isLoadingServices) {
+            setSelectedServices(services);
+            setServicesDirty(false);
+        }
+    }, [services, isLoadingServices]);
+
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         const {
@@ -52,15 +67,6 @@ export default function Profile() {
         if (!user) return;
 
         // First update the user metadata
-        const { error: updateError } = await supabase.auth.updateUser({
-            data: { display_name: displayName },
-        });
-
-        if (updateError) {
-            setMessage("Feil ved oppdatering av brukerdata");
-            return;
-        }
-
         if (/[^a-zA-Z]/.test(displayName)) {
             toast({
                 title: "Feil ved oppdatering av visningsnavn",
@@ -70,7 +76,15 @@ export default function Profile() {
             return;
         }
 
-        // Then update the profiles table
+        const { error: updateError } = await supabase.auth.updateUser({
+            data: { display_name: displayName },
+        });
+
+        if (updateError) {
+            setMessage("Feil ved oppdatering av brukerdata");
+            return;
+        }
+
         const { error: profileError } = await supabase
             .from("profiles")
             .update({ displayname: displayName })
@@ -78,7 +92,6 @@ export default function Profile() {
 
         if (profileError) {
             setMessage("Feil ved oppdatering av visningsnavn");
-            // Don't return here, as the metadata was already updated
             console.error("Error updating profile:", profileError);
         }
 
@@ -90,6 +103,35 @@ export default function Profile() {
         });
         setTempDisplayName(displayName);
         setEditingDisplayName(false);
+    };
+
+    const handleSaveServices = async () => {
+        setIsSavingServices(true);
+        const success = await saveServices(selectedServices);
+        setIsSavingServices(false);
+
+        if (success) {
+            setServicesDirty(false);
+            toast({
+                title: "Strømmetjenester lagret",
+                description:
+                    selectedServices.length > 0
+                        ? `${selectedServices.length} tjeneste${selectedServices.length > 1 ? "r" : ""} valgt`
+                        : "Ingen tjenester valgt",
+                className: "bg-green-800 text-white",
+            });
+        } else {
+            toast({
+                title: "Feil",
+                description: "Kunne ikke lagre strømmetjenester",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleServicesChange = (newServices: number[]) => {
+        setSelectedServices(newServices);
+        setServicesDirty(true);
     };
 
     return (
@@ -143,6 +185,42 @@ export default function Profile() {
                     )}
                 </div>
                 {message && <p className="mt-4 text-red-500">{message}</p>}
+            </Card>
+
+            <Card className="mx-auto mt-6 w-full max-w-lg rounded-lg p-6 shadow-md">
+                <h2 className="mb-2 text-xl font-bold">Mine strømmetjenester</h2>
+                <p className="mb-6 text-sm text-muted-foreground">
+                    Velg tjenestene du abonnerer på. Vi bruker dette til å filtrere filmer og serier du faktisk kan se.
+                </p>
+
+                {isLoadingServices ? (
+                    <p className="text-sm text-muted-foreground">Laster...</p>
+                ) : (
+                    <>
+                        <StreamingServicesSelector
+                            selected={selectedServices}
+                            onChange={handleServicesChange}
+                            disabled={isSavingServices}
+                        />
+                        {servicesDirty && (
+                            <div className="mt-6 flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setSelectedServices(services);
+                                        setServicesDirty(false);
+                                    }}
+                                    disabled={isSavingServices}
+                                >
+                                    Avbryt
+                                </Button>
+                                <Button onClick={handleSaveServices} disabled={isSavingServices}>
+                                    {isSavingServices ? "Lagrer..." : "Lagre"}
+                                </Button>
+                            </div>
+                        )}
+                    </>
+                )}
             </Card>
         </div>
     );

@@ -1,20 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { addToList, getLists, getListsForMediaBatch, List, removeFromList } from "@/lib/listRepository";
 import { TMDBTVShow } from "@/types/tvshow";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useSupabase } from "@/components/SupabaseProvider";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { TVShowCard } from "../TVShowCard/TVShowCard";
 import { TVShowGridSkeleton } from "../TVShowList/TVShowCardSkeleton";
-
-interface List {
-    id: string;
-    name: string;
-    owner_id: string;
-}
 
 interface TVShowListProps {
     tvshows: {
@@ -30,26 +25,10 @@ interface TVShowListProps {
     currentPage?: number;
 }
 
-interface TVShowDetails {
-    added_at: string;
-    added_by: string;
-    added_by_email: string;
-}
-
 type TVShowListAction = {
     type: "added" | "removed";
     listId: string;
     tvshowId: string;
-};
-
-type RawTVShowList = {
-    movie_id: string;
-    list_id: string;
-    added_at: string;
-    added_by: string;
-    profiles: {
-        email: string;
-    };
 };
 
 export default function TVShowList({
@@ -65,10 +44,9 @@ export default function TVShowList({
     const searchParams = useSearchParams();
     const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
     const [tvshowListMap, setTVShowListMap] = useState<{ [key: string]: string[] }>({});
-    const [tvshowDetails, setTVShowDetails] = useState<{ [key: string]: TVShowDetails }>({});
     const [isLoadingListMap, setIsLoadingListMap] = useState(true);
 
-    const supabase = createClientComponentClient();
+    const { supabase } = useSupabase();
 
     const fetchLists = useCallback(async () => {
         const {
@@ -82,25 +60,8 @@ export default function TVShowList({
         if (!user) return;
 
         try {
-            const { data: sharedListIds, error: sharedError } = await supabase
-                .from("shared_lists")
-                .select("list_id")
-                .eq("user_id", user.id);
-
-            if (sharedError) throw sharedError;
-
-            const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
-
-            if (listsError) throw listsError;
-
-            const sharedListIdsArray = (sharedListIds || []).map((item) => item.list_id);
-            const ownedLists = allLists.filter((list) => list.owner_id === user.id);
-            const sharedLists = allLists.filter((list) => sharedListIdsArray.includes(list.id));
-
-            setLists({
-                owned: ownedLists || [],
-                shared: sharedLists || [],
-            });
+            const result = await getLists(supabase, user.id);
+            setLists(result);
         } catch (error) {
             console.error("Error fetching lists:", error);
             toast({
@@ -114,57 +75,13 @@ export default function TVShowList({
     const fetchTVShowListMap = useCallback(async () => {
         if (!tvshows.results.length) return;
 
-        const {
-            data: { user },
-            error: userError,
-        } = await supabase.auth.getUser();
-        if (userError) {
-            console.error("Error fetching user:", userError);
-            return;
-        }
-        if (!user) return;
-
         try {
-            const { data, error } = await supabase
-                .from("media_items")
-                .select(
-                    `
-					movie_id, 
-					list_id, 
-					added_at,
-					added_by,
-					profiles (
-						email
-					)
-				`
-                )
-                .eq("media_type", "tv")
-                .in(
-                    "movie_id",
-                    tvshows.results.map((m) => m.id.toString())
-                );
-
-            if (error) throw error;
-
-            const typedData = data as unknown as RawTVShowList[];
-            const tvshowMap: { [key: string]: string[] } = {};
-            const details: { [key: string]: TVShowDetails } = {};
-
-            typedData.forEach((item) => {
-                if (!tvshowMap[item.movie_id]) {
-                    tvshowMap[item.movie_id] = [];
-                }
-                tvshowMap[item.movie_id].push(item.list_id);
-
-                details[item.movie_id] = {
-                    added_at: item.added_at,
-                    added_by: item.added_by,
-                    added_by_email: item.profiles.email,
-                };
-            });
-
+            const tvshowMap = await getListsForMediaBatch(
+                supabase,
+                tvshows.results.map((m) => m.id.toString()),
+                "tv"
+            );
             setTVShowListMap(tvshowMap);
-            setTVShowDetails(details);
         } catch (error) {
             console.error("Error fetching TV show list map:", error);
         }
@@ -177,28 +94,15 @@ export default function TVShowList({
             } = await supabase.auth.getUser();
             if (!user) return;
 
-            // First, delete any existing watched status for this TV show in this list
-            const { error: watchedError } = await supabase
-                .from("watched_media")
-                .delete()
-                .eq("list_id", listId)
-                .eq("movie_id", tvshow.id.toString())
-                .eq("media_type", "tv");
-
-            if (watchedError) throw watchedError;
-
-            // Then add the TV show to the list
-            const { error } = await supabase.from("media_items").insert({
-                list_id: listId,
-                movie_id: tvshow.id.toString(),
+            await addToList(supabase, {
+                mediaId: tvshow.id.toString(),
+                listId,
+                mediaType: "tv",
                 title: tvshow.name,
-                poster_path: tvshow.poster_path,
-                added_by: user.id,
-                media_type: "tv",
-                release_date: tvshow.first_air_date,
+                posterPath: tvshow.poster_path,
+                addedBy: user.id,
+                releaseDate: tvshow.first_air_date,
             });
-
-            if (error) throw error;
 
             setTVShowListMap((prev) => ({
                 ...prev,
@@ -231,14 +135,11 @@ export default function TVShowList({
 
     const handleRemoveFromList = async (tvshow: TMDBTVShow, listId: string) => {
         try {
-            const { error } = await supabase
-                .from("media_items")
-                .delete()
-                .eq("movie_id", tvshow.id.toString())
-                .eq("list_id", listId)
-                .eq("media_type", "tv");
-
-            if (error) throw error;
+            await removeFromList(supabase, {
+                mediaId: tvshow.id.toString(),
+                listId,
+                mediaType: "tv",
+            });
 
             setTVShowListMap((prev) => {
                 const newMap = { ...prev };

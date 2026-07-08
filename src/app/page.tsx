@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDiscoverMovies, getMovieGenres, getPopularMovies } from "@/lib/getMovies";
 import { getDiscoverTVShows, getPopularTVShows, getTVShowGenres } from "@/lib/getTVShows";
+import { useStreamingServices } from "@/hooks/useStreamingServices";
 import { ChevronDown, Loader2, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -31,23 +33,29 @@ export default function Home() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const loadMoreRef = useRef<HTMLDivElement>(null);
+    const { services, hasServices, isLoading: isLoadingServices } = useStreamingServices();
 
     const currentParams = useMemo(() => {
         const selectedGenres = searchParams.get("genres")?.split(",").filter(Boolean) || [];
         const mediaType = searchParams.get("type") || "movie";
-        return { selectedGenres, mediaType };
+        const streamingFilter = searchParams.get("streaming") === "1";
+        return { selectedGenres, mediaType, streamingFilter };
     }, [searchParams]);
 
     const updateUrl = useCallback(
-        (newGenres: string[], mediaType?: string) => {
+        (newGenres: string[], mediaType?: string, streamingFilter?: boolean) => {
             const params = new URLSearchParams();
             if (newGenres.length > 0) {
                 params.set("genres", newGenres.join(","));
             }
             params.set("type", mediaType || currentParams.mediaType);
+            const streaming = streamingFilter ?? currentParams.streamingFilter;
+            if (streaming) {
+                params.set("streaming", "1");
+            }
             router.push(`/?${params.toString()}`);
         },
-        [router, currentParams.mediaType]
+        [router, currentParams.mediaType, currentParams.streamingFilter]
     );
 
     const fetchContent = useCallback(
@@ -56,12 +64,20 @@ export default function Home() {
                 setIsLoading(true);
             }
             try {
+                const useStreamingFilter = currentParams.streamingFilter && hasServices;
+                const watchProviders = useStreamingFilter ? services : undefined;
+
                 if (currentParams.mediaType === "movie") {
                     let movieData;
-                    if (currentParams.selectedGenres.length === 0) {
+                    if (currentParams.selectedGenres.length === 0 && !useStreamingFilter) {
                         movieData = await getPopularMovies(page);
                     } else {
-                        movieData = await getDiscoverMovies(currentParams.selectedGenres.join(","), undefined, page);
+                        movieData = await getDiscoverMovies(
+                            currentParams.selectedGenres.join(","),
+                            undefined,
+                            page,
+                            watchProviders
+                        );
                     }
 
                     if (isLoadingMore) {
@@ -79,10 +95,14 @@ export default function Home() {
                     }
                 } else {
                     let tvshowData;
-                    if (currentParams.selectedGenres.length === 0) {
+                    if (currentParams.selectedGenres.length === 0 && !useStreamingFilter) {
                         tvshowData = await getPopularTVShows(page);
                     } else {
-                        tvshowData = await getDiscoverTVShows(currentParams.selectedGenres.join(","), page);
+                        tvshowData = await getDiscoverTVShows(
+                            currentParams.selectedGenres.join(","),
+                            page,
+                            watchProviders
+                        );
                     }
 
                     if (isLoadingMore) {
@@ -105,7 +125,7 @@ export default function Home() {
             setIsLoading(false);
             setIsFetchingMore(false);
         },
-        [currentParams.mediaType, currentParams.selectedGenres]
+        [currentParams.mediaType, currentParams.selectedGenres, currentParams.streamingFilter, hasServices, services]
     );
 
     const fetchGenres = useCallback(async () => {
@@ -123,8 +143,9 @@ export default function Home() {
     }, [fetchGenres]);
 
     useEffect(() => {
+        if (isLoadingServices && currentParams.streamingFilter) return;
         fetchContent(1);
-    }, [fetchContent]);
+    }, [fetchContent, isLoadingServices, currentParams.streamingFilter]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -174,6 +195,13 @@ export default function Home() {
         [updateUrl]
     );
 
+    const handleStreamingFilterChange = useCallback(
+        (checked: boolean) => {
+            updateUrl(currentParams.selectedGenres, currentParams.mediaType, checked);
+        },
+        [currentParams.selectedGenres, currentParams.mediaType, updateUrl]
+    );
+
     const translateGenre = (genre: string): string => {
         const genreTranslations: { [key: string]: string } = {
             Action: "Action",
@@ -214,36 +242,68 @@ export default function Home() {
                     </TabsList>
 
                     <div className="mb-6 space-y-4">
-                        <DropdownMenu>
-                            <div className="flex flex-row gap-2">
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="w-[200px] justify-between">
-                                        <span className="truncate">
-                                            {currentParams.selectedGenres.length === 0
-                                                ? "Velg sjangere"
-                                                : `${currentParams.selectedGenres.length} valgt`}
-                                        </span>
-                                        <ChevronDown className="h-4 w-4 opacity-50" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                            </div>
-                            <DropdownMenuContent className="w-[400px] p-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    {currentGenres.map((genre) => (
-                                        <div key={genre.id} className="flex items-center space-x-2">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                            <DropdownMenu>
+                                <div className="flex flex-row gap-2">
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" className="w-[200px] justify-between">
+                                            <span className="truncate">
+                                                {currentParams.selectedGenres.length === 0
+                                                    ? "Velg sjangere"
+                                                    : `${currentParams.selectedGenres.length} valgt`}
+                                            </span>
+                                            <ChevronDown className="h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                </div>
+                                <DropdownMenuContent className="w-[400px] p-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {currentGenres.map((genre) => (
+                                            <div key={genre.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`genre-${genre.id}`}
+                                                    checked={currentParams.selectedGenres.includes(
+                                                        genre.id.toString()
+                                                    )}
+                                                    onCheckedChange={(checked) =>
+                                                        handleGenreChange(genre.id.toString(), checked === true)
+                                                    }
+                                                />
+                                                <Label htmlFor={`genre-${genre.id}`}>
+                                                    {translateGenre(genre.name)}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            {!isLoadingServices && (
+                                <div className="flex items-center gap-2">
+                                    {hasServices ? (
+                                        <>
                                             <Checkbox
-                                                id={`genre-${genre.id}`}
-                                                checked={currentParams.selectedGenres.includes(genre.id.toString())}
+                                                id="streaming-filter-explore"
+                                                checked={currentParams.streamingFilter}
                                                 onCheckedChange={(checked) =>
-                                                    handleGenreChange(genre.id.toString(), checked === true)
+                                                    handleStreamingFilterChange(checked === true)
                                                 }
                                             />
-                                            <Label htmlFor={`genre-${genre.id}`}>{translateGenre(genre.name)}</Label>
-                                        </div>
-                                    ))}
+                                            <Label htmlFor="streaming-filter-explore" className="cursor-pointer">
+                                                På mine tjenester
+                                            </Label>
+                                        </>
+                                    ) : (
+                                        <Link
+                                            href="/profile"
+                                            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                                        >
+                                            Legg til strømmetjenester i profilen
+                                        </Link>
+                                    )}
                                 </div>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                            )}
+                        </div>
 
                         {currentParams.selectedGenres.length > 0 && (
                             <div className="space-y-4">
@@ -271,9 +331,11 @@ export default function Home() {
                     <TabsContent value="movie">
                         <MovieList
                             title={
-                                currentParams.selectedGenres.length === 0
-                                    ? "Populære filmer"
-                                    : "Filmer i valgte sjangere"
+                                currentParams.streamingFilter && hasServices
+                                    ? "Filmer på dine tjenester"
+                                    : currentParams.selectedGenres.length === 0
+                                      ? "Populære filmer"
+                                      : "Filmer i valgte sjangere"
                             }
                             movies={movies || { results: [], total_pages: 0, page: 1, total_results: 0 }}
                             isOnFrontPage={false}
@@ -284,9 +346,11 @@ export default function Home() {
                     <TabsContent value="tv">
                         <TVShowList
                             title={
-                                currentParams.selectedGenres.length === 0
-                                    ? "Populære TV-serier"
-                                    : "TV-serier i valgte sjangere"
+                                currentParams.streamingFilter && hasServices
+                                    ? "TV-serier på dine tjenester"
+                                    : currentParams.selectedGenres.length === 0
+                                      ? "Populære TV-serier"
+                                      : "TV-serier i valgte sjangere"
                             }
                             tvshows={tvshows || { results: [], total_pages: 0, page: 1, total_results: 0 }}
                             isOnFrontPage={false}

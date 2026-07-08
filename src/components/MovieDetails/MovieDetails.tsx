@@ -10,12 +10,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
+import { useSupabase } from "@/components/SupabaseProvider";
+import { addToList, getListsForMedia, removeFromList } from "@/lib/listRepository";
 import { useMovieLists } from "@/hooks/useMovieLists";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { ArrowLeft, BookmarkPlus, Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { MoviePageData } from "@/lib/tmdb/movies";
 
 interface MovieDetails {
     id: number;
@@ -56,119 +58,75 @@ interface WatchProviders {
 }
 
 interface MovieDetailProps {
-    params: {
-        id: string;
-    };
+    movieId: string;
+    initialData?: MoviePageData;
 }
 
-export default function MovieDetails({ params }: MovieDetailProps) {
-    const movieId = params.id;
+export default function MovieDetails({ movieId, initialData }: MovieDetailProps) {
     const router = useRouter();
-    const [movie, setMovie] = useState<MovieDetails | null>(null);
-    const [cast, setCast] = useState<Cast[]>([]);
-    const [similarMovies, setSimilarMovies] = useState<SimilarMovie[]>([]);
-    const [watchProviders, setWatchProviders] = useState<WatchProviders | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [movie, setMovie] = useState<MovieDetails | null>(initialData?.movie ?? null);
+    const [cast, setCast] = useState<Cast[]>(initialData?.cast ?? []);
+    const [similarMovies, setSimilarMovies] = useState<SimilarMovie[]>(initialData?.similarMovies ?? []);
+    const [watchProviders, setWatchProviders] = useState<WatchProviders | null>(initialData?.watchProviders ?? null);
+    const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
     const { lists } = useMovieLists();
+    const { supabase, user } = useSupabase();
     const [movieListMap, setMovieListMap] = useState<Record<string, string[]>>({});
-    const [listsWithMovie, setListsWithMovie] = useState<any[]>([]);
-
-    const supabase = createClientComponentClient();
+    const [listsWithMovie, setListsWithMovie] = useState<{ id: string; name: string }[]>([]);
 
     const fetchMovieListMap = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from("media_items")
-                .select("list_id")
-                .eq("movie_id", movieId)
-                .eq("media_type", "movie");
-
-            if (error) throw error;
-
-            const listIds = data.map((item) => item.list_id);
+            const listIds = await getListsForMedia(supabase, movieId, "movie");
             setMovieListMap({ [movieId]: listIds });
-
-            if (listIds.length > 0) {
-                const { data: listData, error: listError } = await supabase.from("lists").select("*").in("id", listIds);
-
-                if (listError) throw listError;
-                setListsWithMovie(listData || []);
-            } else {
-                setListsWithMovie([]);
-            }
+            const allLists = [...lists.owned, ...lists.shared];
+            setListsWithMovie(allLists.filter((l) => listIds.includes(l.id)));
         } catch (error) {
             console.error("Error fetching movie lists:", error);
         }
-    }, [movieId, supabase]);
+    }, [movieId, supabase, lists]);
 
     useEffect(() => {
+        if (initialData) return;
+
         const fetchMovieData = async () => {
-            if (!process.env.NEXT_PUBLIC_TMDB_API_KEY) {
-                setError("API key is not configured");
-                setLoading(false);
-                return;
-            }
-
             try {
-                // First fetch movie details, cast, and providers
-                const [movieResponse, creditsResponse, providersResponse] = await Promise.all([
-                    fetch(`https://api.themoviedb.org/3/movie/${params.id}`, {
-                        headers: {
-                            Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-                            accept: "application/json",
-                        },
-                    }),
-                    fetch(`https://api.themoviedb.org/3/movie/${params.id}/credits`, {
-                        headers: {
-                            Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-                            accept: "application/json",
-                        },
-                    }),
-                    fetch(`https://api.themoviedb.org/3/movie/${params.id}/watch/providers`, {
-                        headers: {
-                            Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-                            accept: "application/json",
-                        },
-                    }),
-                ]);
+                const response = await fetch(`/api/tmdb/movie/${movieId}?language=no-NO`);
+                const creditsResponse = await fetch(`/api/tmdb/movie/${movieId}/credits`);
+                const providersResponse = await fetch(`/api/tmdb/movie/${movieId}/watch/providers`);
 
-                if (!movieResponse.ok || !creditsResponse.ok || !providersResponse.ok) {
+                if (!response.ok || !creditsResponse.ok || !providersResponse.ok) {
                     throw new Error("Failed to fetch movie data");
                 }
 
                 const [movieData, creditsData, providersData] = await Promise.all([
-                    movieResponse.json(),
+                    response.json(),
                     creditsResponse.json(),
                     providersResponse.json(),
                 ]);
 
                 setMovie(movieData);
-                setCast(creditsData.cast?.slice(0, 6) || []); // First 6 cast members
-                setWatchProviders(providersData.results?.NO || null); // Norwegian providers
+                setCast(creditsData.cast?.slice(0, 6) || []);
+                setWatchProviders(providersData.results?.NO || null);
 
-                // Now fetch similar movies using the movie's genres - get 5 pages to ensure we have enough movies
-                const similarMoviesPromises = [1, 2, 3, 4, 5].map((page) =>
-                    fetch(
-                        `https://api.themoviedb.org/3/discover/movie?with_genres=${movieData.genres
-                            .map((g: { id: number }) => g.id)
-                            .join(",")}&sort_by=popularity.desc&page=${page}&without_genres=99,10755`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-                                accept: "application/json",
-                            },
-                        }
-                    ).then((res) => res.json())
+                const genreIds = movieData.genres?.map((g: { id: number }) => g.id).join(",") ?? "";
+                if (!genreIds) {
+                    setLoading(false);
+                    return;
+                }
+
+                const similarPagesData = await Promise.all(
+                    [1, 2, 3].map((page) =>
+                        fetch(
+                            `/api/tmdb/discover/movie?with_genres=${genreIds}&sort_by=popularity.desc&page=${page}&without_genres=99,10755`
+                        ).then((res) => res.json())
+                    )
                 );
 
-                const similarPagesData = await Promise.all(similarMoviesPromises);
-                const allSimilarMovies = similarPagesData.flatMap((page) => page.results);
-
-                // Filter out the current movie, movies without posters, and take first 100
-                const filteredSimilarMovies = allSimilarMovies
-                    .filter((m: any) => m.id !== movieData.id && m.poster_path !== null)
-                    .slice(0, 100);
+                const filteredSimilarMovies = similarPagesData
+                    .flatMap((page) => page.results)
+                    .filter((m: SimilarMovie) => m.id !== movieData.id && m.poster_path !== null)
+                    .slice(0, 50);
 
                 setSimilarMovies(filteredSimilarMovies);
             } catch (error) {
@@ -180,52 +138,30 @@ export default function MovieDetails({ params }: MovieDetailProps) {
         };
 
         fetchMovieData();
-    }, [params.id]);
+    }, [movieId, initialData]);
 
     useEffect(() => {
         fetchMovieListMap();
     }, [fetchMovieListMap]);
 
     const handleAddToList = async (listId: string) => {
+        if (!user) return;
         try {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            if (!user) return;
-
-            // First, delete any existing watched status for this movie in this list
-            const { error: watchedError } = await supabase
-                .from("watched_media")
-                .delete()
-                .eq("list_id", listId)
-                .eq("movie_id", params.id)
-                .eq("media_type", "movie");
-            if (watchedError) throw watchedError;
-
-            // Then add the movie to the list
-            const { error } = await supabase.from("media_items").insert({
-                list_id: listId,
-                movie_id: params.id,
-                title: movie?.title,
-                poster_path: movie?.poster_path,
-                added_by: user.id,
-                release_date: movie?.release_date,
-                media_type: "movie",
+            await addToList(supabase, {
+                mediaId: movieId,
+                listId,
+                mediaType: "movie",
+                title: movie?.title ?? "",
+                posterPath: movie?.poster_path ?? null,
+                addedBy: user.id,
+                releaseDate: movie?.release_date,
             });
-
-            if (error) throw error;
-
             setMovieListMap((prev) => ({
                 ...prev,
-                [params.id]: [...(prev[params.id] || []), listId],
+                [movieId]: [...(prev[movieId] || []), listId],
             }));
-
-            // Oppdaterer listsWithMovie
             const newList = [...lists.owned, ...lists.shared].find((l) => l.id === listId);
-            if (newList) {
-                setListsWithMovie((prev) => [...prev, newList]);
-            }
-
+            if (newList) setListsWithMovie((prev) => [...prev, newList]);
             toast({
                 title: "Film lagt til",
                 description: `"${movie?.title}" er nå lagt til i "${newList?.name}"`,
@@ -243,29 +179,16 @@ export default function MovieDetails({ params }: MovieDetailProps) {
 
     const handleRemoveFromList = async (listId: string, listName: string) => {
         try {
-            const { error } = await supabase
-                .from("media_items")
-                .delete()
-                .eq("movie_id", params.id)
-                .eq("list_id", listId)
-                .eq("media_type", "movie");
-
-            if (error) throw error;
-
+            await removeFromList(supabase, { mediaId: movieId, listId, mediaType: "movie" });
             setMovieListMap((prev) => {
                 const newMap = { ...prev };
-                if (newMap[params.id]) {
-                    newMap[params.id] = newMap[params.id].filter((id) => id !== listId);
-                    if (newMap[params.id].length === 0) {
-                        delete newMap[params.id];
-                    }
+                if (newMap[movieId]) {
+                    newMap[movieId] = newMap[movieId].filter((id) => id !== listId);
+                    if (newMap[movieId].length === 0) delete newMap[movieId];
                 }
                 return newMap;
             });
-
-            // Oppdater listsWithMovie for å fjerne filmen
             setListsWithMovie((prev) => prev.filter((list) => list.id !== listId));
-
             toast({
                 title: "Film fjernet",
                 description: `"${movie?.title}" er nå fjernet fra "${listName}"`,
@@ -325,18 +248,18 @@ export default function MovieDetails({ params }: MovieDetailProps) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
                                 {/* Sjekker om det finnes lister å legge til i */}
-                                {(lists?.owned?.some((list) => !movieListMap[params.id]?.includes(list.id)) ||
-                                    lists?.shared?.some((list) => !movieListMap[params.id]?.includes(list.id))) && (
+                                {(lists?.owned?.some((list) => !movieListMap[movieId]?.includes(list.id)) ||
+                                    lists?.shared?.some((list) => !movieListMap[movieId]?.includes(list.id))) && (
                                     <>
                                         {/* Egne lister */}
-                                        {lists.owned.filter((list) => !movieListMap[params.id]?.includes(list.id))
+                                        {lists.owned.filter((list) => !movieListMap[movieId]?.includes(list.id))
                                             .length > 0 && (
                                             <>
                                                 <DropdownMenuItem disabled className="text-muted-foreground">
                                                     Dine lister
                                                 </DropdownMenuItem>
                                                 {lists.owned
-                                                    .filter((list) => !movieListMap[params.id]?.includes(list.id))
+                                                    .filter((list) => !movieListMap[movieId]?.includes(list.id))
                                                     .map((list) => (
                                                         <DropdownMenuItem
                                                             key={list.id}
@@ -350,17 +273,17 @@ export default function MovieDetails({ params }: MovieDetailProps) {
                                         )}
 
                                         {/* Delte lister */}
-                                        {lists.shared.filter((list) => !movieListMap[params.id]?.includes(list.id))
+                                        {lists.shared.filter((list) => !movieListMap[movieId]?.includes(list.id))
                                             .length > 0 && (
                                             <>
                                                 {lists.owned.filter(
-                                                    (list) => !movieListMap[params.id]?.includes(list.id)
+                                                    (list) => !movieListMap[movieId]?.includes(list.id)
                                                 ).length > 0 && <DropdownMenuSeparator />}
                                                 <DropdownMenuItem disabled className="text-muted-foreground">
                                                     Delte lister
                                                 </DropdownMenuItem>
                                                 {lists.shared
-                                                    .filter((list) => !movieListMap[params.id]?.includes(list.id))
+                                                    .filter((list) => !movieListMap[movieId]?.includes(list.id))
                                                     .map((list) => (
                                                         <DropdownMenuItem
                                                             key={list.id}
@@ -379,9 +302,9 @@ export default function MovieDetails({ params }: MovieDetailProps) {
                                 {listsWithMovie.length > 0 && (
                                     <>
                                         {/* Kun vis separator hvis det er liste over */}
-                                        {(lists?.owned?.some((list) => !movieListMap[params.id]?.includes(list.id)) ||
+                                        {(lists?.owned?.some((list) => !movieListMap[movieId]?.includes(list.id)) ||
                                             lists?.shared?.some(
-                                                (list) => !movieListMap[params.id]?.includes(list.id)
+                                                (list) => !movieListMap[movieId]?.includes(list.id)
                                             )) && <DropdownMenuSeparator />}
                                         <DropdownMenuItem disabled className="text-muted-foreground">
                                             Fjern fra

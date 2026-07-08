@@ -33,7 +33,7 @@ Filmlista is a web application for tracking movies and TV shows you've watched o
 
 ### **Prerequisites**
 
-- Node.js 18.x or higher
+- Node.js 20.9 or higher
 - npm or yarn
 - Supabase account
 - TMDB API key
@@ -82,6 +82,7 @@ Create a `.env.local` file in the root directory with the following variables:
 
 ```
 NEXT_PUBLIC_TMDB_API_KEY=your_tmdb_api_key
+TMDB_API_KEY=your_tmdb_api_key
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
@@ -158,6 +159,26 @@ When making changes to your database schema:
 
 4. When ready to deploy, push the migrations to your production Supabase instance using their dashboard or CLI.
 
+### **Production database migrations**
+
+When opening a PR or deploying to production, apply pending migrations to the production Supabase project:
+
+```bash
+# Link your production project once
+supabase link --project-ref <your-project-ref>
+
+# Push all migrations from supabase/migrations/
+supabase db push
+```
+
+Recent migrations include:
+
+- `20240708120000_add_streaming_services.sql` — streaming service preferences on profiles
+- `20240708130000_tighten_rls.sql` — stricter row-level security policies
+- `20240708140000_add_provider_ids_cache.sql` — cached TMDB provider IDs on media items
+
+Verify migrations in the Supabase dashboard under **Database → Migrations** after pushing.
+
 ### **Deployment**
 
 The application is deployed at [https://www.filmlista.no](https://www.filmlista.no), and can be installed as a Progressive Web App (PWA) for the best experience.
@@ -170,6 +191,7 @@ The application is deployed at [https://www.filmlista.no](https://www.filmlista.
 - `npm run build` - Build the application for production
 - `npm start` - Start the production server
 - `npm run lint` - Run ESLint to check code quality
+- `npm run test:e2e` - Run Playwright smoke tests (requires dev server)
 
 ## **Project Structure**
 

@@ -3,8 +3,14 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
+import {
+    getLists,
+    getMediaForList,
+    MediaEntry,
+    removeFromList,
+    toggleWatched,
+} from "@/lib/listRepository";
 import { Movie } from "@/types/movie";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { ArrowRight, Film } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -12,6 +18,11 @@ import { MovieCard } from "../MovieCard/MovieCard";
 import { Skeleton } from "../ui/skeleton";
 import { useSupabase } from "@/components/SupabaseProvider";
 import Link from "next/link";
+import { useStreamingServices } from "@/hooks/useStreamingServices";
+import { fetchWatchProvidersBatch, matchesUserServices, WatchProvidersNO } from "@/lib/watchProviders";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 interface List {
     id: string;
@@ -19,31 +30,8 @@ interface List {
     owner_id: string;
 }
 
-interface DatabaseMovie {
-    movie_id: string;
-    title: string;
-    poster_path: string;
-    added_at: string;
-    added_by: string;
-    release_date: string;
-    media_type: string;
-    profiles: {
-        displayname: string;
-        email: string;
-    };
-}
-
-interface DatabaseWatchedMovie {
-    user_id: string;
-    movie_id: string;
-    watched_at: string;
-    media_type: string;
-    profiles: {
-        displayname: string;
-    };
-}
-
 type ProcessedMovie = Movie & {
+    provider_ids: number[];
     watched_by: {
         user_id: string;
         displayname: string;
@@ -59,6 +47,69 @@ type MovieListAction = {
     movieId: string;
 };
 
+function MovieGrid({
+    movies,
+    lists,
+    selectedList,
+    streamingFilter,
+    hasServices,
+    onRemoveFromList,
+    onToggleWatched,
+    router,
+}: {
+    movies: ProcessedMovie[];
+    lists: { owned: List[]; shared: List[] };
+    selectedList: string;
+    streamingFilter: boolean;
+    hasServices: boolean;
+    onRemoveFromList: (listId: string, movieId: string, movieTitle: string, mediaType: string) => void;
+    onToggleWatched: (movieId: string, currentWatchedStatus: boolean, mediaType: string) => void;
+    router: ReturnType<typeof useRouter>;
+}) {
+    if (movies.length === 0 && streamingFilter && hasServices) {
+        return (
+            <div className="flex flex-col items-center py-16 text-center">
+                <Film className="mb-4 h-12 w-12 opacity-50" />
+                <h3 className="text-lg font-semibold">Ingen titler på dine tjenester</h3>
+                <p className="text-muted-foreground">
+                    Prøv å fjerne filteret eller legg til flere tjenester i{" "}
+                    <Link href="/profile" className="underline hover:text-foreground">
+                        profilen
+                    </Link>
+                    .
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {movies.map((movie) => (
+                <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    isInList={true}
+                    lists={lists}
+                    onRemoveFromList={(listId) =>
+                        onRemoveFromList(listId, movie.id, movie.title, movie.media_type)
+                    }
+                    onToggleWatched={(currentWatchedStatus) =>
+                        onToggleWatched(movie.id, currentWatchedStatus, movie.media_type)
+                    }
+                    onClick={() =>
+                        router.push(
+                            `/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`
+                        )
+                    }
+                    isWatchList={true}
+                    currentListId={selectedList}
+                    showAddedBy={true}
+                />
+            ))}
+        </div>
+    );
+}
+
 export default function Watchlist() {
     const [isLoadingLists, setIsLoadingLists] = useState(true);
     const [isLoadingMovies, setIsLoadingMovies] = useState(false);
@@ -66,9 +117,12 @@ export default function Watchlist() {
     const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
     const [selectedList, setSelectedList] = useState<string | null>(null);
 
-    const supabase = createClientComponentClient();
-    const { user } = useSupabase();
+    const { supabase, user } = useSupabase();
     const router = useRouter();
+    const { services, hasServices, isLoading: isLoadingServices } = useStreamingServices();
+    const [streamingFilter, setStreamingFilter] = useState(false);
+    const [isLoadingProviders, setIsLoadingProviders] = useState(false);
+    const [providerMap, setProviderMap] = useState<Map<string, WatchProvidersNO | null>>(new Map());
     const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     const listIdFromUrl = searchParams.get("list");
 
@@ -80,7 +134,6 @@ export default function Watchlist() {
         [router]
     );
 
-    // Update the list selection handler
     const handleListSelection = useCallback(
         (listId: string) => {
             if (listId === "_header_owned" || listId === "_header_shared" || listId === "_no_lists") return;
@@ -95,35 +148,14 @@ export default function Watchlist() {
         setIsLoadingLists(true);
 
         try {
-            const { data: sharedListIds, error: sharedError } = await supabase
-                .from("shared_lists")
-                .select("list_id")
-                .eq("user_id", user.id);
+            const result = await getLists(supabase, user.id);
+            setLists(result);
 
-            if (sharedError) throw sharedError;
-
-            const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
-
-            if (listsError) throw listsError;
-
-            const sharedListIdsArray = (sharedListIds || []).map((item) => item.list_id);
-
-            const ownedLists = allLists.filter((list) => list.owner_id === user.id);
-            const sharedLists = allLists.filter((list) => sharedListIdsArray.includes(list.id));
-
-            setLists({
-                owned: ownedLists || [],
-                shared: sharedLists || [],
-            });
-
-            // Set initial list selection from URL or default to first list
             if (!selectedList) {
-                const initialList = listIdFromUrl || ownedLists[0]?.id || sharedLists[0]?.id;
+                const initialList = listIdFromUrl || result.owned[0]?.id || result.shared[0]?.id;
                 if (initialList) {
                     setSelectedList(initialList);
-                    if (!listIdFromUrl) {
-                        updateUrlWithList(initialList);
-                    }
+                    if (!listIdFromUrl) updateUrlWithList(initialList);
                 }
             }
         } catch (error) {
@@ -143,74 +175,25 @@ export default function Watchlist() {
         setIsLoadingMovies(true);
 
         try {
-            // Get all media items in the list
-            const { data: rawMoviesData, error: moviesError } = await supabase
-                .from("media_items")
-                .select(
-                    `
-					movie_id,
-					title,
-					poster_path,
-					added_at,
-					added_by,
-					release_date,
-					media_type,
-					profiles (displayname, email)
-				`
-                )
-                .eq("list_id", selectedList)
-                .order("added_at", { ascending: false });
-
-            if (moviesError) throw moviesError;
-
-            // Get watched status for all users
-            const { data: watchedData, error: watchedError } = await supabase
-                .from("watched_media")
-                .select("user_id, movie_id, watched_at, media_type")
-                .eq("list_id", selectedList);
-
-            if (watchedError) throw watchedError;
-
-            // Get profiles for all users who have watched movies
-            const userIds = Array.from(new Set(watchedData?.map((w) => w.user_id) || []));
-            const { data: profilesData, error: profilesError } = await supabase
-                .from("profiles")
-                .select("id, displayname")
-                .in("id", userIds);
-
-            if (profilesError) throw profilesError;
-
-            // Create a map of user_id to displayname
-            const profileMap = new Map(profilesData?.map((p) => [p.id, p.displayname]) || []);
-
-            const moviesData = rawMoviesData as unknown as DatabaseMovie[];
-
-            // Process movies with watched information
-            const processedMovies = moviesData.map((movie) => {
-                const watchedByUsers =
-                    watchedData
-                        ?.filter((w) => w.movie_id === movie.movie_id && w.media_type === movie.media_type)
-                        .map((w) => ({
-                            user_id: w.user_id,
-                            displayname: profileMap.get(w.user_id) || "Unknown",
-                            watched_at: w.watched_at,
-                        })) || [];
-
-                return {
-                    id: movie.movie_id,
-                    movie_id: movie.movie_id,
-                    title: movie.title,
-                    poster_path: movie.poster_path,
-                    added_at: movie.added_at,
-                    added_by: movie.added_by,
-                    added_by_displayname: movie.profiles?.displayname || movie.profiles?.email || "Unknown",
-                    release_date: movie.release_date,
-                    media_type: movie.media_type,
-                    watched_by: watchedByUsers,
-                    is_watched_by_me: watchedByUsers.some((w) => w.user_id === user.id),
-                };
-            });
-
+            const entries = await getMediaForList(supabase, selectedList, user.id);
+            const processedMovies = entries.map((entry: MediaEntry) => ({
+                id: entry.mediaId,
+                movie_id: entry.mediaId,
+                title: entry.title,
+                poster_path: entry.posterPath,
+                added_at: entry.addedAt,
+                added_by: entry.addedBy,
+                added_by_displayname: entry.addedByDisplayname,
+                release_date: entry.releaseDate,
+                media_type: entry.mediaType,
+                provider_ids: entry.providerIds,
+                watched_by: entry.watchedBy.map((w) => ({
+                    user_id: w.userId,
+                    displayname: w.displayname,
+                    watched_at: w.watchedAt,
+                })),
+                is_watched_by_me: entry.isWatchedByMe,
+            }));
             setMovies(processedMovies);
         } catch (error) {
             console.error("Error fetching movies:", error);
@@ -222,37 +205,18 @@ export default function Watchlist() {
 
     const handleRemoveFromList = async (listId: string, movieId: string, movieTitle: string, mediaType: string) => {
         try {
-            // Delete the movie from the list
-            const { error: removeError } = await supabase
-                .from("media_items")
-                .delete()
-                .eq("list_id", listId)
-                .eq("movie_id", movieId)
-                .eq("media_type", mediaType);
+            await removeFromList(supabase, {
+                mediaId: movieId,
+                listId,
+                mediaType: mediaType as "movie" | "tv",
+                alsoRemoveWatched: true,
+            });
 
-            if (removeError) throw removeError;
-
-            // Also delete any watched status for this movie in this list
-            const { error: watchedError } = await supabase
-                .from("watched_media")
-                .delete()
-                .eq("list_id", listId)
-                .eq("movie_id", movieId)
-                .eq("media_type", mediaType);
-
-            if (watchedError) throw watchedError;
-
-            // Emit so other components can update
             const event = new CustomEvent("movieListUpdate", {
-                detail: {
-                    type: "removed",
-                    listId,
-                    movieId,
-                },
+                detail: { type: "removed", listId, movieId },
             });
             window.dispatchEvent(event);
 
-            // Refresh the list
             fetchMovies();
 
             toast({
@@ -271,56 +235,34 @@ export default function Watchlist() {
     };
 
     const handleToggleWatched = async (movieId: string, currentWatchedStatus: boolean, mediaType: string) => {
+        if (!user || !selectedList) return;
         try {
-            if (currentWatchedStatus) {
-                // Remove watched status
-                const { error } = await supabase
-                    .from("watched_media")
-                    .delete()
-                    .eq("movie_id", movieId)
-                    .eq("list_id", selectedList)
-                    .eq("user_id", user?.id)
-                    .eq("media_type", mediaType);
+            await toggleWatched(supabase, {
+                mediaId: movieId,
+                listId: selectedList,
+                userId: user.id,
+                mediaType: mediaType as "movie" | "tv",
+                isWatched: currentWatchedStatus,
+            });
 
-                if (error) throw error;
-            } else {
-                // Add watched status
-                const { error } = await supabase.from("watched_media").insert({
-                    movie_id: movieId,
-                    list_id: selectedList,
-                    user_id: user?.id,
-                    media_type: mediaType,
-                });
-
-                if (error) throw error;
-            }
-
-            // Update local state
-            if (movies) {
-                setMovies(
-                    movies.map((movie) => {
-                        if (movie.movie_id === movieId) {
-                            const updatedWatchedBy = currentWatchedStatus
-                                ? movie.watched_by.filter((w) => w.user_id !== user?.id)
-                                : [
-                                      ...movie.watched_by,
-                                      {
-                                          user_id: user?.id || "",
-                                          displayname: user?.user_metadata?.displayname || "Unknown",
-                                          watched_at: new Date().toISOString(),
-                                      },
-                                  ];
-
-                            return {
-                                ...movie,
-                                watched_by: updatedWatchedBy,
-                                is_watched_by_me: !currentWatchedStatus,
-                            };
-                        }
-                        return movie;
-                    })
-                );
-            }
+            setMovies(
+                movies.map((movie) => {
+                    if (movie.movie_id === movieId) {
+                        const updatedWatchedBy = currentWatchedStatus
+                            ? movie.watched_by.filter((w) => w.user_id !== user.id)
+                            : [
+                                  ...movie.watched_by,
+                                  {
+                                      user_id: user.id,
+                                      displayname: user.user_metadata?.displayname || "Unknown",
+                                      watched_at: new Date().toISOString(),
+                                  },
+                              ];
+                        return { ...movie, watched_by: updatedWatchedBy, is_watched_by_me: !currentWatchedStatus };
+                    }
+                    return movie;
+                })
+            );
 
             toast({
                 title: currentWatchedStatus ? "Markert som usett" : "Markert som sett",
@@ -352,10 +294,57 @@ export default function Watchlist() {
     }, [selectedList, fetchMovies]);
 
     useEffect(() => {
-        const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
-            const { type, listId: updatedListId } = event.detail;
+        if (!streamingFilter || !hasServices || movies.length === 0) {
+            setProviderMap(new Map());
+            return;
+        }
 
-            // Only refresh if the update affects this list
+        const itemsNeedingFetch = movies.filter((movie) => movie.provider_ids.length === 0);
+        if (itemsNeedingFetch.length === 0) {
+            setProviderMap(new Map());
+            return;
+        }
+
+        const fetchProviders = async () => {
+            setIsLoadingProviders(true);
+            try {
+                const items = itemsNeedingFetch.map((m) => ({
+                    mediaId: m.movie_id,
+                    mediaType: m.media_type as "movie" | "tv",
+                }));
+                const providers = await fetchWatchProvidersBatch(items);
+                setProviderMap(providers);
+            } catch (error) {
+                console.error("Error fetching watch providers:", error);
+            } finally {
+                setIsLoadingProviders(false);
+            }
+        };
+
+        fetchProviders();
+    }, [streamingFilter, hasServices, movies]);
+
+    const filterByStreaming = useCallback(
+        (movieList: ProcessedMovie[]) => {
+            if (!streamingFilter || !hasServices) return movieList;
+
+            return movieList.filter((movie) => {
+                if (movie.provider_ids.length > 0) {
+                    return movie.provider_ids.some((id) => services.includes(id));
+                }
+
+                const key = `${movie.media_type}:${movie.movie_id}`;
+                const providers = providerMap.get(key);
+                if (providers === undefined) return false;
+                return matchesUserServices(providers, services);
+            });
+        },
+        [streamingFilter, hasServices, providerMap, services]
+    );
+
+    useEffect(() => {
+        const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
+            const { listId: updatedListId } = event.detail;
             if (updatedListId === selectedList) {
                 fetchMovies();
             }
@@ -470,114 +459,90 @@ export default function Watchlist() {
 
                     {selectedList && movies && movies.length > 0 && !isLoading && (
                         <Tabs defaultValue="all" className="w-full">
-                            <TabsList className="mb-6">
-                                <TabsTrigger value="all">Alle</TabsTrigger>
-                                <TabsTrigger value="unwatched">Ikke sett</TabsTrigger>
-                                <TabsTrigger value="watched">Sett</TabsTrigger>
-                            </TabsList>
+                            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <TabsList>
+                                    <TabsTrigger value="all">Alle</TabsTrigger>
+                                    <TabsTrigger value="unwatched">Ikke sett</TabsTrigger>
+                                    <TabsTrigger value="watched">Sett</TabsTrigger>
+                                </TabsList>
 
-                            <TabsContent value="all">
-                                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                                    {movies.map((movie) => (
-                                        <MovieCard
-                                            key={movie.id}
-                                            movie={movie}
-                                            isInList={true}
-                                            lists={lists}
-                                            onRemoveFromList={(listId) =>
-                                                handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)
-                                            }
-                                            onToggleWatched={(currentWatchedStatus) =>
-                                                handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)
-                                            }
-                                            onClick={() =>
-                                                router.push(
-                                                    `/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`
-                                                )
-                                            }
-                                            isWatchList={true}
-                                            currentListId={selectedList || undefined}
-                                            showAddedBy={true}
-                                        />
-                                    ))}
+                                {!isLoadingServices && (
+                                    <div className="flex items-center gap-2">
+                                        {hasServices ? (
+                                            <>
+                                                <Checkbox
+                                                    id="streaming-filter"
+                                                    checked={streamingFilter}
+                                                    onCheckedChange={(checked) =>
+                                                        setStreamingFilter(checked === true)
+                                                    }
+                                                    disabled={isLoadingProviders}
+                                                />
+                                                <Label htmlFor="streaming-filter" className="cursor-pointer text-sm">
+                                                    På mine tjenester
+                                                </Label>
+                                                {isLoadingProviders && (
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                )}
+                                            </>
+                                        ) : (
+                                            <Link
+                                                href="/profile"
+                                                className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                                            >
+                                                Legg til strømmetjenester i profilen
+                                            </Link>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {streamingFilter && hasServices && isLoadingProviders && providerMap.size === 0 && movies.some((m) => m.provider_ids.length === 0) ? (
+                                <div className="flex items-center justify-center py-16">
+                                    <Loader2 className="h-8 w-8 animate-spin text-filmlista-primary" />
                                 </div>
+                            ) : (
+                                <>
+                            <TabsContent value="all">
+                                <MovieGrid
+                                    movies={filterByStreaming(movies)}
+                                    lists={lists}
+                                    selectedList={selectedList}
+                                    streamingFilter={streamingFilter}
+                                    hasServices={hasServices}
+                                    onRemoveFromList={handleRemoveFromList}
+                                    onToggleWatched={handleToggleWatched}
+                                    router={router}
+                                />
                             </TabsContent>
 
                             <TabsContent value="unwatched">
-                                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                                    {movies
-                                        .filter((m) => !m.is_watched_by_me)
-                                        .map((movie) => (
-                                            <MovieCard
-                                                key={movie.id}
-                                                movie={movie}
-                                                isInList={true}
-                                                lists={lists}
-                                                onRemoveFromList={(listId) =>
-                                                    handleRemoveFromList(
-                                                        listId,
-                                                        movie.id,
-                                                        movie.title,
-                                                        movie.media_type
-                                                    )
-                                                }
-                                                onToggleWatched={(currentWatchedStatus) =>
-                                                    handleToggleWatched(
-                                                        movie.id,
-                                                        currentWatchedStatus,
-                                                        movie.media_type
-                                                    )
-                                                }
-                                                onClick={() =>
-                                                    router.push(
-                                                        `/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`
-                                                    )
-                                                }
-                                                isWatchList={true}
-                                                currentListId={selectedList || undefined}
-                                                showAddedBy={true}
-                                            />
-                                        ))}
-                                </div>
+                                <MovieGrid
+                                    movies={filterByStreaming(movies.filter((m) => !m.is_watched_by_me))}
+                                    lists={lists}
+                                    selectedList={selectedList}
+                                    streamingFilter={streamingFilter}
+                                    hasServices={hasServices}
+                                    onRemoveFromList={handleRemoveFromList}
+                                    onToggleWatched={handleToggleWatched}
+                                    router={router}
+                                />
                             </TabsContent>
 
                             <TabsContent value="watched">
-                                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                                    {movies
-                                        .filter((m) => m.is_watched_by_me)
-                                        .map((movie) => (
-                                            <MovieCard
-                                                key={movie.id}
-                                                movie={movie}
-                                                isInList={true}
-                                                lists={lists}
-                                                onRemoveFromList={(listId) =>
-                                                    handleRemoveFromList(
-                                                        listId,
-                                                        movie.id,
-                                                        movie.title,
-                                                        movie.media_type
-                                                    )
-                                                }
-                                                onToggleWatched={(currentWatchedStatus) =>
-                                                    handleToggleWatched(
-                                                        movie.id,
-                                                        currentWatchedStatus,
-                                                        movie.media_type
-                                                    )
-                                                }
-                                                onClick={() =>
-                                                    router.push(
-                                                        `/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`
-                                                    )
-                                                }
-                                                isWatchList={true}
-                                                currentListId={selectedList || undefined}
-                                                showAddedBy={true}
-                                            />
-                                        ))}
-                                </div>
+                                <MovieGrid
+                                    movies={filterByStreaming(movies.filter((m) => m.is_watched_by_me))}
+                                    lists={lists}
+                                    selectedList={selectedList}
+                                    streamingFilter={streamingFilter}
+                                    hasServices={hasServices}
+                                    onRemoveFromList={handleRemoveFromList}
+                                    onToggleWatched={handleToggleWatched}
+                                    router={router}
+                                />
                             </TabsContent>
+                                </>
+                            )}
                         </Tabs>
                     )}
                 </div>
