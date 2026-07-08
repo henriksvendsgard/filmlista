@@ -1,4 +1,5 @@
 "use client";
+
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,37 +24,30 @@ import { toast } from "@/hooks/use-toast";
 import {
     createList,
     deleteList,
-    getLists,
-    List,
+    getListsWithStats,
+    ListWithStats,
     shareList,
     updateList,
 } from "@/lib/listRepository";
 import { useSupabase } from "@/components/SupabaseProvider";
-import { User } from "@supabase/supabase-js";
-import { PlusCircle, Share, Share2, Trash2, Pencil } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { List, PlusCircle, Share2, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Skeleton } from "../ui/skeleton";
-
-interface ListsState {
-    owned: List[];
-    shared: List[];
-}
-
-interface CustomUser extends User {
-    displayName?: string;
-}
+import { ListCard } from "./ListCard";
 
 export default function Lists() {
-    const [lists, setLists] = useState<ListsState>({ owned: [], shared: [] });
-    const [user, setUser] = useState<CustomUser | null>(null);
+    const [lists, setLists] = useState<{ owned: ListWithStats[]; shared: ListWithStats[] }>({
+        owned: [],
+        shared: [],
+    });
     const [newListName, setNewListName] = useState("");
     const [editListName, setEditListName] = useState("");
     const [editListId, setEditListId] = useState<string | null>(null);
     const [shareEmail, setShareEmail] = useState("");
+    const [shareListName, setShareListName] = useState("");
     const [selectedList, setSelectedList] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -62,54 +56,52 @@ export default function Lists() {
     const [listToDelete, setListToDelete] = useState<{ id: string; name: string } | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-    const { supabase } = useSupabase();
+    const { supabase, user } = useSupabase();
+    const displayName = user?.user_metadata?.display_name as string | undefined;
 
     const fetchLists = useCallback(async () => {
-        const {
-            data: { user },
-            error: userError,
-        } = await supabase.auth.getUser();
-        if (userError) {
-            console.error("Error fetching user:", userError);
-            return;
-        }
-        if (user) {
-            const displayName = user.user_metadata?.display_name;
-            setUser({ ...user, displayName: displayName });
-        }
         if (!user) return;
 
         try {
-            const result = await getLists(supabase, user.id);
+            const result = await getListsWithStats(supabase, user.id);
             setLists(result);
         } catch (error) {
             console.error("Error fetching lists:", error);
             toast({
-                title: "Error",
-                description: "Failed to fetch lists",
+                title: "Kunne ikke hente lister",
+                description: "Prøv å laste siden på nytt",
                 variant: "destructive",
             });
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
-    }, [supabase]);
+    }, [supabase, user]);
 
     useEffect(() => {
         fetchLists();
     }, [fetchLists]);
 
+    const stats = useMemo(() => {
+        const totalItems = [...lists.owned, ...lists.shared].reduce((sum, list) => sum + list.itemCount, 0);
+        const totalSharedWith = lists.owned.reduce((sum, list) => sum + (list.sharedCount ?? 0), 0);
+        return {
+            ownedCount: lists.owned.length,
+            sharedCount: lists.shared.length,
+            totalItems,
+            totalSharedWith,
+        };
+    }, [lists]);
+
     const handleCreateList = async (e: React.FormEvent) => {
         e.preventDefault();
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
         if (!user) return;
 
         try {
             await createList(supabase, { name: newListName, ownerId: user.id });
             toast({
                 title: "Lista er opprettet",
-                description: `Lista "${newListName}" er opprettet, du kan nå legge til filmer og serier i den`,
-                className: "bg-green-700",
+                description: `"${newListName}" er klar — legg til filmer fra Utforsk eller Min liste`,
+                className: "bg-green-700 text-white",
             });
             setNewListName("");
             setIsCreateDialogOpen(false);
@@ -131,9 +123,9 @@ export default function Lists() {
         try {
             await updateList(supabase, editListId, editListName);
             toast({
-                title: "Listens navn er oppdatert",
-                description: `Listens navn er nå endret til "${editListName}"`,
-                className: "bg-green-700",
+                title: "Navn oppdatert",
+                description: `Listen heter nå "${editListName}"`,
+                className: "bg-green-700 text-white",
             });
             setEditListName("");
             setEditListId(null);
@@ -143,7 +135,6 @@ export default function Lists() {
             console.error("Error updating list:", error);
             toast({
                 title: "Kunne ikke oppdatere liste",
-                description: "Det oppstod en feil ved å oppdatere lista",
                 variant: "destructive",
             });
         }
@@ -158,14 +149,12 @@ export default function Lists() {
             }));
             toast({
                 title: "Lista ble slettet",
-                description: `Lista "${listToDelete.name}" har nå blitt slettet`,
-                variant: "destructive",
+                description: `"${listToDelete.name}" er fjernet`,
             });
         } catch (error) {
             console.error("Error deleting list:", error);
             toast({
-                title: "Noe gikk galt...",
-                description: "Kunne ikke slette lista",
+                title: "Kunne ikke slette liste",
                 variant: "destructive",
             });
         } finally {
@@ -182,18 +171,19 @@ export default function Lists() {
             await shareList(supabase, { listId: selectedList, email: shareEmail });
             toast({
                 title: "Lista ble delt!",
-                description: `Lista er nå delt med ${shareEmail}`,
-                className: "bg-green-700",
+                description: `${shareListName} er nå delt med ${shareEmail}`,
+                className: "bg-green-700 text-white",
             });
             setShareEmail("");
             setSelectedList(null);
+            setShareListName("");
             setIsShareDialogOpen(false);
             fetchLists();
         } catch (error) {
             if (error instanceof Error && error.message === "USER_NOT_FOUND") {
                 toast({
-                    title: "Noe gikk galt...",
-                    description: "Fant ikke brukeren med denne e-posten!",
+                    title: "Fant ikke bruker",
+                    description: "Ingen bruker er registrert med denne e-posten",
                     variant: "destructive",
                 });
                 return;
@@ -202,61 +192,90 @@ export default function Lists() {
                 toast({
                     title: "Allerede delt",
                     description: "Denne lista er allerede delt med denne brukeren",
-                    variant: "default",
-                    className: "bg-yellow-600",
                 });
                 return;
             }
             console.error("Error sharing list:", error);
             toast({
                 title: "Kunne ikke dele",
-                description: "Det oppstod en feil ved å dele lista",
                 variant: "destructive",
             });
         }
     };
 
+    const openEdit = (list: ListWithStats) => {
+        setEditListId(list.id);
+        setEditListName(list.name);
+        setIsEditDialogOpen(true);
+    };
+
+    const openShare = (list: ListWithStats) => {
+        setSelectedList(list.id);
+        setShareListName(list.name);
+        setIsShareDialogOpen(true);
+    };
+
+    const openDelete = (list: ListWithStats) => {
+        setListToDelete({ id: list.id, name: list.name });
+        setIsDeleteDialogOpen(true);
+    };
+
     return (
-        <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-3xl font-bold tracking-tight">
-                    Listene til {`${user?.displayName ? user?.displayName : "..."}`}
-                </h2>
+        <div className="space-y-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p className="text-muted-foreground">
+                        {displayName ? `Hei, ${displayName}!` : "Organiser filmene og seriene dine"}
+                    </p>
+                    {!loading && (
+                        <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                                <List className="h-4 w-4" />
+                                {stats.ownedCount} {stats.ownedCount === 1 ? "liste" : "lister"}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <Share2 className="h-4 w-4" />
+                                {stats.totalItems} titler totalt
+                            </span>
+                            {stats.sharedCount > 0 && (
+                                <span className="flex items-center gap-1.5">
+                                    <Users className="h-4 w-4" />
+                                    {stats.sharedCount} delt med deg
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="flex items-center rounded-full bg-filmlista-primary text-white hover:bg-filmlista-primary/80">
+                        <Button className="gap-2 bg-filmlista-primary text-white hover:bg-filmlista-primary/80">
                             <PlusCircle className="h-4 w-4" />
                             Ny liste
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
-                        <DialogHeader className="mb-4">
-                            <DialogTitle className="mb-4">Opprett ny liste</DialogTitle>
-                            <DialogDescription>Gi listen din et navn. Filmer legger du til senere.</DialogDescription>
+                        <DialogHeader>
+                            <DialogTitle>Opprett ny liste</DialogTitle>
+                            <DialogDescription>
+                                Gi listen et navn. Du kan legge til filmer og serier fra Utforsk eller Min liste.
+                            </DialogDescription>
                         </DialogHeader>
-                        <form onSubmit={handleCreateList} className="space-y-6">
-                            <div>
-                                <Label className="hidden" htmlFor="name">
-                                    Listenavn
-                                </Label>
+                        <form onSubmit={handleCreateList} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Listenavn</Label>
                                 <Input
-                                    className="text-base"
                                     id="name"
                                     value={newListName}
                                     onChange={(e) => setNewListName(e.target.value)}
-                                    placeholder="F.eks. Favorittfilmer eller Serier"
+                                    placeholder="F.eks. Filmkveld med venner"
+                                    autoFocus
                                 />
                             </div>
                             <DialogFooter>
-                                <div className="flex justify-end">
-                                    <Button
-                                        className="rounded-full bg-filmlista-primary text-white hover:bg-filmlista-primary/80"
-                                        type="submit"
-                                        disabled={!newListName.trim()}
-                                    >
-                                        Opprett liste
-                                    </Button>
-                                </div>
+                                <Button type="submit" disabled={!newListName.trim()} className="bg-filmlista-primary hover:bg-filmlista-primary/80">
+                                    Opprett liste
+                                </Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
@@ -265,160 +284,118 @@ export default function Lists() {
 
             <Tabs defaultValue="owned">
                 <TabsList>
-                    <TabsTrigger value="owned">Mine lister</TabsTrigger>
-                    <TabsTrigger value="shared">Delt med meg</TabsTrigger>
+                    <TabsTrigger value="owned">Mine lister ({lists.owned.length})</TabsTrigger>
+                    <TabsTrigger value="shared">Delt med meg ({lists.shared.length})</TabsTrigger>
                 </TabsList>
 
-                {loading && (
-                    <TabsContent
-                        value="owned"
-                        className="mt-4 grid grid-cols-1 gap-4 sm:mt-16 md:grid-cols-2 lg:grid-cols-3"
-                    >
-                        <Skeleton className="h-[115px] w-full" />
-                        <Skeleton className="h-[115px] w-full" />
-                    </TabsContent>
-                )}
-                <TabsContent value="owned">
-                    {!loading && lists.owned.length === 0 && lists.shared.length === 0 && (
-                        <div className="flex h-24 items-center justify-center">
-                            <p className="text-muted-foreground">
-                                Du har ingen lister enda, trykk på Ny liste for å lage filmlista di!
-                            </p>
-                        </div>
-                    )}
-                    <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-16 md:grid-cols-2 lg:grid-cols-3">
-                        {lists.owned.map((list: List) => (
-                            <Card key={list.id}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-lg font-bold">{list.name}</CardTitle>
-                                    <div className="flex space-x-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="rounded-full"
-                                            onClick={() => {
-                                                setEditListId(list.id);
-                                                setEditListName(list.name);
-                                                setIsEditDialogOpen(true);
-                                            }}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="rounded-full"
-                                            onClick={() => {
-                                                setSelectedList(list.id);
-                                                setIsShareDialogOpen(true);
-                                            }}
-                                        >
-                                            <Share className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            size="icon"
-                                            className="rounded-full"
-                                            onClick={() => {
-                                                setListToDelete({ id: list.id, name: list.name });
-                                                setIsDeleteDialogOpen(true);
-                                            }}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-muted-foreground">
-                                        Opprettet: {new Date(list.created_at || "").toLocaleDateString()}
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        ))}
+                {loading ? (
+                    <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <Skeleton className="h-64 w-full" />
+                        <Skeleton className="h-64 w-full" />
+                        <Skeleton className="h-64 w-full" />
                     </div>
-                </TabsContent>
+                ) : (
+                    <>
+                        <TabsContent value="owned" className="mt-6">
+                            {lists.owned.length === 0 ? (
+                                <div className="flex flex-col items-center rounded-lg border border-dashed py-16 text-center">
+                                    <List className="mb-4 h-12 w-12 text-muted-foreground/50" />
+                                    <h3 className="text-lg font-semibold">Ingen lister ennå</h3>
+                                    <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                                        Opprett en liste for å samle filmer og serier du vil se — alene eller sammen med
+                                        andre.
+                                    </p>
+                                    <Button className="mt-6 bg-filmlista-primary hover:bg-filmlista-primary/80" onClick={() => setIsCreateDialogOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Opprett din første liste
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {lists.owned.map((list) => (
+                                        <ListCard
+                                            key={list.id}
+                                            list={list}
+                                            variant="owned"
+                                            onEdit={openEdit}
+                                            onShare={openShare}
+                                            onDelete={openDelete}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </TabsContent>
 
-                <TabsContent value="shared">
-                    {!loading && lists.shared.length === 0 && (
-                        <div className="flex h-24 items-center justify-center">
-                            <p className="text-muted-foreground">Ingen har delt noen lister med deg enda...</p>
-                        </div>
-                    )}
-                    <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-16 md:grid-cols-2 lg:grid-cols-3">
-                        {lists.shared.map((list: any) => (
-                            <Card key={list.id}>
-                                <CardHeader>
-                                    <CardTitle className="text-lg font-bold">{list.name}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-muted-foreground">
-                                        Opprettet: {new Date(list.created_at || "").toLocaleDateString()}
+                        <TabsContent value="shared" className="mt-6">
+                            {lists.shared.length === 0 ? (
+                                <div className="flex flex-col items-center rounded-lg border border-dashed py-16 text-center">
+                                    <Users className="mb-4 h-12 w-12 text-muted-foreground/50" />
+                                    <h3 className="text-lg font-semibold">Ingen delte lister</h3>
+                                    <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                                        Når noen deler en liste med deg, dukker den opp her.
                                     </p>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </TabsContent>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {lists.shared.map((list) => (
+                                        <ListCard key={list.id} list={list} variant="shared" />
+                                    ))}
+                                </div>
+                            )}
+                        </TabsContent>
+                    </>
+                )}
             </Tabs>
 
             <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-                <DialogContent className="flex-col gap-8">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="mb-4">Del listen din med andre brukere</DialogTitle>
+                        <DialogTitle>Del «{shareListName}»</DialogTitle>
                         <DialogDescription>
-                            Del listen din med andre slik at dere kan dele filmer og serier med hverandre.
+                            Skriv inn e-posten til en Filmlista-bruker. De får tilgang til å se og redigere listen.
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleShareList} className="space-y-6">
-                        <Input
-                            type="email"
-                            value={shareEmail}
-                            onChange={(e) => setShareEmail(e.target.value)}
-                            placeholder="Brukerens e-post"
-                            required
-                        />
-                        <div className="flex justify-end">
-                            <Button
-                                disabled={!shareEmail.trim()}
-                                type="submit"
-                                className="rounded-full bg-filmlista-primary text-white hover:bg-filmlista-primary/80"
-                            >
+                    <form onSubmit={handleShareList} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="shareEmail">E-post</Label>
+                            <Input
+                                id="shareEmail"
+                                type="email"
+                                value={shareEmail}
+                                onChange={(e) => setShareEmail(e.target.value)}
+                                placeholder="venn@eksempel.no"
+                                required
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit" disabled={!shareEmail.trim()} className="bg-filmlista-primary hover:bg-filmlista-primary/80">
                                 Del liste
                             </Button>
-                        </div>
+                        </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent>
-                    <DialogHeader className="mb-4">
-                        <DialogTitle className="mb-4">Endre navn på listen</DialogTitle>
-                        <DialogDescription>Gi listen din et nytt navn.</DialogDescription>
+                    <DialogHeader>
+                        <DialogTitle>Endre navn</DialogTitle>
+                        <DialogDescription>Gi listen et nytt navn.</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleEditList} className="space-y-6">
-                        <div>
-                            <Label className="hidden" htmlFor="editName">
-                                Listenavn
-                            </Label>
+                    <form onSubmit={handleEditList} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="editName">Listenavn</Label>
                             <Input
-                                className="text-base"
                                 id="editName"
                                 value={editListName}
                                 onChange={(e) => setEditListName(e.target.value)}
-                                placeholder="Nytt navn på listen"
+                                autoFocus
                             />
                         </div>
                         <DialogFooter>
-                            <div className="flex justify-end">
-                                <Button
-                                    className="w-fit rounded-full bg-filmlista-primary text-white hover:bg-filmlista-primary/80"
-                                    type="submit"
-                                    disabled={!editListName.trim()}
-                                >
-                                    Oppdater navn
-                                </Button>
-                            </div>
+                            <Button type="submit" disabled={!editListName.trim()} className="bg-filmlista-primary hover:bg-filmlista-primary/80">
+                                Lagre
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
@@ -426,28 +403,19 @@ export default function Lists() {
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
-                    <AlertDialogHeader className="space-y-6">
-                        <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Slett «{listToDelete?.name}»?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Dette vil slette {` "${listToDelete?.name}"`} og fjerne alle filmer og serier fra listen.{" "}
-                            <strong>Denne handlingen kan ikke angres!</strong>
+                            Alle filmer og serier i listen fjernes permanent. Denne handlingen kan ikke angres.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel
-                            className="rounded-full"
-                            onClick={() => {
-                                setIsDeleteDialogOpen(false);
-                                setListToDelete(null);
-                            }}
-                        >
-                            Avbryt
-                        </AlertDialogCancel>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setListToDelete(null)}>Avbryt</AlertDialogCancel>
                         <AlertDialogAction
-                            className="rounded-full bg-red-600 text-white hover:bg-red-700"
-                            onClick={() => handleDeleteList(listToDelete!)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => listToDelete && handleDeleteList(listToDelete)}
                         >
-                            Slett
+                            Slett liste
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

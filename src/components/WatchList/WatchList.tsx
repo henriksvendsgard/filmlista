@@ -19,9 +19,8 @@ import { Skeleton } from "../ui/skeleton";
 import { useSupabase } from "@/components/SupabaseProvider";
 import Link from "next/link";
 import { useStreamingServices } from "@/hooks/useStreamingServices";
+import { StreamingFilterSection } from "@/components/StreamingServicesSelector/StreamingFilterSection";
 import { fetchWatchProvidersBatch, matchesUserServices, WatchProvidersNO } from "@/lib/watchProviders";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
 interface List {
@@ -432,6 +431,15 @@ export default function Watchlist() {
                         </Select>
                     </div>
 
+                    {!isLoadingServices && (
+                        <StreamingFilterSection
+                            filterActive={streamingFilter}
+                            onFilterChange={setStreamingFilter}
+                            showFilter={!!(selectedList && movies.length > 0)}
+                            loadingProviders={isLoadingProviders}
+                        />
+                    )}
+
                     {!isLoading && (
                         <>
                             {lists.owned.length === 0 && lists.shared.length === 0 ? (
@@ -459,42 +467,12 @@ export default function Watchlist() {
 
                     {selectedList && movies && movies.length > 0 && !isLoading && (
                         <Tabs defaultValue="all" className="w-full">
-                            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="mb-4">
                                 <TabsList>
                                     <TabsTrigger value="all">Alle</TabsTrigger>
                                     <TabsTrigger value="unwatched">Ikke sett</TabsTrigger>
                                     <TabsTrigger value="watched">Sett</TabsTrigger>
                                 </TabsList>
-
-                                {!isLoadingServices && (
-                                    <div className="flex items-center gap-2">
-                                        {hasServices ? (
-                                            <>
-                                                <Checkbox
-                                                    id="streaming-filter"
-                                                    checked={streamingFilter}
-                                                    onCheckedChange={(checked) =>
-                                                        setStreamingFilter(checked === true)
-                                                    }
-                                                    disabled={isLoadingProviders}
-                                                />
-                                                <Label htmlFor="streaming-filter" className="cursor-pointer text-sm">
-                                                    På mine tjenester
-                                                </Label>
-                                                {isLoadingProviders && (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                                )}
-                                            </>
-                                        ) : (
-                                            <Link
-                                                href="/profile"
-                                                className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-                                            >
-                                                Legg til strømmetjenester i profilen
-                                            </Link>
-                                        )}
-                                    </div>
-                                )}
                             </div>
 
                             {streamingFilter && hasServices && isLoadingProviders && providerMap.size === 0 && movies.some((m) => m.provider_ids.length === 0) ? (

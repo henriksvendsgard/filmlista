@@ -20,6 +20,7 @@ import {
 } from "@/lib/exploreCache";
 import { dedupeById } from "@/lib/dedupeById";
 import { useStreamingServices } from "@/hooks/useStreamingServices";
+import { StreamingFilterSection } from "@/components/StreamingServicesSelector/StreamingFilterSection";
 import { ChevronDown, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -38,6 +39,8 @@ export default function Home() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const isFetchingMoreRef = useRef(false);
     const pageRef = useRef<HTMLDivElement>(null);
+    const restoredScrollForKey = useRef<string | null>(null);
+    const previousExploreKey = useRef<string | null>(null);
     const { services, hasServices, isLoading: isLoadingServices } = useStreamingServices();
 
     const search = searchParams.toString();
@@ -75,7 +78,7 @@ export default function Home() {
             if (streaming) {
                 params.set("streaming", "1");
             }
-            router.push(`/?${params.toString()}`);
+            router.push(`/?${params.toString()}`, { scroll: false });
         },
         [router, currentParams.mediaType, currentParams.streamingFilter]
     );
@@ -273,7 +276,18 @@ export default function Home() {
     }, [exploreKey]);
 
     useLayoutEffect(() => {
+        if (previousExploreKey.current === null) {
+            previousExploreKey.current = exploreKey;
+        } else if (previousExploreKey.current !== exploreKey) {
+            previousExploreKey.current = exploreKey;
+            restoredScrollForKey.current = exploreKey;
+            return;
+        }
+
+        if (restoredScrollForKey.current === exploreKey || isLoading) return;
+
         const scrollY = getExploreEntry(exploreKey)?.scrollY ?? 0;
+        restoredScrollForKey.current = exploreKey;
         if (scrollY <= 0) return;
 
         const apply = () => {
@@ -283,7 +297,7 @@ export default function Home() {
 
         apply();
         requestAnimationFrame(apply);
-    }, [exploreKey, isLoading, movies?.results.length, tvshows?.results.length]);
+    }, [exploreKey, isLoading]);
 
     const handleGenreChange = useCallback(
         (genreId: string, checked: boolean | "indeterminate") => {
@@ -358,7 +372,7 @@ export default function Home() {
                     </TabsList>
 
                     <div className="mb-6 space-y-4">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="flex flex-col gap-4">
                             <DropdownMenu>
                                 <div className="flex flex-row gap-2">
                                     <DropdownMenuTrigger asChild>
@@ -395,29 +409,10 @@ export default function Home() {
                             </DropdownMenu>
 
                             {!isLoadingServices && (
-                                <div className="flex items-center gap-2">
-                                    {hasServices ? (
-                                        <>
-                                            <Checkbox
-                                                id="streaming-filter-explore"
-                                                checked={currentParams.streamingFilter}
-                                                onCheckedChange={(checked) =>
-                                                    handleStreamingFilterChange(checked === true)
-                                                }
-                                            />
-                                            <Label htmlFor="streaming-filter-explore" className="cursor-pointer">
-                                                På mine tjenester
-                                            </Label>
-                                        </>
-                                    ) : (
-                                        <Link
-                                            href="/profile"
-                                            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-                                        >
-                                            Legg til strømmetjenester i profilen
-                                        </Link>
-                                    )}
-                                </div>
+                                <StreamingFilterSection
+                                    filterActive={currentParams.streamingFilter}
+                                    onFilterChange={handleStreamingFilterChange}
+                                />
                             )}
                         </div>
 

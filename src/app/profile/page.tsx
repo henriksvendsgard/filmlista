@@ -3,225 +3,283 @@
 import { StreamingServicesSelector } from "@/components/StreamingServicesSelector/StreamingServicesSelector";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { useStreamingServices } from "@/hooks/useStreamingServices";
-import { User } from "@supabase/supabase-js";
-import { PencilIcon } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { Compass, List, LogOut, PencilIcon, Tv } from "lucide-react";
+import Link from "next/link";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
-interface CustomUser extends User {
-    display_name?: string;
+function getInitials(name: string, email?: string) {
+    if (name.trim()) {
+        return name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((part) => part[0]?.toUpperCase())
+            .join("");
+    }
+    return email?.[0]?.toUpperCase() ?? "?";
 }
 
 export default function Profile() {
-    const { supabase } = useSupabase();
+    const { supabase, user } = useSupabase();
     const [displayName, setDisplayName] = useState("");
-    const [message, setMessage] = useState("");
-    const [user, setUser] = useState<CustomUser | null>(null);
-
     const [tempDisplayName, setTempDisplayName] = useState("");
     const [editingDisplayName, setEditingDisplayName] = useState(false);
+    const [isSavingName, setIsSavingName] = useState(false);
 
     const { services, isLoading: isLoadingServices, saveServices } = useStreamingServices();
     const [selectedServices, setSelectedServices] = useState<number[]>([]);
     const [isSavingServices, setIsSavingServices] = useState(false);
-    const [servicesDirty, setServicesDirty] = useState(false);
+    const saveServicesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
-        const fetchUserProfile = async () => {
-            const {
-                data: { user },
-                error: userError,
-            } = await supabase.auth.getUser();
-            if (userError) {
-                console.error("Error fetching user:", userError);
-                return;
-            }
-            if (user) {
-                const displayName = user.user_metadata?.display_name;
-                setUser({ ...user, display_name: displayName });
-            }
+        if (!user) return;
+
+        const loadProfile = async () => {
+            const { data } = await supabase.from("profiles").select("displayname").eq("id", user.id).single();
+            const name = data?.displayname || (user.user_metadata?.display_name as string) || "";
+            setDisplayName(name);
+            setTempDisplayName(name);
         };
-        fetchUserProfile();
-    }, [supabase]);
+
+        loadProfile();
+    }, [supabase, user]);
 
     useEffect(() => {
         if (!isLoadingServices) {
             setSelectedServices(services);
-            setServicesDirty(false);
         }
     }, [services, isLoadingServices]);
 
-    const handleUpdate = async (e: React.FormEvent) => {
+    const scheduleSaveServices = useCallback(
+        (newServices: number[]) => {
+            if (saveServicesTimer.current) clearTimeout(saveServicesTimer.current);
+            saveServicesTimer.current = setTimeout(async () => {
+                setIsSavingServices(true);
+                const success = await saveServices(newServices);
+                setIsSavingServices(false);
+                if (success) {
+                    toast({
+                        title: "Strømmetjenester lagret",
+                        className: "bg-green-800 text-white",
+                    });
+                }
+            }, 600);
+        },
+        [saveServices]
+    );
+
+    const handleServicesChange = (newServices: number[]) => {
+        setSelectedServices(newServices);
+        scheduleSaveServices(newServices);
+    };
+
+    const handleUpdateName = async (e: React.FormEvent) => {
         e.preventDefault();
-        const {
-            data: { user },
-            error: userError,
-        } = await supabase.auth.getUser();
-        if (userError) {
-            console.error("Error fetching user:", userError);
-            return;
-        }
         if (!user) return;
 
-        // First update the user metadata
-        if (/[^a-zA-Z]/.test(displayName)) {
+        if (/[^a-zA-ZæøåÆØÅ\s-]/.test(displayName)) {
             toast({
-                title: "Feil ved oppdatering av visningsnavn",
-                description: "Visningsnavn kan ikke inneholde spesialtegn",
+                title: "Ugyldig visningsnavn",
+                description: "Visningsnavn kan bare inneholde bokstaver",
                 variant: "destructive",
             });
             return;
         }
 
+        setIsSavingName(true);
         const { error: updateError } = await supabase.auth.updateUser({
-            data: { display_name: displayName },
+            data: { display_name: displayName.trim() },
         });
 
         if (updateError) {
-            setMessage("Feil ved oppdatering av brukerdata");
+            toast({ title: "Kunne ikke oppdatere navn", variant: "destructive" });
+            setIsSavingName(false);
             return;
         }
 
         const { error: profileError } = await supabase
             .from("profiles")
-            .update({ displayname: displayName })
+            .update({ displayname: displayName.trim() })
             .eq("id", user.id);
 
+        setIsSavingName(false);
+
         if (profileError) {
-            setMessage("Feil ved oppdatering av visningsnavn");
-            console.error("Error updating profile:", profileError);
+            toast({ title: "Kunne ikke oppdatere profil", variant: "destructive" });
+            return;
         }
 
+        setTempDisplayName(displayName.trim());
+        setEditingDisplayName(false);
         toast({
             title: "Visningsnavn oppdatert",
-            description: `visningsnavnet ditt er nå "${displayName}"`,
-            variant: "default",
             className: "bg-green-800 text-white",
         });
-        setTempDisplayName(displayName);
-        setEditingDisplayName(false);
     };
 
-    const handleSaveServices = async () => {
-        setIsSavingServices(true);
-        const success = await saveServices(selectedServices);
-        setIsSavingServices(false);
-
-        if (success) {
-            setServicesDirty(false);
-            toast({
-                title: "Strømmetjenester lagret",
-                description:
-                    selectedServices.length > 0
-                        ? `${selectedServices.length} tjeneste${selectedServices.length > 1 ? "r" : ""} valgt`
-                        : "Ingen tjenester valgt",
-                className: "bg-green-800 text-white",
-            });
-        } else {
-            toast({
-                title: "Feil",
-                description: "Kunne ikke lagre strømmetjenester",
-                variant: "destructive",
-            });
-        }
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
     };
 
-    const handleServicesChange = (newServices: number[]) => {
-        setSelectedServices(newServices);
-        setServicesDirty(true);
+    const startEditing = () => {
+        setDisplayName(tempDisplayName);
+        setEditingDisplayName(true);
     };
+
+    if (!user) {
+        return (
+            <div className="container mx-auto px-5 py-16 text-center text-muted-foreground">
+                <p>Du må være innlogget for å se profilen din.</p>
+                <Button asChild className="mt-4">
+                    <Link href="/login">Logg inn</Link>
+                </Button>
+            </div>
+        );
+    }
+
+    const memberSince = user.created_at
+        ? new Date(user.created_at).toLocaleDateString("nb-NO", { month: "long", year: "numeric" })
+        : null;
 
     return (
-        <div className="container px-5">
-            <Card className="mx-auto mt-10 w-full max-w-lg rounded-lg p-6 shadow-md">
-                <h1 className="mb-4 text-2xl font-bold">Din profil</h1>
-                <strong className="mb-4">E-post: </strong>
-                <p className="mb-4 mt-4">{user?.email}</p>
-                <div>
-                    <strong className="mb-4">Visningsnavn: </strong>
-                    {!editingDisplayName ? (
-                        <div className="mt-4 flex items-center gap-2">
-                            <p>{tempDisplayName ? tempDisplayName : user?.display_name}</p>
+        <div className="container mx-auto mb-20 max-w-4xl px-5 lg:px-10">
+            <h1 className="mb-8 text-4xl font-bold">Profil</h1>
 
-                            <Button variant="outline" size={"icon"} onClick={() => setEditingDisplayName(true)}>
-                                <PencilIcon className="h-4 w-4" />
+            <div className="grid gap-6 lg:grid-cols-5">
+                <div className="space-y-6 lg:col-span-2">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-filmlista-primary text-xl font-semibold text-white">
+                                    {getInitials(tempDisplayName, user.email)}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="truncate text-xl font-semibold">
+                                        {tempDisplayName || "Sett visningsnavn"}
+                                    </p>
+                                    <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+                                    {memberSince && (
+                                        <p className="mt-1 text-xs text-muted-foreground">Medlem siden {memberSince}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="mt-6 border-t pt-6">
+                                <Label className="text-muted-foreground">Visningsnavn</Label>
+                                {!editingDisplayName ? (
+                                    <div className="mt-2 flex items-center justify-between gap-2">
+                                        <p className="font-medium">{tempDisplayName || "—"}</p>
+                                        <Button variant="outline" size="icon" onClick={startEditing}>
+                                            <PencilIcon className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleUpdateName} className="mt-2 space-y-3">
+                                        <Input
+                                            value={displayName}
+                                            onChange={(e) => setDisplayName(e.target.value)}
+                                            placeholder="Ditt navn"
+                                            autoFocus
+                                            maxLength={30}
+                                        />
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => setEditingDisplayName(false)}
+                                                disabled={isSavingName}
+                                            >
+                                                Avbryt
+                                            </Button>
+                                            <Button
+                                                type="submit"
+                                                disabled={!displayName.trim() || isSavingName}
+                                                className="bg-filmlista-primary hover:bg-filmlista-primary/80"
+                                            >
+                                                {isSavingName ? "Lagrer..." : "Lagre"}
+                                            </Button>
+                                        </div>
+                                    </form>
+                                )}
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    Vises når du legger til filmer i delte lister.
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Snarveier</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-2">
+                            <Button variant="outline" className="justify-start gap-2" asChild>
+                                <Link href="/">
+                                    <Compass className="h-4 w-4" />
+                                    Utforsk
+                                </Link>
                             </Button>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleUpdate} className="mt-4 space-y-4">
-                            <Input
-                                type="text"
-                                placeholder={user?.display_name ? user?.display_name : "Visningsnavn"}
-                                value={displayName}
-                                onChange={(e) => setDisplayName(e.target.value)}
-                                required
-                                className="w-full max-w-72 rounded border border-gray-300 p-2 text-base"
-                                autoFocus
-                            />
-                            <div>
-                                <Button
-                                    variant="outline"
-                                    type="button"
-                                    onClick={() => {
-                                        setEditingDisplayName(false);
-                                        setDisplayName(tempDisplayName);
-                                    }}
-                                    className="mr-2"
-                                >
-                                    Avbryt
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={!displayName}
-                                    className="rounded bg-blue-800 py-2 text-white hover:bg-blue-900"
-                                >
-                                    Endre
-                                </Button>
-                            </div>
-                        </form>
-                    )}
+                            <Button variant="outline" className="justify-start gap-2" asChild>
+                                <Link href="/watchlist">
+                                    <Tv className="h-4 w-4" />
+                                    Min liste
+                                </Link>
+                            </Button>
+                            <Button variant="outline" className="justify-start gap-2" asChild>
+                                <Link href="/lists">
+                                    <List className="h-4 w-4" />
+                                    Dine lister
+                                </Link>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="justify-start gap-2 text-destructive hover:text-destructive"
+                                onClick={handleSignOut}
+                            >
+                                <LogOut className="h-4 w-4" />
+                                Logg ut
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </div>
-                {message && <p className="mt-4 text-red-500">{message}</p>}
-            </Card>
 
-            <Card className="mx-auto mt-6 w-full max-w-lg rounded-lg p-6 shadow-md">
-                <h2 className="mb-2 text-xl font-bold">Mine strømmetjenester</h2>
-                <p className="mb-6 text-sm text-muted-foreground">
-                    Velg tjenestene du abonnerer på. Vi bruker dette til å filtrere filmer og serier du faktisk kan se.
-                </p>
-
-                {isLoadingServices ? (
-                    <p className="text-sm text-muted-foreground">Laster...</p>
-                ) : (
-                    <>
-                        <StreamingServicesSelector
-                            selected={selectedServices}
-                            onChange={handleServicesChange}
-                            disabled={isSavingServices}
-                        />
-                        {servicesDirty && (
-                            <div className="mt-6 flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        setSelectedServices(services);
-                                        setServicesDirty(false);
-                                    }}
+                <Card className="lg:col-span-3">
+                    <CardHeader>
+                        <CardTitle>Mine strømmetjenester</CardTitle>
+                        <CardDescription>
+                            Velg tjenestene du abonnerer på. Vi filtrerer filmer og serier du faktisk kan strømme på
+                            Utforsk og Min liste.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingServices ? (
+                            <p className="text-sm text-muted-foreground">Laster tjenester...</p>
+                        ) : (
+                            <>
+                                <StreamingServicesSelector
+                                    selected={selectedServices}
+                                    onChange={handleServicesChange}
                                     disabled={isSavingServices}
-                                >
-                                    Avbryt
-                                </Button>
-                                <Button onClick={handleSaveServices} disabled={isSavingServices}>
-                                    {isSavingServices ? "Lagrer..." : "Lagre"}
-                                </Button>
-                            </div>
+                                />
+                                {isSavingServices && (
+                                    <p className="mt-4 text-sm text-muted-foreground">Lagrer...</p>
+                                )}
+                                {selectedServices.length === 0 && !isSavingServices && (
+                                    <p className="mt-4 text-sm text-muted-foreground">
+                                        Ingen tjenester valgt — aktiver «På mine tjenester»-filteret på Utforsk når du
+                                        har lagt til minst én.
+                                    </p>
+                                )}
+                            </>
                         )}
-                    </>
-                )}
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

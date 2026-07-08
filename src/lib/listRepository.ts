@@ -8,6 +8,13 @@ export interface List {
     created_at?: string;
 }
 
+export interface ListWithStats extends List {
+    itemCount: number;
+    posterPaths: string[];
+    sharedCount?: number;
+    ownerName?: string;
+}
+
 export interface ListsResult {
     owned: List[];
     shared: List[];
@@ -62,6 +69,75 @@ export async function getLists(supabase: SupabaseClient, userId: string): Promis
     return {
         owned: ownedResult.data ?? [],
         shared,
+    };
+}
+
+export async function getListsWithStats(
+    supabase: SupabaseClient,
+    userId: string
+): Promise<{ owned: ListWithStats[]; shared: ListWithStats[] }> {
+    const { owned, shared } = await getLists(supabase, userId);
+    const allLists = [...owned, ...shared];
+    const listIds = allLists.map((list) => list.id);
+
+    if (listIds.length === 0) {
+        return { owned: [], shared: [] };
+    }
+
+    const ownedIds = owned.map((list) => list.id);
+    const ownerIds = [...new Set(shared.map((list) => list.owner_id))];
+
+    const [itemsResult, sharesResult, ownersResult] = await Promise.all([
+        supabase
+            .from("media_items")
+            .select("list_id, poster_path, added_at")
+            .in("list_id", listIds)
+            .order("added_at", { ascending: false }),
+        ownedIds.length > 0
+            ? supabase.from("shared_lists").select("list_id").in("list_id", ownedIds)
+            : Promise.resolve({ data: [] as { list_id: string }[], error: null }),
+        ownerIds.length > 0
+            ? supabase.from("profiles").select("id, displayname, email").in("id", ownerIds)
+            : Promise.resolve({ data: [] as { id: string; displayname: string | null; email: string | null }[], error: null }),
+    ]);
+
+    if (itemsResult.error) throw itemsResult.error;
+    if (sharesResult.error) throw sharesResult.error;
+    if (ownersResult.error) throw ownersResult.error;
+
+    const statsMap = new Map<string, { itemCount: number; posterPaths: string[] }>();
+    for (const item of itemsResult.data ?? []) {
+        const current = statsMap.get(item.list_id) ?? { itemCount: 0, posterPaths: [] };
+        current.itemCount++;
+        if (item.poster_path && current.posterPaths.length < 4) {
+            current.posterPaths.push(item.poster_path);
+        }
+        statsMap.set(item.list_id, current);
+    }
+
+    const shareCountMap = new Map<string, number>();
+    for (const share of sharesResult.data ?? []) {
+        shareCountMap.set(share.list_id, (shareCountMap.get(share.list_id) ?? 0) + 1);
+    }
+
+    const ownerMap = new Map<string, string>();
+    for (const profile of ownersResult.data ?? []) {
+        ownerMap.set(profile.id, profile.displayname || profile.email || "Ukjent");
+    }
+
+    const enrich = (list: List, extra?: Partial<ListWithStats>): ListWithStats => {
+        const stats = statsMap.get(list.id);
+        return {
+            ...list,
+            itemCount: stats?.itemCount ?? 0,
+            posterPaths: stats?.posterPaths ?? [],
+            ...extra,
+        };
+    };
+
+    return {
+        owned: owned.map((list) => enrich(list, { sharedCount: shareCountMap.get(list.id) ?? 0 })),
+        shared: shared.map((list) => enrich(list, { ownerName: ownerMap.get(list.owner_id) })),
     };
 }
 

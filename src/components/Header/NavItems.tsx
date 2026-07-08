@@ -4,7 +4,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -14,12 +13,11 @@ import {
     NavigationMenuList,
     navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import { CircleCheckBig, ListIcon, UserIcon, LogOut } from "lucide-react";
+import { CircleCheckBig, ListIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
 import { useSupabase } from "@/components/SupabaseProvider";
-import { useState } from "react";
 
 export default function NavItems({ hideAuthenticatedNav = false }: { hideAuthenticatedNav?: boolean }) {
     const pathname = usePathname();
@@ -27,19 +25,7 @@ export default function NavItems({ hideAuthenticatedNav = false }: { hideAuthent
         return pathname === path;
     };
 
-    const [isLoading, setIsLoading] = useState(false);
-    const { supabase, user } = useSupabase();
-
-    const handleSignOut = async () => {
-        setIsLoading(true);
-        try {
-            await supabase.auth.signOut();
-        } catch (error) {
-            console.error("Error signing out:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const { user } = useSupabase();
 
     return (
         <NavigationMenu className="">
@@ -82,11 +68,6 @@ export default function NavItems({ hideAuthenticatedNav = false }: { hideAuthent
                                             <span>Dine lister</span>
                                         </DropdownMenuItem>
                                     </Link>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        <span>Logg ut</span>
-                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </NavigationMenuItem>
