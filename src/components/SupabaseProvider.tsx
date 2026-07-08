@@ -28,15 +28,17 @@ export default function SupabaseProvider({
 
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, session) => {
+        } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === "SIGNED_OUT") {
                 setUser(null);
                 router.push("/login");
-            } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+            } else if (event === "USER_UPDATED") {
                 if (session?.user) {
                     setUser(session.user);
                 }
                 router.refresh();
+            } else if (event === "SIGNED_IN" && session?.user) {
+                setUser(session.user);
             }
         });
 

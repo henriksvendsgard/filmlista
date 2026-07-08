@@ -239,7 +239,7 @@ export default function MovieList({
             <h2 className="mb-6 text-3xl font-bold tracking-tight">{title}</h2>
 
             <div className="w-full max-w-full">
-                {isLoading ? (
+                {isLoading && movies.results.length === 0 ? (
                     <MovieGridSkeleton />
                 ) : (
                     <>

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,6 @@ export default function AuthComponent() {
     const [isResetPassword, setIsResetPassword] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [displayName, setDisplayName] = useState("");
-    const router = useRouter();
     const { supabase } = useSupabase();
 
     // Sjekk om vi har en recovery token i URL-en
@@ -80,29 +78,14 @@ export default function AuthComponent() {
                 } else {
                     setError(error.message);
                 }
+                setLoading(false);
             } else if (data.user) {
-                // Get the display name from user metadata
-                const displayName = data.user.user_metadata?.display_name;
-
-                if (displayName) {
-                    // Update the profiles table with the display name from metadata
-                    const { error: profileError } = await supabase
-                        .from("profiles")
-                        .update({ displayname: displayName })
-                        .eq("id", data.user.id);
-
-                    if (profileError) {
-                        console.error("Error updating profile displayname:", profileError);
-                    }
-                }
-
-                router.push("/");
-                router.refresh();
+                window.location.replace("/");
+                return;
             }
         } catch (err) {
             console.error("SignIn error:", err);
             setError("Noe gikk galt ved innlogging. Prøv igjen senere.");
-        } finally {
             setLoading(false);
         }
     };
@@ -259,7 +242,7 @@ export default function AuthComponent() {
                         <div className="flex flex-col space-y-4">
                             <div className="flex w-full flex-row-reverse justify-between">
                                 <Button type="submit" disabled={loading}>
-                                    {isSignUp ? "Registrer" : "Logg inn"}
+                                    {loading && !isSignUp ? "Logger inn..." : isSignUp ? "Registrer" : "Logg inn"}
                                 </Button>
                                 <Button
                                     type="button"

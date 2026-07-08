@@ -16,12 +16,12 @@ import {
 } from "@/components/ui/navigation-menu";
 import { CircleCheckBig, ListIcon, UserIcon, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { useState } from "react";
 
-export default function NavItems() {
+export default function NavItems({ hideAuthenticatedNav = false }: { hideAuthenticatedNav?: boolean }) {
     const pathname = usePathname();
     const isActivePage = (path: string) => {
         return pathname === path;
@@ -29,7 +29,6 @@ export default function NavItems() {
 
     const [isLoading, setIsLoading] = useState(false);
     const { supabase, user } = useSupabase();
-    const router = useRouter();
 
     const handleSignOut = async () => {
         setIsLoading(true);
@@ -45,11 +44,12 @@ export default function NavItems() {
     return (
         <NavigationMenu className="">
             <NavigationMenuList>
-                {user && (
+                {user && !hideAuthenticatedNav && (
                     <>
                         <NavigationMenuItem>
-                            <Link href="/watchlist" legacyBehavior passHref>
-                                <NavigationMenuLink
+                            <NavigationMenuLink asChild>
+                                <Link
+                                    href="/watchlist"
                                     className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent ${
                                         isActivePage("/watchlist")
                                             ? "bg-filmlista-primary text-white hover:bg-filmlista-primary/80 hover:text-white focus:bg-filmlista-primary focus:text-white"
@@ -58,8 +58,8 @@ export default function NavItems() {
                                 >
                                     <CircleCheckBig className="h-5 w-5 pr-1" />
                                     <span>Lista</span>
-                                </NavigationMenuLink>
-                            </Link>
+                                </Link>
+                            </NavigationMenuLink>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
                             <DropdownMenu>

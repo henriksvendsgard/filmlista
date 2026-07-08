@@ -17,6 +17,7 @@ import { BookmarkPlus, ChevronDown, ChevronUp } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useScrollToTopOnMount } from "@/hooks/useScrollToTopOnMount";
 
 interface TVShowDetailsProps {
     tvshow: TMDBTVShow;
@@ -58,6 +59,7 @@ const translateGenre = (genre: string): string => {
 };
 
 export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
+    useScrollToTopOnMount(tvshow.id.toString());
     const [lists, setLists] = useState<ListsState>({ owned: [], shared: [] });
     const [tvshowListMap, setTVShowListMap] = useState<{ [key: string]: string[] }>({});
     const [similarShows, setSimilarShows] = useState<TMDBTVShow[]>([]);

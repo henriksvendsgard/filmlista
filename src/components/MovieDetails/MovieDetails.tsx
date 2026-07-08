@@ -17,6 +17,7 @@ import { ArrowLeft, BookmarkPlus, Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useScrollToTopOnMount } from "@/hooks/useScrollToTopOnMount";
 import { MoviePageData } from "@/lib/tmdb/movies";
 
 interface MovieDetails {
@@ -63,6 +64,7 @@ interface MovieDetailProps {
 }
 
 export default function MovieDetails({ movieId, initialData }: MovieDetailProps) {
+    useScrollToTopOnMount(movieId);
     const router = useRouter();
     const [movie, setMovie] = useState<MovieDetails | null>(initialData?.movie ?? null);
     const [cast, setCast] = useState<Cast[]>(initialData?.cast ?? []);
