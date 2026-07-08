@@ -4,12 +4,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import {
-    getLists,
     getMediaForList,
     MediaEntry,
-    removeFromList,
     toggleWatched,
 } from "@/lib/listRepository";
+import { useListActions } from "@/contexts/ListActionsContext";
 import { Movie } from "@/types/movie";
 import { ArrowRight, Film } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -38,12 +37,6 @@ type ProcessedMovie = Movie & {
     }[];
     is_watched_by_me: boolean;
     media_type: string;
-};
-
-type MovieListAction = {
-    type: "added" | "removed";
-    listId: string;
-    movieId: string;
 };
 
 function MovieGrid({
@@ -110,13 +103,12 @@ function MovieGrid({
 }
 
 export default function Watchlist() {
-    const [isLoadingLists, setIsLoadingLists] = useState(true);
     const [isLoadingMovies, setIsLoadingMovies] = useState(false);
     const [movies, setMovies] = useState<ProcessedMovie[]>([]);
-    const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
     const [selectedList, setSelectedList] = useState<string | null>(null);
 
     const { supabase, user } = useSupabase();
+    const { lists, isLoadingLists, membershipVersion, removeFromList } = useListActions();
     const router = useRouter();
     const { services, hasServices, isLoading: isLoadingServices } = useStreamingServices();
     const [streamingFilter, setStreamingFilter] = useState(false);
@@ -142,32 +134,20 @@ export default function Watchlist() {
         [updateUrlWithList]
     );
 
-    const fetchLists = useCallback(async () => {
-        if (!user) return;
-        setIsLoadingLists(true);
-
-        try {
-            const result = await getLists(supabase, user.id);
-            setLists(result);
-
-            if (!selectedList) {
-                const initialList = listIdFromUrl || result.owned[0]?.id || result.shared[0]?.id;
-                if (initialList) {
-                    setSelectedList(initialList);
-                    if (!listIdFromUrl) updateUrlWithList(initialList);
-                }
-            }
-        } catch (error) {
-            console.error("Error fetching lists:", error);
-            toast({
-                title: "Error",
-                description: "Failed to fetch lists",
-                variant: "destructive",
-            });
-        } finally {
-            setIsLoadingLists(false);
+    const initializeSelectedList = useCallback(() => {
+        if (selectedList) return;
+        const initialList = listIdFromUrl || lists.owned[0]?.id || lists.shared[0]?.id;
+        if (initialList) {
+            setSelectedList(initialList);
+            if (!listIdFromUrl) updateUrlWithList(initialList);
         }
-    }, [supabase, user, listIdFromUrl, updateUrlWithList, selectedList]);
+    }, [selectedList, listIdFromUrl, lists.owned, lists.shared, updateUrlWithList]);
+
+    useEffect(() => {
+        if (!isLoadingLists && user) {
+            initializeSelectedList();
+        }
+    }, [isLoadingLists, user, initializeSelectedList]);
 
     const fetchMovies = useCallback(async () => {
         if (!selectedList || !user) return;
@@ -203,34 +183,17 @@ export default function Watchlist() {
     }, [selectedList, supabase, user]);
 
     const handleRemoveFromList = async (listId: string, movieId: string, movieTitle: string, mediaType: string) => {
-        try {
-            await removeFromList(supabase, {
+        await removeFromList(
+            {
                 mediaId: movieId,
-                listId,
                 mediaType: mediaType as "movie" | "tv",
-                alsoRemoveWatched: true,
-            });
-
-            const event = new CustomEvent("movieListUpdate", {
-                detail: { type: "removed", listId, movieId },
-            });
-            window.dispatchEvent(event);
-
-            fetchMovies();
-
-            toast({
-                title: mediaType === "movie" ? "Film fjernet" : "TV-serie fjernet",
-                description: `"${movieTitle}" er fjernet fra listen`,
-                className: "bg-orange-800",
-            });
-        } catch (error) {
-            console.error("Error removing from list:", error);
-            toast({
-                title: "Feil",
-                description: "Kunne ikke fjerne fra listen",
-                variant: "destructive",
-            });
-        }
+                title: movieTitle,
+                posterPath: null,
+            },
+            listId,
+            { alsoRemoveWatched: true }
+        );
+        fetchMovies();
     };
 
     const handleToggleWatched = async (movieId: string, currentWatchedStatus: boolean, mediaType: string) => {
@@ -279,18 +242,10 @@ export default function Watchlist() {
     };
 
     useEffect(() => {
-        if (user) {
-            fetchLists();
-        } else {
-            setIsLoadingLists(false);
-        }
-    }, [fetchLists, user]);
-
-    useEffect(() => {
         if (selectedList) {
             fetchMovies();
         }
-    }, [selectedList, fetchMovies]);
+    }, [selectedList, fetchMovies, membershipVersion]);
 
     useEffect(() => {
         if (!streamingFilter || !hasServices || movies.length === 0) {
@@ -340,20 +295,6 @@ export default function Watchlist() {
         },
         [streamingFilter, hasServices, providerMap, services]
     );
-
-    useEffect(() => {
-        const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
-            const { listId: updatedListId } = event.detail;
-            if (updatedListId === selectedList) {
-                fetchMovies();
-            }
-        };
-
-        window.addEventListener("movieListUpdate", handleMovieListUpdate as EventListener);
-        return () => {
-            window.removeEventListener("movieListUpdate", handleMovieListUpdate as EventListener);
-        };
-    }, [selectedList, fetchMovies]);
 
     const isLoading = isLoadingLists || isLoadingMovies;
 

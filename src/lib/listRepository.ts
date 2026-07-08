@@ -8,17 +8,24 @@ export interface List {
     created_at?: string;
 }
 
+export interface SharedList extends List {
+    can_edit: boolean;
+}
+
+export interface ListsResult {
+    owned: List[];
+    shared: SharedList[];
+}
+
 export interface ListWithStats extends List {
     itemCount: number;
     posterPaths: string[];
     sharedCount?: number;
     ownerName?: string;
+    can_edit?: boolean;
 }
 
-export interface ListsResult {
-    owned: List[];
-    shared: List[];
-}
+export type AddToListResult = "added" | "already_exists";
 
 export interface AddToListParams {
     mediaId: string;
@@ -55,7 +62,7 @@ export async function getLists(supabase: SupabaseClient, userId: string): Promis
         supabase.from("lists").select("*").eq("owner_id", userId).order("created_at", { ascending: false }),
         supabase
             .from("shared_lists")
-            .select("lists(*)")
+            .select("can_edit, lists(*)")
             .eq("user_id", userId),
     ]);
 
@@ -63,8 +70,12 @@ export async function getLists(supabase: SupabaseClient, userId: string): Promis
     if (sharedResult.error) throw sharedResult.error;
 
     const shared = (sharedResult.data ?? [])
-        .map((row: { lists: List | List[] | null }) => (Array.isArray(row.lists) ? row.lists[0] : row.lists))
-        .filter((list): list is List => list !== null);
+        .map((row: { can_edit: boolean; lists: List | List[] | null }) => {
+            const list = Array.isArray(row.lists) ? row.lists[0] : row.lists;
+            if (!list) return null;
+            return { ...list, can_edit: row.can_edit };
+        })
+        .filter((list): list is SharedList => list !== null);
 
     return {
         owned: ownedResult.data ?? [],
@@ -137,7 +148,7 @@ export async function getListsWithStats(
 
     return {
         owned: owned.map((list) => enrich(list, { sharedCount: shareCountMap.get(list.id) ?? 0 })),
-        shared: shared.map((list) => enrich(list, { ownerName: ownerMap.get(list.owner_id) })),
+        shared: shared.map((list) => enrich(list, { ownerName: ownerMap.get(list.owner_id), can_edit: list.can_edit })),
     };
 }
 
@@ -266,33 +277,52 @@ export async function getMediaForList(
     });
 }
 
-export async function addToList(supabase: SupabaseClient, params: AddToListParams): Promise<void> {
-    const { mediaId, listId, mediaType, title, posterPath, addedBy, releaseDate } = params;
+export async function updateMediaItemProviders(
+    supabase: SupabaseClient,
+    params: { listId: string; mediaId: string; mediaType: "movie" | "tv" }
+): Promise<void> {
+    const { listId, mediaId, mediaType } = params;
+    const providers = await fetchWatchProviders(mediaId, mediaType);
+    const providerIds = getProviderIds(providers);
 
-    const { error: watchedError } = await supabase
-        .from("watched_media")
-        .delete()
+    const { error } = await supabase
+        .from("media_items")
+        .update({ provider_ids: providerIds })
         .eq("list_id", listId)
         .eq("movie_id", mediaId)
         .eq("media_type", mediaType);
 
-    if (watchedError) throw watchedError;
+    if (error) throw error;
+}
 
-    const providers = await fetchWatchProviders(mediaId, mediaType);
-    const providerIds = getProviderIds(providers);
+export async function addToList(supabase: SupabaseClient, params: AddToListParams): Promise<AddToListResult> {
+    const { mediaId, listId, mediaType, title, posterPath, addedBy, releaseDate } = params;
 
-    const { error } = await supabase.from("media_items").insert({
-        list_id: listId,
-        movie_id: mediaId,
-        title,
-        poster_path: posterPath,
-        added_by: addedBy,
-        media_type: mediaType,
-        release_date: releaseDate,
-        provider_ids: providerIds,
-    });
+    const { data, error } = await supabase
+        .from("media_items")
+        .upsert(
+            {
+                list_id: listId,
+                movie_id: mediaId,
+                title,
+                poster_path: posterPath,
+                added_by: addedBy,
+                media_type: mediaType,
+                release_date: releaseDate,
+                provider_ids: [],
+            },
+            { onConflict: "list_id,movie_id,media_type", ignoreDuplicates: true }
+        )
+        .select("id");
 
     if (error) throw error;
+    if (!data?.length) return "already_exists";
+
+    void updateMediaItemProviders(supabase, { listId, mediaId, mediaType }).catch((providerError) => {
+        console.error("Error updating provider cache:", providerError);
+    });
+
+    return "added";
 }
 
 export async function removeFromList(

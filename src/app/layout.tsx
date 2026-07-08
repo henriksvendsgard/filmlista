@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import CheckPWA from "@/components/utils/CheckPWA";
 import { cn } from "@/lib/utils";
 import SupabaseProvider from "@/components/SupabaseProvider";
+import { ListActionsProvider } from "@/contexts/ListActionsContext";
 import ZoomDisabler from "@/components/utils/ZoomDisabler";
 import { createClient } from "@/utils/supabase/server";
 
@@ -59,16 +60,18 @@ export default async function RootLayout({
                 )}
             >
                 <SupabaseProvider initialUser={user}>
-                    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-                        <Header />
-                        <div className="flex w-full flex-col items-center pt-40">
-                            {children}
-                            <ZoomDisabler />
-                            <CheckPWA />
-                        </div>
-                        <Footer />
-                        <Toaster />
-                    </ThemeProvider>
+                    <ListActionsProvider>
+                        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+                            <Header />
+                            <div className="flex w-full flex-col items-center pt-40">
+                                {children}
+                                <ZoomDisabler />
+                                <CheckPWA />
+                            </div>
+                            <Footer />
+                            <Toaster />
+                        </ThemeProvider>
+                    </ListActionsProvider>
                 </SupabaseProvider>
             </body>
         </html>

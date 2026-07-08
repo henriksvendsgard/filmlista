@@ -1,4 +1,6 @@
 import { useSupabase } from "@/components/SupabaseProvider";
+import { MediaListPicker } from "@/components/MediaListPicker/MediaListPicker";
+import { MediaRef } from "@/contexts/ListActionsContext";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,14 +22,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { List } from "@/lib/listRepository";
 import { Check, Ellipsis } from "lucide-react";
 import Image from "next/image";
-
-interface List {
-    id: string;
-    name: string;
-    owner_id: string;
-}
 
 interface Movie {
     id: string;
@@ -48,13 +45,14 @@ interface Movie {
 
 interface MovieCardProps {
     movie: Movie;
+    media?: MediaRef;
     isInList: boolean;
+    listCount?: number;
     lists?: {
         owned: List[];
         shared: List[];
     };
     movieLists?: string[];
-    onAddToList?: (listId: string) => void;
     onRemoveFromList?: (listId: string) => void;
     onToggleWatched?: (currentWatchedStatus: boolean) => void;
     onClick: () => void;
@@ -65,10 +63,9 @@ interface MovieCardProps {
 
 export function MovieCard({
     movie,
+    media,
     isInList,
-    lists = { owned: [], shared: [] },
-    movieLists = [],
-    onAddToList,
+    listCount = 0,
     onRemoveFromList,
     onToggleWatched,
     onClick,
@@ -81,8 +78,15 @@ export function MovieCard({
     const othersWhoWatched = movie.watched_by?.filter((w) => w.user_id !== user?.id) || [];
     const hasOthersWatched = othersWhoWatched.length > 0;
 
-    const availableOwnedLists = lists.owned.filter((list) => !movieLists.includes(list.id));
-    const availableSharedLists = lists.shared.filter((list) => !movieLists.includes(list.id));
+    const mediaRef: MediaRef =
+        media ??
+        ({
+            mediaId: movie.movie_id,
+            mediaType: "movie",
+            title: movie.title,
+            posterPath: movie.poster_path || null,
+            releaseDate: movie.release_date,
+        } as MediaRef);
 
     return (
         <div className="group relative">
@@ -140,119 +144,72 @@ export function MovieCard({
                     </div>
                 </div>
             </div>
+
             {isWatchList && movie.is_watched_by_me && (
                 <div className="absolute left-2 top-2 rounded-full bg-green-700 p-2 text-white">
                     <Check className="h-4 w-4" />
                 </div>
             )}
+
+            {isInList && !isWatchList && listCount > 0 && (
+                <div className="absolute left-2 top-2">
+                    <Badge variant="secondary" className="bg-black/70 text-xs text-white hover:bg-black/70">
+                        {listCount} {listCount === 1 ? "liste" : "lister"}
+                    </Badge>
+                </div>
+            )}
+
             <div className="absolute right-2 top-2">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="rounded-full">
-                            <Ellipsis className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        {isWatchList ? (
-                            <>
-                                {onToggleWatched && (
-                                    <DropdownMenuItem onClick={() => onToggleWatched(movie.is_watched_by_me)}>
-                                        {movie.is_watched_by_me ? "Marker som usett" : "Marker som sett"}
-                                    </DropdownMenuItem>
-                                )}
-                                {currentListId && onRemoveFromList && (
-                                    <>
-                                        <DropdownMenuSeparator />
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <DropdownMenuItem
-                                                    className="text-red-600"
-                                                    onSelect={(e) => e.preventDefault()}
-                                                >
-                                                    Fjern fra listen
-                                                </DropdownMenuItem>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent className="rounded">
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Dette vil fjerne {movie.title} fra listen.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel className="rounded-full">
-                                                        Avbryt
-                                                    </AlertDialogCancel>
-                                                    <AlertDialogAction
-                                                        onClick={() => onRemoveFromList(currentListId)}
-                                                        className="rounded-full bg-red-600 text-white hover:bg-red-700"
-                                                    >
-                                                        Fjern
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                {availableOwnedLists.length > 0 && (
-                                    <>
-                                        <DropdownMenuItem disabled className="text-muted-foreground">
-                                            Dine lister
-                                        </DropdownMenuItem>
-                                        {availableOwnedLists.map((list) => (
-                                            <DropdownMenuItem key={list.id} onClick={() => onAddToList?.(list.id)}>
-                                                Legg til i {list.name}
+                {isWatchList ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="rounded-full">
+                                <Ellipsis className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                            {onToggleWatched && (
+                                <DropdownMenuItem onClick={() => onToggleWatched(movie.is_watched_by_me)}>
+                                    {movie.is_watched_by_me ? "Marker som usett" : "Marker som sett"}
+                                </DropdownMenuItem>
+                            )}
+                            {currentListId && onRemoveFromList && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem
+                                                className="text-red-600"
+                                                onSelect={(e) => e.preventDefault()}
+                                            >
+                                                Fjern fra listen
                                             </DropdownMenuItem>
-                                        ))}
-                                    </>
-                                )}
-
-                                {availableSharedLists.length > 0 && (
-                                    <>
-                                        {availableOwnedLists.length > 0 && <DropdownMenuSeparator />}
-                                        <DropdownMenuItem disabled className="text-muted-foreground">
-                                            Delte lister
-                                        </DropdownMenuItem>
-                                        {availableSharedLists.map((list) => (
-                                            <DropdownMenuItem key={list.id} onClick={() => onAddToList?.(list.id)}>
-                                                Legg til i {list.name}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </>
-                                )}
-
-                                {isInList && onRemoveFromList && (
-                                    <>
-                                        {(availableOwnedLists.length > 0 || availableSharedLists.length > 0) && (
-                                            <DropdownMenuSeparator />
-                                        )}
-                                        <DropdownMenuItem disabled className="text-muted-foreground">
-                                            Fjern fra listen
-                                        </DropdownMenuItem>
-                                        {[...lists.owned, ...lists.shared]
-                                            .filter((list) => movieLists.includes(list.id))
-                                            .map((list) => (
-                                                <DropdownMenuItem
-                                                    key={list.id}
-                                                    onClick={() => onRemoveFromList(list.id)}
-                                                    className="text-red-600"
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent className="rounded">
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Dette vil fjerne {movie.title} fra listen.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel className="rounded-full">Avbryt</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={() => onRemoveFromList(currentListId)}
+                                                    className="rounded-full bg-red-600 text-white hover:bg-red-700"
                                                 >
-                                                    {list.name}
-                                                </DropdownMenuItem>
-                                            ))}
-                                    </>
-                                )}
-
-                                {!availableOwnedLists.length && !availableSharedLists.length && !isInList && (
-                                    <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>
-                                )}
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                                                    Fjern
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : (
+                    <MediaListPicker media={mediaRef} />
+                )}
             </div>
         </div>
     );

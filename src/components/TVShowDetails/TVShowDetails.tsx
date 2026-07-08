@@ -1,29 +1,19 @@
 "use client";
 
+import { ListMembershipPanel } from "@/components/MediaListPicker/ListMembershipPanel";
 import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useSupabase } from "@/components/SupabaseProvider";
-import { toast } from "@/hooks/use-toast";
-import { addToList, getLists, getListsForMedia, List, ListsResult, removeFromList } from "@/lib/listRepository";
 import { getSimilarTVShows } from "@/lib/getTVShows";
 import { TMDBTVShow } from "@/types/tvshow";
-import { BookmarkPlus, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useScrollToTopOnMount } from "@/hooks/useScrollToTopOnMount";
 
 interface TVShowDetailsProps {
     tvshow: TMDBTVShow;
 }
-
-type ListsState = ListsResult;
 
 const translateGenre = (genre: string): string => {
     const genreTranslations: { [key: string]: string } = {
@@ -60,96 +50,21 @@ const translateGenre = (genre: string): string => {
 
 export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
     useScrollToTopOnMount(tvshow.id.toString());
-    const [lists, setLists] = useState<ListsState>({ owned: [], shared: [] });
-    const [tvshowListMap, setTVShowListMap] = useState<{ [key: string]: string[] }>({});
     const [similarShows, setSimilarShows] = useState<TMDBTVShow[]>([]);
     const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
     const [showAllSeasons, setShowAllSeasons] = useState(false);
-    const { supabase, user } = useSupabase();
+    const { user } = useSupabase();
     const router = useRouter();
 
-    const fetchLists = useCallback(async () => {
-        if (!user) return;
-        try {
-            const result = await getLists(supabase, user.id);
-            setLists(result);
-        } catch (error) {
-            console.error("Error fetching lists:", error);
-        }
-    }, [supabase, user]);
-
-    const fetchTVShowListMap = useCallback(async () => {
-        try {
-            const listIds = await getListsForMedia(supabase, tvshow.id.toString(), "tv");
-            setTVShowListMap({ [tvshow.id]: listIds });
-        } catch (error) {
-            console.error("Error fetching TV show list map:", error);
-        }
-    }, [supabase, tvshow.id]);
-
-    const handleAddToList = async (listId: string) => {
-        if (!user) return;
-        try {
-            await addToList(supabase, {
-                mediaId: tvshow.id.toString(),
-                listId,
-                mediaType: "tv",
-                title: tvshow.name,
-                posterPath: tvshow.poster_path,
-                addedBy: user.id,
-                releaseDate: tvshow.first_air_date,
-            });
-            setTVShowListMap((prev) => ({
-                ...prev,
-                [tvshow.id]: [...(prev[tvshow.id] || []), listId],
-            }));
-            const listName = [...lists.owned, ...lists.shared].find((l) => l.id === listId)?.name;
-            toast({
-                title: "TV-serie lagt til",
-                description: `"${tvshow.name}" er nå lagt til i "${listName}"`,
-                className: "bg-blue-800",
-            });
-        } catch (error) {
-            console.error("Error adding TV show to list:", error);
-            toast({
-                title: "Feil",
-                description: "Kunne ikke legge til TV-serien i listen",
-                variant: "destructive",
-            });
-        }
-    };
-
-    const handleRemoveFromList = async (listId: string, listName: string) => {
-        try {
-            await removeFromList(supabase, {
-                mediaId: tvshow.id.toString(),
-                listId,
-                mediaType: "tv",
-            });
-            setTVShowListMap((prev) => ({
-                ...prev,
-                [tvshow.id]: prev[tvshow.id].filter((id) => id !== listId),
-            }));
-            toast({
-                title: "TV-serie fjernet",
-                description: `"${tvshow.name}" er nå fjernet fra "${listName}"`,
-                className: "bg-orange-800",
-            });
-        } catch (error) {
-            console.error("Error removing TV show from list:", error);
-            toast({
-                title: "Feil",
-                description: "Kunne ikke fjerne TV-serien fra listen",
-                variant: "destructive",
-            });
-        }
+    const mediaRef = {
+        mediaId: tvshow.id.toString(),
+        mediaType: "tv" as const,
+        title: tvshow.name,
+        posterPath: tvshow.poster_path,
+        releaseDate: tvshow.first_air_date,
     };
 
     useEffect(() => {
-        fetchLists();
-        fetchTVShowListMap();
-
-        // Fetch similar shows
         const fetchSimilarShows = async () => {
             setIsLoadingSimilar(true);
             try {
@@ -166,7 +81,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
         };
 
         fetchSimilarShows();
-    }, [fetchLists, fetchTVShowListMap, tvshow.id]);
+    }, [tvshow.id]);
 
     return (
         <div className="space-y-12">
@@ -201,6 +116,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             <span className="text-gray-400">Ingen plakat</span>
                         </div>
                     )}
+                    {user && <div className="mt-4"><ListMembershipPanel media={mediaRef} /></div>}
                 </div>
 
                 <div className="col-span-1 md:col-span-2">
@@ -212,85 +128,11 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             {tvshow.number_of_seasons !== 1 ? "er" : ""} • {tvshow.number_of_episodes} episode
                             {tvshow.number_of_episodes !== 1 ? "r" : ""}
                         </p>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger className="mb-4 shrink-0" asChild>
-                                <Button
-                                    variant={"secondary"}
-                                    size={"icon"}
-                                    className="h-12 w-12 rounded-full border-background bg-filmlista-primary p-5 text-white hover:bg-filmlista-hover"
-                                >
-                                    <BookmarkPlus />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                {lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length >
-                                    0 && (
-                                    <>
-                                        <DropdownMenuItem disabled className="text-muted-foreground">
-                                            Dine lister
-                                        </DropdownMenuItem>
-                                        {lists.owned
-                                            .filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
-                                            .map((list) => (
-                                                <DropdownMenuItem
-                                                    key={list.id}
-                                                    onClick={() => handleAddToList(list.id)}
-                                                >
-                                                    Legg til i {list.name}
-                                                </DropdownMenuItem>
-                                            ))}
-                                    </>
-                                )}
-
-                                {lists.shared.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id)).length >
-                                    0 && (
-                                    <>
-                                        {lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
-                                            .length > 0 && <DropdownMenuSeparator />}
-                                        <DropdownMenuItem disabled className="text-muted-foreground">
-                                            Delte lister
-                                        </DropdownMenuItem>
-                                        {lists.shared
-                                            .filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
-                                            .map((list) => (
-                                                <DropdownMenuItem
-                                                    key={list.id}
-                                                    onClick={() => handleAddToList(list.id)}
-                                                >
-                                                    Legg til i {list.name}
-                                                </DropdownMenuItem>
-                                            ))}
-                                    </>
-                                )}
-
-                                {tvshowListMap[tvshow.id]?.length > 0 && (
-                                    <>
-                                        {(lists.owned.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
-                                            .length > 0 ||
-                                            lists.shared.filter((list) => !tvshowListMap[tvshow.id]?.includes(list.id))
-                                                .length > 0) && <DropdownMenuSeparator />}
-                                        <DropdownMenuItem disabled className="text-muted-foreground">
-                                            Fjern fra listen
-                                        </DropdownMenuItem>
-                                        {[...lists.owned, ...lists.shared]
-                                            .filter((list) => tvshowListMap[tvshow.id]?.includes(list.id))
-                                            .map((list) => (
-                                                <DropdownMenuItem
-                                                    key={list.id}
-                                                    onClick={() => handleRemoveFromList(list.id, list.name)}
-                                                    className="text-red-600"
-                                                >
-                                                    {list.name}
-                                                </DropdownMenuItem>
-                                            ))}
-                                    </>
-                                )}
-
-                                {!lists.owned.length && !lists.shared.length && (
-                                    <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        {user && (
+                            <div className="xl:hidden">
+                                <ListMembershipPanel media={mediaRef} />
+                            </div>
+                        )}
                     </div>
 
                     <div className="mb-8">
