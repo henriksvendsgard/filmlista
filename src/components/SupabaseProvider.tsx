@@ -1,9 +1,9 @@
 "use client";
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
-import type { SupabaseClient, User } from "@supabase/auth-helpers-nextjs";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 type SupabaseContext = {
     supabase: SupabaseClient;
@@ -19,15 +19,12 @@ export default function SupabaseProvider({
     children: React.ReactNode;
     initialUser: User | null;
 }) {
-    const supabase = createClientComponentClient();
+    const supabase = useMemo(() => createClient(), []);
     const router = useRouter();
     const [user, setUser] = useState<User | null>(initialUser);
-    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Set initial user state
         setUser(initialUser);
-        setIsLoading(false);
 
         const {
             data: { subscription },
@@ -47,10 +44,6 @@ export default function SupabaseProvider({
             subscription.unsubscribe();
         };
     }, [supabase, router, initialUser]);
-
-    if (isLoading) {
-        return null; // or a loading spinner
-    }
 
     return <Context.Provider value={{ supabase, user }}>{children}</Context.Provider>;
 }

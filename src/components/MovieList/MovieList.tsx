@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { addToList, getLists, getListsForMediaBatch, List, removeFromList } from "@/lib/listRepository";
 import { TMDBMovie } from "@/types/movie";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useSupabase } from "@/components/SupabaseProvider";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -45,7 +45,7 @@ export default function MovieList({
     const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
     const [movieListMap, setMovieListMap] = useState<{ [key: string]: string[] }>({});
 
-    const supabase = createClientComponentClient();
+    const { supabase } = useSupabase();
 
     const fetchLists = useCallback(async () => {
         const {

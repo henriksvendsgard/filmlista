@@ -1,18 +1,14 @@
 import { getLists, ListsResult } from "@/lib/listRepository";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useState, useEffect } from "react";
+import { useSupabase } from "@/components/SupabaseProvider";
+import { useEffect, useState } from "react";
 
 export function useMovieLists() {
     const [lists, setLists] = useState<ListsResult>({ owned: [], shared: [] });
-    const supabase = createClientComponentClient();
+    const { supabase, user } = useSupabase();
 
     useEffect(() => {
         const fetchLists = async () => {
-            const {
-                data: { user },
-                error: userError,
-            } = await supabase.auth.getUser();
-            if (userError || !user) return;
+            if (!user) return;
 
             try {
                 const result = await getLists(supabase, user.id);
@@ -23,7 +19,7 @@ export function useMovieLists() {
         };
 
         fetchLists();
-    }, [supabase]);
+    }, [supabase, user]);
 
     return { lists };
 }

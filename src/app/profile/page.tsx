@@ -67,15 +67,6 @@ export default function Profile() {
         if (!user) return;
 
         // First update the user metadata
-        const { error: updateError } = await supabase.auth.updateUser({
-            data: { display_name: displayName },
-        });
-
-        if (updateError) {
-            setMessage("Feil ved oppdatering av brukerdata");
-            return;
-        }
-
         if (/[^a-zA-Z]/.test(displayName)) {
             toast({
                 title: "Feil ved oppdatering av visningsnavn",
@@ -85,7 +76,15 @@ export default function Profile() {
             return;
         }
 
-        // Then update the profiles table
+        const { error: updateError } = await supabase.auth.updateUser({
+            data: { display_name: displayName },
+        });
+
+        if (updateError) {
+            setMessage("Feil ved oppdatering av brukerdata");
+            return;
+        }
+
         const { error: profileError } = await supabase
             .from("profiles")
             .update({ displayname: displayName })

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import SearchBox from "../Search/SearchBox";
 import NavItems from "./NavItems";
 import { useSupabase } from "../SupabaseProvider";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export default function Header() {
@@ -52,9 +53,9 @@ export default function Header() {
                 <div className="bg-blue-800 py-3 text-center text-white">
                     <p className="px-4">
                         <strong>Hallo!</strong> Du har ikke satt et visningsnavn enda... Gå til{" "}
-                        <a href="/profile" className="underline">
+                        <Link href="/profile" className="underline">
                             profilen din
-                        </a>{" "}
+                        </Link>{" "}
                         for å gjøre dette.
                     </p>
                 </div>
@@ -63,7 +64,7 @@ export default function Header() {
                 className={`flex justify-between gap-6 px-5 lg:p-10 ${scrollDirection === "down" ? "py-3 lg:py-8" : "py-5"} relative items-center transition-all duration-300`}
             >
                 <div className="flex w-full gap-6">
-                    <a href="/" className="flex items-center">
+                    <Link href="/" className="flex items-center">
                         <div className="flex gap-3">
                             <svg
                                 className="w-8 sm:w-8"
@@ -81,7 +82,7 @@ export default function Header() {
 
                             <span className="sr-only">Watcher</span>
                         </div>
-                    </a>
+                    </Link>
                     <SearchBox inHeader />
                 </div>
                 <NavItems />

@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { fetchWatchProviders, getProviderIds } from "@/lib/watchProviders";
 
 export interface List {
     id: string;
@@ -37,27 +38,30 @@ export interface MediaEntry {
     addedByDisplayname: string;
     releaseDate: string;
     mediaType: "movie" | "tv";
+    providerIds: number[];
     watchedBy: WatchedEntry[];
     isWatchedByMe: boolean;
 }
 
 export async function getLists(supabase: SupabaseClient, userId: string): Promise<ListsResult> {
-    const { data: sharedListIds, error: sharedError } = await supabase
-        .from("shared_lists")
-        .select("list_id")
-        .eq("user_id", userId);
+    const [ownedResult, sharedResult] = await Promise.all([
+        supabase.from("lists").select("*").eq("owner_id", userId).order("created_at", { ascending: false }),
+        supabase
+            .from("shared_lists")
+            .select("lists(*)")
+            .eq("user_id", userId),
+    ]);
 
-    if (sharedError) throw sharedError;
+    if (ownedResult.error) throw ownedResult.error;
+    if (sharedResult.error) throw sharedResult.error;
 
-    const { data: allLists, error: listsError } = await supabase.from("lists").select("*");
-
-    if (listsError) throw listsError;
-
-    const sharedIds = (sharedListIds ?? []).map((item: { list_id: string }) => item.list_id);
+    const shared = (sharedResult.data ?? [])
+        .map((row: { lists: List | List[] | null }) => (Array.isArray(row.lists) ? row.lists[0] : row.lists))
+        .filter((list): list is List => list !== null);
 
     return {
-        owned: (allLists ?? []).filter((list: List) => list.owner_id === userId),
-        shared: (allLists ?? []).filter((list: List) => sharedIds.includes(list.id)),
+        owned: ownedResult.data ?? [],
+        shared,
     };
 }
 
@@ -116,6 +120,7 @@ export async function getMediaForList(
             added_by,
             release_date,
             media_type,
+            provider_ids,
             profiles (displayname, email)
         `
         )
@@ -144,7 +149,20 @@ export async function getMediaForList(
         }
     }
 
-    return (rawItems ?? []).map((item: any) => { // eslint-disable-line
+    return (rawItems ?? []).map((item: {
+        movie_id: string;
+        title: string;
+        poster_path: string | null;
+        added_at: string;
+        added_by: string | null;
+        release_date: string | null;
+        media_type: string;
+        provider_ids: number[] | null;
+        profiles:
+            | { displayname: string | null; email: string | null }
+            | { displayname: string | null; email: string | null }[]
+            | null;
+    }) => {
         const movieId: string = item.movie_id;
         const mediaType: string = item.media_type;
         const profiles = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
@@ -165,6 +183,7 @@ export async function getMediaForList(
             addedByDisplayname: profiles?.displayname ?? profiles?.email ?? "Unknown",
             releaseDate: (item.release_date as string) ?? "",
             mediaType: mediaType as "movie" | "tv",
+            providerIds: (item.provider_ids as number[]) ?? [],
             watchedBy: watchedByUsers,
             isWatchedByMe: watchedByUsers.some((w: WatchedEntry) => w.userId === currentUserId),
         };
@@ -183,6 +202,9 @@ export async function addToList(supabase: SupabaseClient, params: AddToListParam
 
     if (watchedError) throw watchedError;
 
+    const providers = await fetchWatchProviders(mediaId, mediaType);
+    const providerIds = getProviderIds(providers);
+
     const { error } = await supabase.from("media_items").insert({
         list_id: listId,
         movie_id: mediaId,
@@ -191,6 +213,7 @@ export async function addToList(supabase: SupabaseClient, params: AddToListParam
         added_by: addedBy,
         media_type: mediaType,
         release_date: releaseDate,
+        provider_ids: providerIds,
     });
 
     if (error) throw error;

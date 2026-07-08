@@ -62,13 +62,6 @@ export async function getUpcomingMovies(page = 1) {
     };
 }
 
-export async function getTopRatedMovies() {
-    const url = new URL("https://api.themoviedb.org/3/movie/top_rated");
-    const data = await fetchFromTMDB(url);
-
-    return data.results;
-}
-
 export async function getPopularMovies(page = 1) {
     const url = new URL("https://api.themoviedb.org/3/movie/popular");
     const data = await fetchFromTMDB(url, page);

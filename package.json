@@ -1,20 +1,22 @@
 {
-    "name": "watcher",
+    "name": "filmlista",
     "version": "0.1.0",
     "private": true,
+    "engines": {
+        "node": ">=20.9.0"
+    },
     "scripts": {
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint",
+        "lint": "eslint .",
         "format": "prettier --write .",
-        "format:check": "prettier --check ."
+        "format:check": "prettier --check .",
+        "test:e2e": "playwright test"
     },
     "type": "module",
     "dependencies": {
-        "@hcaptcha/react-hcaptcha": "^1.11.0",
         "@hookform/resolvers": "^3.3.4",
-        "@plaiceholder/next": "^3.0.0",
         "@radix-ui/react-accordion": "^1.2.3",
         "@radix-ui/react-alert-dialog": "^1.1.2",
         "@radix-ui/react-checkbox": "^1.1.4",
@@ -28,37 +30,32 @@
         "@radix-ui/react-slot": "^1.1.0",
         "@radix-ui/react-tabs": "^1.1.1",
         "@radix-ui/react-toast": "^1.2.2",
-        "@supabase/auth-helpers-nextjs": "^0.10.0",
         "@supabase/ssr": "^0.5.2",
         "@supabase/supabase-js": "^2.46.1",
-        "add": "^2.0.6",
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.1.0",
-        "dialog": "^0.3.1",
         "lucide-react": "^0.367.0",
-        "next": "14.1.4",
-        "next-themes": "^0.3.0",
-        "react": "^18",
-        "react-dom": "^18",
+        "next": "^16.2.10",
+        "next-themes": "^0.4.6",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
         "react-hook-form": "^7.51.2",
-        "react-responsive": "^10.0.0",
-        "shadcn-ui": "^0.9.3",
-        "tabs": "^0.2.0",
         "tailwind-merge": "^2.2.2",
         "tailwindcss-animate": "^1.0.7",
         "zod": "^3.22.4"
     },
     "devDependencies": {
-        "@types/node": "^20",
-        "@types/react": "^18",
-        "@types/react-dom": "^18",
+        "@playwright/test": "^1.52.0",
+        "@types/node": "^22",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
         "autoprefixer": "^10.0.1",
-        "eslint": "^8",
-        "eslint-config-next": "14.1.4",
+        "eslint": "^9",
+        "eslint-config-next": "^16.2.10",
         "postcss": "^8",
         "prettier": "^3.5.3",
         "prettier-plugin-tailwindcss": "^0.6.11",
-        "tailwindcss": "^3.3.0",
-        "typescript": "^5"
+        "tailwindcss": "^3.4.0",
+        "typescript": "^5.8.0"
     }
 }

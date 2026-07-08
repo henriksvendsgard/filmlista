@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { addToList, getLists, getListsForMediaBatch, List, removeFromList } from "@/lib/listRepository";
 import { TMDBTVShow } from "@/types/tvshow";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useSupabase } from "@/components/SupabaseProvider";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -46,7 +46,7 @@ export default function TVShowList({
     const [tvshowListMap, setTVShowListMap] = useState<{ [key: string]: string[] }>({});
     const [isLoadingListMap, setIsLoadingListMap] = useState(true);
 
-    const supabase = createClientComponentClient();
+    const { supabase } = useSupabase();
 
     const fetchLists = useCallback(async () => {
         const {

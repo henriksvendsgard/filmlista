@@ -31,6 +31,7 @@ interface List {
 }
 
 type ProcessedMovie = Movie & {
+    provider_ids: number[];
     watched_by: {
         user_id: string;
         displayname: string;
@@ -185,6 +186,7 @@ export default function Watchlist() {
                 added_by_displayname: entry.addedByDisplayname,
                 release_date: entry.releaseDate,
                 media_type: entry.mediaType,
+                provider_ids: entry.providerIds,
                 watched_by: entry.watchedBy.map((w) => ({
                     user_id: w.userId,
                     displayname: w.displayname,
@@ -297,10 +299,16 @@ export default function Watchlist() {
             return;
         }
 
+        const itemsNeedingFetch = movies.filter((movie) => movie.provider_ids.length === 0);
+        if (itemsNeedingFetch.length === 0) {
+            setProviderMap(new Map());
+            return;
+        }
+
         const fetchProviders = async () => {
             setIsLoadingProviders(true);
             try {
-                const items = movies.map((m) => ({
+                const items = itemsNeedingFetch.map((m) => ({
                     mediaId: m.movie_id,
                     mediaType: m.media_type as "movie" | "tv",
                 }));
@@ -321,6 +329,10 @@ export default function Watchlist() {
             if (!streamingFilter || !hasServices) return movieList;
 
             return movieList.filter((movie) => {
+                if (movie.provider_ids.length > 0) {
+                    return movie.provider_ids.some((id) => services.includes(id));
+                }
+
                 const key = `${movie.media_type}:${movie.movie_id}`;
                 const providers = providerMap.get(key);
                 if (providers === undefined) return false;
@@ -485,7 +497,7 @@ export default function Watchlist() {
                                 )}
                             </div>
 
-                            {streamingFilter && hasServices && isLoadingProviders ? (
+                            {streamingFilter && hasServices && isLoadingProviders && providerMap.size === 0 && movies.some((m) => m.provider_ids.length === 0) ? (
                                 <div className="flex items-center justify-center py-16">
                                     <Loader2 className="h-8 w-8 animate-spin text-filmlista-primary" />
                                 </div>

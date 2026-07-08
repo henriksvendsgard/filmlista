@@ -1,48 +1,35 @@
-"use client";
-
-import { Button } from "@/components/ui/button";
 import { TVShowDetails } from "@/components/TVShowDetails/TVShowDetails";
-import { TVShowDetailsSkeleton } from "@/components/TVShowDetails/TVShowDetailsSkeleton";
-import { getTVShowDetails } from "@/lib/getTVShows";
-import { TMDBTVShow } from "@/types/tvshow";
+import { Button } from "@/components/ui/button";
+import { getTVShowPageData } from "@/lib/tmdb/tv";
 import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 interface TVShowDetailsPageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
-export default function TVShowDetailsPage({ params }: TVShowDetailsPageProps) {
-    const [tvshow, setTVShow] = useState<TMDBTVShow | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const router = useRouter();
+export default async function TVShowDetailsPage({ params }: TVShowDetailsPageProps) {
+    const { id } = await params;
 
-    useEffect(() => {
-        async function fetchTVShow() {
-            try {
-                const tvshowData = await getTVShowDetails(params.id);
-                setTVShow(tvshowData);
-            } catch (error) {
-                console.error("Error fetching TV show:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        }
-
-        fetchTVShow();
-    }, [params.id]);
+    let tvshow;
+    try {
+        tvshow = await getTVShowPageData(id);
+    } catch {
+        notFound();
+    }
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Button variant="ghost" onClick={() => router.back()} className="mb-12">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Tilbake
+            <Button variant="ghost" asChild className="mb-12">
+                <Link href="/">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Tilbake
+                </Link>
             </Button>
-
-            {isLoading || !tvshow ? <TVShowDetailsSkeleton /> : <TVShowDetails tvshow={tvshow} />}
+            <TVShowDetails tvshow={tvshow} />
         </div>
     );
 }

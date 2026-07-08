@@ -29,7 +29,7 @@ import {
     updateList,
 } from "@/lib/listRepository";
 import { useSupabase } from "@/components/SupabaseProvider";
-import { User } from "@supabase/auth-helpers-nextjs";
+import { User } from "@supabase/supabase-js";
 import { PlusCircle, Share, Share2, Trash2, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
