@@ -80,7 +80,7 @@ export async function getPopularMovies(page = 1) {
     };
 }
 
-export async function getDiscoverMovies(id?: string, keywords?: string, page = 1) {
+export async function getDiscoverMovies(id?: string, keywords?: string, page = 1, watchProviderIds?: number[]) {
     const url = new URL("https://api.themoviedb.org/3/discover/movie");
     url.searchParams.set("sort_by", "popularity.desc");
     url.searchParams.set("vote_count.gte", "20");
@@ -90,6 +90,11 @@ export async function getDiscoverMovies(id?: string, keywords?: string, page = 1
     }
     if (keywords) {
         url.searchParams.set("with_keywords", keywords);
+    }
+    if (watchProviderIds?.length) {
+        url.searchParams.set("watch_region", "NO");
+        url.searchParams.set("with_watch_providers", watchProviderIds.join("|"));
+        url.searchParams.set("with_watch_monetization_types", "flatrate");
     }
     const data = await fetchFromTMDB(url, page);
 

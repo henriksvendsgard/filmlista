@@ -18,6 +18,11 @@ import { MovieCard } from "../MovieCard/MovieCard";
 import { Skeleton } from "../ui/skeleton";
 import { useSupabase } from "@/components/SupabaseProvider";
 import Link from "next/link";
+import { useStreamingServices } from "@/hooks/useStreamingServices";
+import { fetchWatchProvidersBatch, matchesUserServices, WatchProvidersNO } from "@/lib/watchProviders";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 interface List {
     id: string;
@@ -41,6 +46,69 @@ type MovieListAction = {
     movieId: string;
 };
 
+function MovieGrid({
+    movies,
+    lists,
+    selectedList,
+    streamingFilter,
+    hasServices,
+    onRemoveFromList,
+    onToggleWatched,
+    router,
+}: {
+    movies: ProcessedMovie[];
+    lists: { owned: List[]; shared: List[] };
+    selectedList: string;
+    streamingFilter: boolean;
+    hasServices: boolean;
+    onRemoveFromList: (listId: string, movieId: string, movieTitle: string, mediaType: string) => void;
+    onToggleWatched: (movieId: string, currentWatchedStatus: boolean, mediaType: string) => void;
+    router: ReturnType<typeof useRouter>;
+}) {
+    if (movies.length === 0 && streamingFilter && hasServices) {
+        return (
+            <div className="flex flex-col items-center py-16 text-center">
+                <Film className="mb-4 h-12 w-12 opacity-50" />
+                <h3 className="text-lg font-semibold">Ingen titler på dine tjenester</h3>
+                <p className="text-muted-foreground">
+                    Prøv å fjerne filteret eller legg til flere tjenester i{" "}
+                    <Link href="/profile" className="underline hover:text-foreground">
+                        profilen
+                    </Link>
+                    .
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {movies.map((movie) => (
+                <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    isInList={true}
+                    lists={lists}
+                    onRemoveFromList={(listId) =>
+                        onRemoveFromList(listId, movie.id, movie.title, movie.media_type)
+                    }
+                    onToggleWatched={(currentWatchedStatus) =>
+                        onToggleWatched(movie.id, currentWatchedStatus, movie.media_type)
+                    }
+                    onClick={() =>
+                        router.push(
+                            `/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`
+                        )
+                    }
+                    isWatchList={true}
+                    currentListId={selectedList}
+                    showAddedBy={true}
+                />
+            ))}
+        </div>
+    );
+}
+
 export default function Watchlist() {
     const [isLoadingLists, setIsLoadingLists] = useState(true);
     const [isLoadingMovies, setIsLoadingMovies] = useState(false);
@@ -50,6 +118,10 @@ export default function Watchlist() {
 
     const { supabase, user } = useSupabase();
     const router = useRouter();
+    const { services, hasServices, isLoading: isLoadingServices } = useStreamingServices();
+    const [streamingFilter, setStreamingFilter] = useState(false);
+    const [isLoadingProviders, setIsLoadingProviders] = useState(false);
+    const [providerMap, setProviderMap] = useState<Map<string, WatchProvidersNO | null>>(new Map());
     const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     const listIdFromUrl = searchParams.get("list");
 
@@ -220,6 +292,45 @@ export default function Watchlist() {
     }, [selectedList, fetchMovies]);
 
     useEffect(() => {
+        if (!streamingFilter || !hasServices || movies.length === 0) {
+            setProviderMap(new Map());
+            return;
+        }
+
+        const fetchProviders = async () => {
+            setIsLoadingProviders(true);
+            try {
+                const items = movies.map((m) => ({
+                    mediaId: m.movie_id,
+                    mediaType: m.media_type as "movie" | "tv",
+                }));
+                const providers = await fetchWatchProvidersBatch(items);
+                setProviderMap(providers);
+            } catch (error) {
+                console.error("Error fetching watch providers:", error);
+            } finally {
+                setIsLoadingProviders(false);
+            }
+        };
+
+        fetchProviders();
+    }, [streamingFilter, hasServices, movies]);
+
+    const filterByStreaming = useCallback(
+        (movieList: ProcessedMovie[]) => {
+            if (!streamingFilter || !hasServices) return movieList;
+
+            return movieList.filter((movie) => {
+                const key = `${movie.media_type}:${movie.movie_id}`;
+                const providers = providerMap.get(key);
+                if (providers === undefined) return false;
+                return matchesUserServices(providers, services);
+            });
+        },
+        [streamingFilter, hasServices, providerMap, services]
+    );
+
+    useEffect(() => {
         const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
             const { listId: updatedListId } = event.detail;
             if (updatedListId === selectedList) {
@@ -336,96 +447,90 @@ export default function Watchlist() {
 
                     {selectedList && movies && movies.length > 0 && !isLoading && (
                         <Tabs defaultValue="all" className="w-full">
-                            <TabsList className="mb-6">
-                                <TabsTrigger value="all">Alle</TabsTrigger>
-                                <TabsTrigger value="unwatched">Ikke sett</TabsTrigger>
-                                <TabsTrigger value="watched">Sett</TabsTrigger>
-                            </TabsList>
+                            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <TabsList>
+                                    <TabsTrigger value="all">Alle</TabsTrigger>
+                                    <TabsTrigger value="unwatched">Ikke sett</TabsTrigger>
+                                    <TabsTrigger value="watched">Sett</TabsTrigger>
+                                </TabsList>
 
-                            <TabsContent value="all">
-                                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                                    {movies.map((movie) => (
-                                        <MovieCard
-                                            key={movie.id}
-                                            movie={movie}
-                                            isInList={true}
-                                            lists={lists}
-                                            onRemoveFromList={(listId) =>
-                                                handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)
-                                            }
-                                            onToggleWatched={(currentWatchedStatus) =>
-                                                handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)
-                                            }
-                                            onClick={() =>
-                                                router.push(
-                                                    `/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`
-                                                )
-                                            }
-                                            isWatchList={true}
-                                            currentListId={selectedList || undefined}
-                                            showAddedBy={true}
-                                        />
-                                    ))}
+                                {!isLoadingServices && (
+                                    <div className="flex items-center gap-2">
+                                        {hasServices ? (
+                                            <>
+                                                <Checkbox
+                                                    id="streaming-filter"
+                                                    checked={streamingFilter}
+                                                    onCheckedChange={(checked) =>
+                                                        setStreamingFilter(checked === true)
+                                                    }
+                                                    disabled={isLoadingProviders}
+                                                />
+                                                <Label htmlFor="streaming-filter" className="cursor-pointer text-sm">
+                                                    På mine tjenester
+                                                </Label>
+                                                {isLoadingProviders && (
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                )}
+                                            </>
+                                        ) : (
+                                            <Link
+                                                href="/profile"
+                                                className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                                            >
+                                                Legg til strømmetjenester i profilen
+                                            </Link>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {streamingFilter && hasServices && isLoadingProviders ? (
+                                <div className="flex items-center justify-center py-16">
+                                    <Loader2 className="h-8 w-8 animate-spin text-filmlista-primary" />
                                 </div>
+                            ) : (
+                                <>
+                            <TabsContent value="all">
+                                <MovieGrid
+                                    movies={filterByStreaming(movies)}
+                                    lists={lists}
+                                    selectedList={selectedList}
+                                    streamingFilter={streamingFilter}
+                                    hasServices={hasServices}
+                                    onRemoveFromList={handleRemoveFromList}
+                                    onToggleWatched={handleToggleWatched}
+                                    router={router}
+                                />
                             </TabsContent>
 
                             <TabsContent value="unwatched">
-                                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                                    {movies
-                                        .filter((m) => !m.is_watched_by_me)
-                                        .map((movie) => (
-                                            <MovieCard
-                                                key={movie.id}
-                                                movie={movie}
-                                                isInList={true}
-                                                lists={lists}
-                                                onRemoveFromList={(listId) =>
-                                                    handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)
-                                                }
-                                                onToggleWatched={(currentWatchedStatus) =>
-                                                    handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)
-                                                }
-                                                onClick={() =>
-                                                    router.push(
-                                                        `/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`
-                                                    )
-                                                }
-                                                isWatchList={true}
-                                                currentListId={selectedList || undefined}
-                                                showAddedBy={true}
-                                            />
-                                        ))}
-                                </div>
+                                <MovieGrid
+                                    movies={filterByStreaming(movies.filter((m) => !m.is_watched_by_me))}
+                                    lists={lists}
+                                    selectedList={selectedList}
+                                    streamingFilter={streamingFilter}
+                                    hasServices={hasServices}
+                                    onRemoveFromList={handleRemoveFromList}
+                                    onToggleWatched={handleToggleWatched}
+                                    router={router}
+                                />
                             </TabsContent>
 
                             <TabsContent value="watched">
-                                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                                    {movies
-                                        .filter((m) => m.is_watched_by_me)
-                                        .map((movie) => (
-                                            <MovieCard
-                                                key={movie.id}
-                                                movie={movie}
-                                                isInList={true}
-                                                lists={lists}
-                                                onRemoveFromList={(listId) =>
-                                                    handleRemoveFromList(listId, movie.id, movie.title, movie.media_type)
-                                                }
-                                                onToggleWatched={(currentWatchedStatus) =>
-                                                    handleToggleWatched(movie.id, currentWatchedStatus, movie.media_type)
-                                                }
-                                                onClick={() =>
-                                                    router.push(
-                                                        `/${movie.media_type === "movie" ? "movie" : "tvshow"}/${movie.movie_id}`
-                                                    )
-                                                }
-                                                isWatchList={true}
-                                                currentListId={selectedList || undefined}
-                                                showAddedBy={true}
-                                            />
-                                        ))}
-                                </div>
+                                <MovieGrid
+                                    movies={filterByStreaming(movies.filter((m) => m.is_watched_by_me))}
+                                    lists={lists}
+                                    selectedList={selectedList}
+                                    streamingFilter={streamingFilter}
+                                    hasServices={hasServices}
+                                    onRemoveFromList={handleRemoveFromList}
+                                    onToggleWatched={handleToggleWatched}
+                                    router={router}
+                                />
                             </TabsContent>
+                                </>
+                            )}
                         </Tabs>
                     )}
                 </div>

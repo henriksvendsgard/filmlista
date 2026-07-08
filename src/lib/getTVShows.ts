@@ -185,13 +185,18 @@ export async function getPopularTVShows(page = 1) {
     };
 }
 
-export async function getDiscoverTVShows(genres: string, page = 1) {
+export async function getDiscoverTVShows(genres: string, page = 1, watchProviderIds?: number[]) {
     const url = new URL("https://api.themoviedb.org/3/discover/tv");
     url.searchParams.set("sort_by", "vote_count.desc");
     url.searchParams.set("vote_count.gte", "100");
     url.searchParams.set("vote_average.gte", "7");
     if (genres) {
         url.searchParams.set("with_genres", genres);
+    }
+    if (watchProviderIds?.length) {
+        url.searchParams.set("watch_region", "NO");
+        url.searchParams.set("with_watch_providers", watchProviderIds.join("|"));
+        url.searchParams.set("with_watch_monetization_types", "flatrate");
     }
     const data = await fetchFromTMDB(url, page);
     return {
