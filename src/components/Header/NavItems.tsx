@@ -64,7 +64,7 @@ export default function NavItems() {
                         <NavigationMenuItem>
                             <DropdownMenu>
                                 <DropdownMenuTrigger
-                                    className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent`}
+                                    className={`${navigationMenuTriggerStyle()} outline-solid outline-1 -outline-offset-1 outline-accent`}
                                 >
                                     <UserIcon className="h-5 w-5 pr-1" />
                                     <span>Konto</span>

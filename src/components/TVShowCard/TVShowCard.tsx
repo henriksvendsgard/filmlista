@@ -53,7 +53,7 @@ export function TVShowCard({
     return (
         <div className="group relative">
             <Link href={`/tvshow/${tvshow.id}`} className="block">
-                <div className="relative aspect-[2/3] cursor-pointer overflow-hidden rounded-lg bg-muted/50 transition-all duration-300">
+                <div className="relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg bg-muted/50 transition-all duration-300">
                     {tvshow.poster_path ? (
                         <Image
                             src={`https://image.tmdb.org/t/p/w500${tvshow.poster_path}`}

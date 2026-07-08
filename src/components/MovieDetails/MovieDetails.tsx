@@ -230,13 +230,13 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                 )}
             </div>
 
-            <div className="grid gap-8 md:grid-cols-[2fr,1fr]">
+            <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
                 <div className="space-y-8">
                     <div className="mb-6 flex flex-col gap-4">
                         <h1 className="text-4xl font-bold">{movie.title}</h1>
 
                         <DropdownMenu>
-                            <DropdownMenuTrigger className="flex-shrink-0" asChild>
+                            <DropdownMenuTrigger className="shrink-0" asChild>
                                 <Button
                                     variant={"secondary"}
                                     size={"icon"}
@@ -364,7 +364,7 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                             <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
                                 {cast.map((actor) => (
                                     <div key={actor.id} className="flex items-center space-x-4">
-                                        <div className="relative h-12 w-12 flex-shrink-0">
+                                        <div className="relative h-12 w-12 shrink-0">
                                             {actor.profile_path ? (
                                                 <Image
                                                     src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
@@ -402,7 +402,7 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                                 priority
                             />
                         ) : (
-                            <div className="flex aspect-[2/3] w-full items-center justify-center rounded-lg bg-muted">
+                            <div className="flex aspect-2/3 w-full items-center justify-center rounded-lg bg-muted">
                                 <span className="text-muted-foreground">Ingen plakat tilgjengelig</span>
                             </div>
                         )}
@@ -505,7 +505,7 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                                 className="group cursor-pointer"
                                 onClick={() => router.push(`/movie/${movie.id}`)}
                             >
-                                <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+                                <div className="relative aspect-2/3 overflow-hidden rounded-lg">
                                     {movie.poster_path ? (
                                         <Image
                                             src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
@@ -547,7 +547,7 @@ function MovieDetailsSkeleton() {
         <div className="container mx-auto space-y-8 px-4 py-8">
             <Skeleton className="h-10 w-20" />
             <Skeleton className="aspect-[2.76/1] w-full rounded-xl" />
-            <div className="grid gap-8 md:grid-cols-[2fr,1fr]">
+            <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
                 <div className="space-y-6">
                     <div>
                         <Skeleton className="mb-4 h-12 w-3/4" />
@@ -580,7 +580,7 @@ function MovieDetailsSkeleton() {
                     </div>
                 </div>
                 <div>
-                    <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+                    <Skeleton className="aspect-2/3 w-full rounded-lg" />
                 </div>
             </div>
             <div className="space-y-4">
@@ -588,7 +588,7 @@ function MovieDetailsSkeleton() {
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                         <div key={i} className="space-y-2">
-                            <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+                            <Skeleton className="aspect-2/3 w-full rounded-lg" />
                         </div>
                     ))}
                 </div>

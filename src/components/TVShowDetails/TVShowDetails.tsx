@@ -195,7 +195,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             className="rounded-lg shadow-lg"
                         />
                     ) : (
-                        <div className="flex aspect-[2/3] items-center justify-center rounded-lg bg-gray-200">
+                        <div className="flex aspect-2/3 items-center justify-center rounded-lg bg-gray-200">
                             <span className="text-gray-400">Ingen plakat</span>
                         </div>
                     )}
@@ -211,7 +211,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             {tvshow.number_of_episodes !== 1 ? "r" : ""}
                         </p>
                         <DropdownMenu>
-                            <DropdownMenuTrigger className="mb-4 flex-shrink-0" asChild>
+                            <DropdownMenuTrigger className="mb-4 shrink-0" asChild>
                                 <Button
                                     variant={"secondary"}
                                     size={"icon"}
@@ -313,7 +313,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
                                 {tvshow.cast.map((actor) => (
                                     <div key={actor.id} className="flex items-center space-x-4">
-                                        <div className="relative h-12 w-12 flex-shrink-0">
+                                        <div className="relative h-12 w-12 shrink-0">
                                             {actor.profile_path ? (
                                                 <Image
                                                     src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
@@ -455,7 +455,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                                                 : "Ukjent dato"}
                                         </p>
                                     </div>
-                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+                                    <div className="absolute inset-0 bg-linear-to-b from-transparent via-background/50 to-background" />
                                 </div>
                             )}
                         </div>
@@ -490,7 +490,7 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                                 className="group cursor-pointer"
                                 onClick={() => router.push(`/tvshow/${show.id}`)}
                             >
-                                <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+                                <div className="relative aspect-2/3 overflow-hidden rounded-lg">
                                     {show.poster_path ? (
                                         <Image
                                             src={`https://image.tmdb.org/t/p/w500${show.poster_path}`}

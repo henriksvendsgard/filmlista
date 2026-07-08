@@ -87,7 +87,7 @@ export function MovieCard({
     return (
         <div className="group relative">
             <div
-                className={`relative aspect-[2/3] cursor-pointer overflow-hidden rounded-lg bg-muted/50 transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`}
+                className={`relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg bg-muted/50 transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`}
                 onClick={onClick}
             >
                 <Image

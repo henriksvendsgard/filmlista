@@ -47,7 +47,7 @@ export default function Header() {
 
     return (
         <div
-            className={`fixed top-[-1px] z-50 w-full ${scrollDirection === "down" ? "pb-3" : "pb-6"} transition-all duration-300 sm:pb-0`}
+            className={`fixed -top-px z-50 w-full ${scrollDirection === "down" ? "pb-3" : "pb-6"} transition-all duration-300 sm:pb-0`}
         >
             {showInfoBar && (
                 <div className="bg-blue-800 py-3 text-center text-white">
