@@ -75,8 +75,10 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
     const mediaListMapRef = useRef(mediaListMap);
     const refreshRequestIdRef = useRef(0);
 
-    listsRef.current = lists;
-    mediaListMapRef.current = mediaListMap;
+    useEffect(() => {
+        listsRef.current = lists;
+        mediaListMapRef.current = mediaListMap;
+    }, [lists, mediaListMap]);
 
     const setListsState = useCallback((next: { owned: List[]; shared: SharedList[] }) => {
         listsRef.current = next;
@@ -105,7 +107,10 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
                 console.error("Error fetching lists:", error);
                 toast({
                     title: "Kunne ikke hente lister",
-                    description: "Prøv å laste siden på nytt",
+                    description:
+                        error instanceof Error
+                            ? error.message
+                            : "Prøv å laste siden på nytt. Manglende database-migrasjoner kan også være årsaken.",
                     variant: "destructive",
                 });
             } finally {
