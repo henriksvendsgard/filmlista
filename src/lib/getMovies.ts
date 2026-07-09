@@ -1,9 +1,9 @@
 import { SearchResults } from "./typings";
 
-async function fetchFromTMDB(url: URL, page = 1) {
+async function fetchFromTMDB(url: URL, page = 1, language = "en-US") {
     url.searchParams.set("include_adult", "false");
     url.searchParams.set("include_video", "false");
-    url.searchParams.set("language", "en-US");
+    url.searchParams.set("language", language);
     url.searchParams.set("page", page.toString());
     url.searchParams.set("include_null_first_air_dates", "false");
     url.searchParams.set("without_null_poster_path", "true");
@@ -102,7 +102,7 @@ export async function getDiscoverMovies(id?: string, keywords?: string, page = 1
 export async function getSearchedMovies(term: string, page = 1) {
     const url = new URL("https://api.themoviedb.org/3/search/movie");
     url.searchParams.set("query", term);
-    const data = await fetchFromTMDB(url, page);
+    const data = await fetchFromTMDB(url, page, "no-NO");
     return {
         results: data.results,
         total_pages: data.total_pages,

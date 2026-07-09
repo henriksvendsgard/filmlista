@@ -11,7 +11,7 @@ export function TVShowDetailsSkeleton() {
             <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
                 {/* Desktop poster */}
                 <div className="hidden xl:col-span-1 xl:block">
-                    <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+                    <Skeleton className="aspect-2/3 w-full rounded-lg" />
                 </div>
 
                 <div className="col-span-1 xl:col-span-2">
@@ -88,7 +88,7 @@ export function TVShowDetailsSkeleton() {
                 <Skeleton className="mb-4 h-8 w-1/4" />
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                     {Array.from({ length: 8 }).map((_, i) => (
-                        <Skeleton key={i} className="aspect-[2/3] rounded-lg" />
+                        <Skeleton key={i} className="aspect-2/3 rounded-lg" />
                     ))}
                 </div>
             </div>

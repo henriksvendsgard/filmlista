@@ -1,22 +1,14 @@
 "use client";
 
+import { ListMembershipPanel } from "@/components/MediaListPicker/ListMembershipPanel";
 import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/hooks/use-toast";
 import { useSupabase } from "@/components/SupabaseProvider";
-import { addToList, getListsForMedia, removeFromList } from "@/lib/listRepository";
-import { useMovieLists } from "@/hooks/useMovieLists";
-import { ArrowLeft, BookmarkPlus, Plus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useScrollToTopOnMount } from "@/hooks/useScrollToTopOnMount";
 import { MoviePageData } from "@/lib/tmdb/movies";
 
 interface MovieDetails {
@@ -63,6 +55,7 @@ interface MovieDetailProps {
 }
 
 export default function MovieDetails({ movieId, initialData }: MovieDetailProps) {
+    useScrollToTopOnMount(movieId);
     const router = useRouter();
     const [movie, setMovie] = useState<MovieDetails | null>(initialData?.movie ?? null);
     const [cast, setCast] = useState<Cast[]>(initialData?.cast ?? []);
@@ -70,21 +63,15 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
     const [watchProviders, setWatchProviders] = useState<WatchProviders | null>(initialData?.watchProviders ?? null);
     const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
-    const { lists } = useMovieLists();
-    const { supabase, user } = useSupabase();
-    const [movieListMap, setMovieListMap] = useState<Record<string, string[]>>({});
-    const [listsWithMovie, setListsWithMovie] = useState<{ id: string; name: string }[]>([]);
+    const { user } = useSupabase();
 
-    const fetchMovieListMap = useCallback(async () => {
-        try {
-            const listIds = await getListsForMedia(supabase, movieId, "movie");
-            setMovieListMap({ [movieId]: listIds });
-            const allLists = [...lists.owned, ...lists.shared];
-            setListsWithMovie(allLists.filter((l) => listIds.includes(l.id)));
-        } catch (error) {
-            console.error("Error fetching movie lists:", error);
-        }
-    }, [movieId, supabase, lists]);
+    const mediaRef = {
+        mediaId: movieId,
+        mediaType: "movie" as const,
+        title: movie?.title ?? "",
+        posterPath: movie?.poster_path ?? null,
+        releaseDate: movie?.release_date,
+    };
 
     useEffect(() => {
         if (initialData) return;
@@ -140,70 +127,6 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
         fetchMovieData();
     }, [movieId, initialData]);
 
-    useEffect(() => {
-        fetchMovieListMap();
-    }, [fetchMovieListMap]);
-
-    const handleAddToList = async (listId: string) => {
-        if (!user) return;
-        try {
-            await addToList(supabase, {
-                mediaId: movieId,
-                listId,
-                mediaType: "movie",
-                title: movie?.title ?? "",
-                posterPath: movie?.poster_path ?? null,
-                addedBy: user.id,
-                releaseDate: movie?.release_date,
-            });
-            setMovieListMap((prev) => ({
-                ...prev,
-                [movieId]: [...(prev[movieId] || []), listId],
-            }));
-            const newList = [...lists.owned, ...lists.shared].find((l) => l.id === listId);
-            if (newList) setListsWithMovie((prev) => [...prev, newList]);
-            toast({
-                title: "Film lagt til",
-                description: `"${movie?.title}" er nå lagt til i "${newList?.name}"`,
-                className: "bg-blue-800",
-            });
-        } catch (error) {
-            console.error("Feil ved innlegging av film:", error);
-            toast({
-                title: "Feil",
-                description: "Kunne ikke legge til filmen i listen",
-                variant: "destructive",
-            });
-        }
-    };
-
-    const handleRemoveFromList = async (listId: string, listName: string) => {
-        try {
-            await removeFromList(supabase, { mediaId: movieId, listId, mediaType: "movie" });
-            setMovieListMap((prev) => {
-                const newMap = { ...prev };
-                if (newMap[movieId]) {
-                    newMap[movieId] = newMap[movieId].filter((id) => id !== listId);
-                    if (newMap[movieId].length === 0) delete newMap[movieId];
-                }
-                return newMap;
-            });
-            setListsWithMovie((prev) => prev.filter((list) => list.id !== listId));
-            toast({
-                title: "Film fjernet",
-                description: `"${movie?.title}" er nå fjernet fra "${listName}"`,
-                className: "bg-orange-800",
-            });
-        } catch (error) {
-            console.error("Error removing movie from list:", error);
-            toast({
-                title: "Feil",
-                description: "Kunne ikke fjerne filmen fra listen",
-                variant: "destructive",
-            });
-        }
-    };
-
     if (loading) return <MovieDetailsSkeleton />;
     if (error || !movie) return <ErrorState error={error} onBack={() => router.back()} />;
 
@@ -230,103 +153,10 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                 )}
             </div>
 
-            <div className="grid gap-8 md:grid-cols-[2fr,1fr]">
+            <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
                 <div className="space-y-8">
                     <div className="mb-6 flex flex-col gap-4">
                         <h1 className="text-4xl font-bold">{movie.title}</h1>
-
-                        <DropdownMenu>
-                            <DropdownMenuTrigger className="flex-shrink-0" asChild>
-                                <Button
-                                    variant={"secondary"}
-                                    size={"icon"}
-                                    className="h-12 w-12 rounded-full border-background bg-filmlista-primary p-5 text-white hover:bg-filmlista-hover"
-                                >
-                                    <BookmarkPlus />
-                                    {/* Legg til */}
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                {/* Sjekker om det finnes lister å legge til i */}
-                                {(lists?.owned?.some((list) => !movieListMap[movieId]?.includes(list.id)) ||
-                                    lists?.shared?.some((list) => !movieListMap[movieId]?.includes(list.id))) && (
-                                    <>
-                                        {/* Egne lister */}
-                                        {lists.owned.filter((list) => !movieListMap[movieId]?.includes(list.id))
-                                            .length > 0 && (
-                                            <>
-                                                <DropdownMenuItem disabled className="text-muted-foreground">
-                                                    Dine lister
-                                                </DropdownMenuItem>
-                                                {lists.owned
-                                                    .filter((list) => !movieListMap[movieId]?.includes(list.id))
-                                                    .map((list) => (
-                                                        <DropdownMenuItem
-                                                            key={list.id}
-                                                            onClick={() => handleAddToList(list.id)}
-                                                            className="cursor-pointer"
-                                                        >
-                                                            Legg til i {list.name}
-                                                        </DropdownMenuItem>
-                                                    ))}
-                                            </>
-                                        )}
-
-                                        {/* Delte lister */}
-                                        {lists.shared.filter((list) => !movieListMap[movieId]?.includes(list.id))
-                                            .length > 0 && (
-                                            <>
-                                                {lists.owned.filter(
-                                                    (list) => !movieListMap[movieId]?.includes(list.id)
-                                                ).length > 0 && <DropdownMenuSeparator />}
-                                                <DropdownMenuItem disabled className="text-muted-foreground">
-                                                    Delte lister
-                                                </DropdownMenuItem>
-                                                {lists.shared
-                                                    .filter((list) => !movieListMap[movieId]?.includes(list.id))
-                                                    .map((list) => (
-                                                        <DropdownMenuItem
-                                                            key={list.id}
-                                                            onClick={() => handleAddToList(list.id)}
-                                                            className="cursor-pointer"
-                                                        >
-                                                            Legg til i {list.name}
-                                                        </DropdownMenuItem>
-                                                    ))}
-                                            </>
-                                        )}
-                                    </>
-                                )}
-
-                                {/* Lister filmen er i */}
-                                {listsWithMovie.length > 0 && (
-                                    <>
-                                        {/* Kun vis separator hvis det er liste over */}
-                                        {(lists?.owned?.some((list) => !movieListMap[movieId]?.includes(list.id)) ||
-                                            lists?.shared?.some(
-                                                (list) => !movieListMap[movieId]?.includes(list.id)
-                                            )) && <DropdownMenuSeparator />}
-                                        <DropdownMenuItem disabled className="text-muted-foreground">
-                                            Fjern fra
-                                        </DropdownMenuItem>
-                                        {listsWithMovie.map((list) => (
-                                            <DropdownMenuItem
-                                                key={list.id}
-                                                onClick={() => handleRemoveFromList(list.id, list.name)}
-                                                className="cursor-pointer text-red-600"
-                                            >
-                                                {list.name}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </>
-                                )}
-
-                                {/* Ingen lister tilgjengelig */}
-                                {!lists?.owned?.length && !lists?.shared?.length && (
-                                    <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
@@ -356,6 +186,8 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                         ))}
                     </div>
 
+                    {user && <ListMembershipPanel media={mediaRef} />}
+
                     <p className="leading-relaxed text-muted-foreground">{movie.overview}</p>
 
                     {cast.length > 0 && (
@@ -364,7 +196,7 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                             <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
                                 {cast.map((actor) => (
                                     <div key={actor.id} className="flex items-center space-x-4">
-                                        <div className="relative h-12 w-12 flex-shrink-0">
+                                        <div className="relative h-12 w-12 shrink-0">
                                             {actor.profile_path ? (
                                                 <Image
                                                     src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
@@ -391,7 +223,7 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                 </div>
 
                 <div>
-                    <div className="sticky top-8 space-y-8">
+                    <div className="sticky top-8">
                         {movie.poster_path ? (
                             <Image
                                 src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
@@ -402,7 +234,7 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                                 priority
                             />
                         ) : (
-                            <div className="flex aspect-[2/3] w-full items-center justify-center rounded-lg bg-muted">
+                            <div className="flex aspect-2/3 w-full items-center justify-center rounded-lg bg-muted">
                                 <span className="text-muted-foreground">Ingen plakat tilgjengelig</span>
                             </div>
                         )}
@@ -505,7 +337,7 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                                 className="group cursor-pointer"
                                 onClick={() => router.push(`/movie/${movie.id}`)}
                             >
-                                <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+                                <div className="relative aspect-2/3 overflow-hidden rounded-lg">
                                     {movie.poster_path ? (
                                         <Image
                                             src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
@@ -547,7 +379,7 @@ function MovieDetailsSkeleton() {
         <div className="container mx-auto space-y-8 px-4 py-8">
             <Skeleton className="h-10 w-20" />
             <Skeleton className="aspect-[2.76/1] w-full rounded-xl" />
-            <div className="grid gap-8 md:grid-cols-[2fr,1fr]">
+            <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
                 <div className="space-y-6">
                     <div>
                         <Skeleton className="mb-4 h-12 w-3/4" />
@@ -580,7 +412,7 @@ function MovieDetailsSkeleton() {
                     </div>
                 </div>
                 <div>
-                    <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+                    <Skeleton className="aspect-2/3 w-full rounded-lg" />
                 </div>
             </div>
             <div className="space-y-4">
@@ -588,7 +420,7 @@ function MovieDetailsSkeleton() {
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                         <div key={i} className="space-y-2">
-                            <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+                            <Skeleton className="aspect-2/3 w-full rounded-lg" />
                         </div>
                     ))}
                 </div>

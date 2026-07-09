@@ -4,7 +4,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -14,42 +13,29 @@ import {
     NavigationMenuList,
     navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import { CircleCheckBig, ListIcon, UserIcon, LogOut } from "lucide-react";
+import { CircleCheckBig, ListIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
 import { useSupabase } from "@/components/SupabaseProvider";
-import { useState } from "react";
 
-export default function NavItems() {
+export default function NavItems({ hideAuthenticatedNav = false }: { hideAuthenticatedNav?: boolean }) {
     const pathname = usePathname();
     const isActivePage = (path: string) => {
         return pathname === path;
     };
 
-    const [isLoading, setIsLoading] = useState(false);
-    const { supabase, user } = useSupabase();
-    const router = useRouter();
-
-    const handleSignOut = async () => {
-        setIsLoading(true);
-        try {
-            await supabase.auth.signOut();
-        } catch (error) {
-            console.error("Error signing out:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const { user } = useSupabase();
 
     return (
         <NavigationMenu className="">
             <NavigationMenuList>
-                {user && (
+                {user && !hideAuthenticatedNav && (
                     <>
                         <NavigationMenuItem>
-                            <Link href="/watchlist" legacyBehavior passHref>
-                                <NavigationMenuLink
+                            <NavigationMenuLink asChild>
+                                <Link
+                                    href="/watchlist"
                                     className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent ${
                                         isActivePage("/watchlist")
                                             ? "bg-filmlista-primary text-white hover:bg-filmlista-primary/80 hover:text-white focus:bg-filmlista-primary focus:text-white"
@@ -58,13 +44,13 @@ export default function NavItems() {
                                 >
                                     <CircleCheckBig className="h-5 w-5 pr-1" />
                                     <span>Lista</span>
-                                </NavigationMenuLink>
-                            </Link>
+                                </Link>
+                            </NavigationMenuLink>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
                             <DropdownMenu>
                                 <DropdownMenuTrigger
-                                    className={`${navigationMenuTriggerStyle()} outline outline-1 -outline-offset-1 outline-accent`}
+                                    className={`${navigationMenuTriggerStyle()} outline-solid outline-1 -outline-offset-1 outline-accent`}
                                 >
                                     <UserIcon className="h-5 w-5 pr-1" />
                                     <span>Konto</span>
@@ -82,11 +68,6 @@ export default function NavItems() {
                                             <span>Dine lister</span>
                                         </DropdownMenuItem>
                                     </Link>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        <span>Logg ut</span>
-                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </NavigationMenuItem>

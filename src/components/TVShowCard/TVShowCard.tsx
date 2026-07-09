@@ -1,59 +1,41 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { TMDBTVShow } from "@/types/tvshow";
-import { Ellipsis } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import { MediaListPicker } from "@/components/MediaListPicker/MediaListPicker";
+import { MediaRef } from "@/contexts/ListActionsContext";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
-interface List {
-    id: string;
-    name: string;
-    owner_id: string;
-}
+import { List } from "@/lib/listRepository";
+import { TMDBTVShow } from "@/types/tvshow";
+import Image from "next/image";
+import Link from "next/link";
 
 interface TVShowCardProps {
     tvshow: TMDBTVShow;
+    media: MediaRef;
     lists: {
         owned: List[];
         shared: List[];
     };
-    onAddToList: (tvshow: TMDBTVShow, listId: string) => void;
-    onRemoveFromList: (tvshow: TMDBTVShow, listId: string) => void;
     isInLists: string[];
+    listCount?: number;
     hasOthersWatched: boolean;
     othersWhoWatched: { user_id: string; displayname: string; watched_at: string }[];
     showAddedBy?: string;
-    isLoadingListMap: boolean;
 }
 
 export function TVShowCard({
     tvshow,
-    lists,
-    onAddToList,
-    onRemoveFromList,
+    media,
     isInLists,
+    listCount = 0,
     hasOthersWatched,
     othersWhoWatched,
     showAddedBy,
 }: TVShowCardProps) {
-    const allLists = [...lists.owned, ...lists.shared];
-    const availableOwnedLists = lists.owned.filter((list) => !isInLists.includes(list.id));
-    const availableSharedLists = lists.shared.filter((list) => !isInLists.includes(list.id));
-
     return (
         <div className="group relative">
             <Link href={`/tvshow/${tvshow.id}`} className="block">
-                <div className="relative aspect-[2/3] cursor-pointer overflow-hidden rounded-lg bg-muted/50 transition-all duration-300">
+                <div className="relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg bg-muted/50 transition-all duration-300">
                     {tvshow.poster_path ? (
                         <Image
                             src={`https://image.tmdb.org/t/p/w500${tvshow.poster_path}`}
@@ -70,68 +52,16 @@ export function TVShowCard({
                 </div>
             </Link>
 
+            {isInLists.length > 0 && listCount > 0 && (
+                <div className="absolute left-2 top-2">
+                    <Badge variant="secondary" className="bg-black/70 text-xs text-white hover:bg-black/70">
+                        {listCount} {listCount === 1 ? "liste" : "lister"}
+                    </Badge>
+                </div>
+            )}
+
             <div className="absolute right-2 top-2">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="rounded-full">
-                            <Ellipsis className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        {availableOwnedLists.length > 0 && (
-                            <>
-                                <DropdownMenuItem disabled className="text-muted-foreground">
-                                    Dine lister
-                                </DropdownMenuItem>
-                                {availableOwnedLists.map((list) => (
-                                    <DropdownMenuItem key={list.id} onClick={() => onAddToList(tvshow, list.id)}>
-                                        Legg til i {list.name}
-                                    </DropdownMenuItem>
-                                ))}
-                            </>
-                        )}
-
-                        {availableSharedLists.length > 0 && (
-                            <>
-                                {availableOwnedLists.length > 0 && <DropdownMenuSeparator />}
-                                <DropdownMenuItem disabled className="text-muted-foreground">
-                                    Delte lister
-                                </DropdownMenuItem>
-                                {availableSharedLists.map((list) => (
-                                    <DropdownMenuItem key={list.id} onClick={() => onAddToList(tvshow, list.id)}>
-                                        Legg til i {list.name}
-                                    </DropdownMenuItem>
-                                ))}
-                            </>
-                        )}
-
-                        {isInLists.length > 0 && (
-                            <>
-                                {(availableOwnedLists.length > 0 || availableSharedLists.length > 0) && (
-                                    <DropdownMenuSeparator />
-                                )}
-                                <DropdownMenuItem disabled className="text-muted-foreground">
-                                    Fjern fra listen
-                                </DropdownMenuItem>
-                                {allLists
-                                    .filter((list) => isInLists.includes(list.id))
-                                    .map((list) => (
-                                        <DropdownMenuItem
-                                            key={list.id}
-                                            onClick={() => onRemoveFromList(tvshow, list.id)}
-                                            className="text-red-600"
-                                        >
-                                            {list.name}
-                                        </DropdownMenuItem>
-                                    ))}
-                            </>
-                        )}
-
-                        {!availableOwnedLists.length && !availableSharedLists.length && !isInLists.length && (
-                            <DropdownMenuItem disabled>Ingen lister tilgjengelig</DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <MediaListPicker media={media} />
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 p-2">

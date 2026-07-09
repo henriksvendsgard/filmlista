@@ -2,19 +2,27 @@
 
 import MovieList from "@/components/MovieList/MovieList";
 import TVShowList from "@/components/TVShowList/TVShowList";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GenreSelector } from "@/components/GenreSelector/GenreSelector";
+import { MediaTypeSelector } from "@/components/MediaTypeSelector/MediaTypeSelector";
+import { StreamingFilterSection } from "@/components/StreamingServicesSelector/StreamingFilterSection";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { getDiscoverMovies, getMovieGenres, getPopularMovies } from "@/lib/getMovies";
 import { getDiscoverTVShows, getPopularTVShows, getTVShowGenres } from "@/lib/getTVShows";
+import {
+    getExploreEntry,
+    getExploreGenreCache,
+    getExploreKey,
+    saveExploreScroll,
+    setExploreGenreCache,
+    updateExploreEntry,
+} from "@/lib/exploreCache";
+import { dedupeById } from "@/lib/dedupeById";
 import { useStreamingServices } from "@/hooks/useStreamingServices";
-import { ChevronDown, Loader2, X } from "lucide-react";
-import Link from "next/link";
+import { LandingFeatures } from "@/components/Landing/LandingFeatures";
+import { LandingHero } from "@/components/Landing/LandingHero";
+import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 interface ContentResults {
     results: any[];
@@ -24,16 +32,18 @@ interface ContentResults {
 }
 
 export default function Home() {
-    const [movies, setMovies] = useState<ContentResults | null>(null);
-    const [tvshows, setTVShows] = useState<ContentResults | null>(null);
-    const [movieGenres, setMovieGenres] = useState<any[]>([]);
-    const [tvshowGenres, setTVShowGenres] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isFetchingMore, setIsFetchingMore] = useState(false);
     const searchParams = useSearchParams();
     const router = useRouter();
     const loadMoreRef = useRef<HTMLDivElement>(null);
+    const isFetchingMoreRef = useRef(false);
+    const pageRef = useRef<HTMLDivElement>(null);
+    const restoredScrollForKey = useRef<string | null>(null);
+    const previousExploreKey = useRef<string | null>(null);
     const { services, hasServices, isLoading: isLoadingServices } = useStreamingServices();
+
+    const search = searchParams.toString();
+    const exploreKey = getExploreKey(search);
+    const cachedEntry = getExploreEntry(exploreKey);
 
     const currentParams = useMemo(() => {
         const selectedGenres = searchParams.get("genres")?.split(",").filter(Boolean) || [];
@@ -41,6 +51,19 @@ export default function Home() {
         const streamingFilter = searchParams.get("streaming") === "1";
         return { selectedGenres, mediaType, streamingFilter };
     }, [searchParams]);
+
+    const hasCachedContent =
+        currentParams.mediaType === "movie"
+            ? !!cachedEntry?.movies?.results?.length
+            : !!cachedEntry?.tvshows?.results?.length;
+
+    const [movies, setMovies] = useState<ContentResults | null>(cachedEntry?.movies ?? null);
+    const [tvshows, setTVShows] = useState<ContentResults | null>(cachedEntry?.tvshows ?? null);
+    const genreCache = getExploreGenreCache();
+    const [movieGenres, setMovieGenres] = useState<any[]>(genreCache.movieGenres);
+    const [tvshowGenres, setTVShowGenres] = useState<any[]>(genreCache.tvshowGenres);
+    const [isLoading, setIsLoading] = useState(!hasCachedContent);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
 
     const updateUrl = useCallback(
         (newGenres: string[], mediaType?: string, streamingFilter?: boolean) => {
@@ -53,86 +76,122 @@ export default function Home() {
             if (streaming) {
                 params.set("streaming", "1");
             }
-            router.push(`/?${params.toString()}`);
+            router.push(`/?${params.toString()}`, { scroll: false });
         },
         [router, currentParams.mediaType, currentParams.streamingFilter]
+    );
+
+    const persistContent = useCallback(
+        (data: { movies?: ContentResults | null; tvshows?: ContentResults | null }) => {
+            updateExploreEntry(exploreKey, data);
+        },
+        [exploreKey]
     );
 
     const fetchContent = useCallback(
         async (page: number, isLoadingMore = false) => {
             if (!isLoadingMore) {
-                setIsLoading(true);
+                const entry = getExploreEntry(exploreKey);
+                const hasData =
+                    currentParams.mediaType === "movie"
+                        ? !!entry?.movies?.results?.length
+                        : !!entry?.tvshows?.results?.length;
+                if (!hasData) {
+                    setIsLoading(true);
+                }
             }
+
             try {
                 const useStreamingFilter = currentParams.streamingFilter && hasServices;
                 const watchProviders = useStreamingFilter ? services : undefined;
 
                 if (currentParams.mediaType === "movie") {
-                    let movieData;
-                    if (currentParams.selectedGenres.length === 0 && !useStreamingFilter) {
-                        movieData = await getPopularMovies(page);
-                    } else {
-                        movieData = await getDiscoverMovies(
-                            currentParams.selectedGenres.join(","),
-                            undefined,
-                            page,
-                            watchProviders
-                        );
-                    }
+                    const movieData =
+                        currentParams.selectedGenres.length === 0 && !useStreamingFilter
+                            ? await getPopularMovies(page)
+                            : await getDiscoverMovies(
+                                  currentParams.selectedGenres.join(","),
+                                  undefined,
+                                  page,
+                                  watchProviders
+                              );
 
                     if (isLoadingMore) {
-                        setMovies((prev: ContentResults | null) =>
-                            prev
+                        setMovies((prev) => {
+                            const next = prev
                                 ? {
                                       ...prev,
-                                      results: [...prev.results, ...movieData.results],
+                                      results: dedupeById([...prev.results, ...movieData.results]),
                                       page: movieData.page,
                                   }
-                                : movieData
-                        );
+                                : { ...movieData, results: dedupeById(movieData.results) };
+                            persistContent({ movies: next });
+                            return next;
+                        });
                     } else {
-                        setMovies(movieData);
+                        const deduped = { ...movieData, results: dedupeById(movieData.results) };
+                        setMovies(deduped);
+                        persistContent({ movies: deduped });
                     }
                 } else {
-                    let tvshowData;
-                    if (currentParams.selectedGenres.length === 0 && !useStreamingFilter) {
-                        tvshowData = await getPopularTVShows(page);
-                    } else {
-                        tvshowData = await getDiscoverTVShows(
-                            currentParams.selectedGenres.join(","),
-                            page,
-                            watchProviders
-                        );
-                    }
+                    const tvshowData =
+                        currentParams.selectedGenres.length === 0 && !useStreamingFilter
+                            ? await getPopularTVShows(page)
+                            : await getDiscoverTVShows(
+                                  currentParams.selectedGenres.join(","),
+                                  page,
+                                  watchProviders
+                              );
 
                     if (isLoadingMore) {
-                        setTVShows((prev: ContentResults | null) =>
-                            prev
+                        setTVShows((prev) => {
+                            const next = prev
                                 ? {
                                       ...prev,
-                                      results: [...prev.results, ...tvshowData.results],
+                                      results: dedupeById([...prev.results, ...tvshowData.results]),
                                       page: tvshowData.page,
                                   }
-                                : tvshowData
-                        );
+                                : { ...tvshowData, results: dedupeById(tvshowData.results) };
+                            persistContent({ tvshows: next });
+                            return next;
+                        });
                     } else {
-                        setTVShows(tvshowData);
+                        const deduped = { ...tvshowData, results: dedupeById(tvshowData.results) };
+                        setTVShows(deduped);
+                        persistContent({ tvshows: deduped });
                     }
                 }
             } catch (error) {
                 console.error("Error fetching content:", error);
+            } finally {
+                setIsLoading(false);
+                setIsFetchingMore(false);
+                isFetchingMoreRef.current = false;
             }
-            setIsLoading(false);
-            setIsFetchingMore(false);
         },
-        [currentParams.mediaType, currentParams.selectedGenres, currentParams.streamingFilter, hasServices, services]
+        [
+            currentParams.mediaType,
+            currentParams.selectedGenres,
+            currentParams.streamingFilter,
+            hasServices,
+            services,
+            exploreKey,
+            persistContent,
+        ]
     );
 
     const fetchGenres = useCallback(async () => {
+        const cached = getExploreGenreCache();
+        if (cached.movieGenres.length > 0) {
+            setMovieGenres(cached.movieGenres);
+            setTVShowGenres(cached.tvshowGenres);
+            return;
+        }
         try {
             const [movieGenreData, tvshowGenreData] = await Promise.all([getMovieGenres(), getTVShowGenres()]);
             setMovieGenres(movieGenreData);
             setTVShowGenres(tvshowGenreData);
+            setExploreGenreCache(movieGenreData, tvshowGenreData);
         } catch (error) {
             console.error("Error fetching genres:", error);
         }
@@ -144,49 +203,113 @@ export default function Home() {
 
     useEffect(() => {
         if (isLoadingServices && currentParams.streamingFilter) return;
-        fetchContent(1);
-    }, [fetchContent, isLoadingServices, currentParams.streamingFilter]);
 
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const first = entries[0];
-                if (first.isIntersecting && !isFetchingMore) {
-                    const currentResults = currentParams.mediaType === "movie" ? movies : tvshows;
-                    if (currentResults && currentResults.page < currentResults.total_pages) {
-                        setIsFetchingMore(true);
-                        fetchContent(currentResults.page + 1, true);
-                    }
-                }
-            },
-            { threshold: 0.1 }
-        );
-
-        if (loadMoreRef.current) {
-            observer.observe(loadMoreRef.current);
+        const entry = getExploreEntry(exploreKey);
+        if (entry) {
+            setMovies(entry.movies);
+            setTVShows(entry.tvshows);
+            const hasData =
+                currentParams.mediaType === "movie"
+                    ? !!entry.movies?.results?.length
+                    : !!entry.tvshows?.results?.length;
+            if (hasData) {
+                setIsLoading(false);
+                return;
+            }
         }
 
+        fetchContent(1);
+    }, [fetchContent, isLoadingServices, currentParams.streamingFilter, exploreKey, currentParams.mediaType]);
+
+    const loadMore = useCallback(() => {
+        if (isFetchingMoreRef.current) return;
+
+        const currentResults = currentParams.mediaType === "movie" ? movies : tvshows;
+        if (!currentResults || currentResults.page >= currentResults.total_pages) return;
+
+        isFetchingMoreRef.current = true;
+        setIsFetchingMore(true);
+        fetchContent(currentResults.page + 1, true);
+    }, [currentParams.mediaType, movies, tvshows, fetchContent]);
+
+    useEffect(() => {
+        const target = loadMoreRef.current;
+        if (!target) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting) {
+                    loadMore();
+                }
+            },
+            { threshold: 0, rootMargin: "400px" }
+        );
+
+        observer.observe(target);
         return () => observer.disconnect();
-    }, [fetchContent, isFetchingMore, currentParams.mediaType, movies, tvshows]);
+    }, [loadMore]);
 
-    const handleGenreChange = useCallback(
-        (genreId: string, checked: boolean | "indeterminate") => {
-            const newGenres =
-                checked === true
-                    ? [...currentParams.selectedGenres, genreId]
-                    : currentParams.selectedGenres.filter((id) => id !== genreId);
-            updateUrl(newGenres);
-        },
-        [currentParams.selectedGenres, updateUrl]
-    );
+    useEffect(() => {
+        let ticking = false;
+        const onScroll = () => {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(() => {
+                saveExploreScroll(exploreKey);
+                ticking = false;
+            });
+        };
 
-    const handleRemoveGenre = useCallback(
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, [exploreKey]);
+
+    useEffect(() => {
+        const container = pageRef.current;
+        if (!container) return;
+
+        const onClickCapture = () => saveExploreScroll(exploreKey);
+        container.addEventListener("click", onClickCapture, { capture: true });
+        return () => container.removeEventListener("click", onClickCapture, { capture: true });
+    }, [exploreKey]);
+
+    useLayoutEffect(() => {
+        if (previousExploreKey.current === null) {
+            previousExploreKey.current = exploreKey;
+        } else if (previousExploreKey.current !== exploreKey) {
+            previousExploreKey.current = exploreKey;
+            restoredScrollForKey.current = exploreKey;
+            return;
+        }
+
+        if (restoredScrollForKey.current === exploreKey || isLoading) return;
+
+        const scrollY = getExploreEntry(exploreKey)?.scrollY ?? 0;
+        restoredScrollForKey.current = exploreKey;
+        if (scrollY <= 0) return;
+
+        const apply = () => {
+            const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+            window.scrollTo(0, Math.min(scrollY, maxScroll));
+        };
+
+        apply();
+        requestAnimationFrame(apply);
+    }, [exploreKey, isLoading]);
+
+    const handleGenreToggle = useCallback(
         (genreId: string) => {
-            const newGenres = currentParams.selectedGenres.filter((id) => id !== genreId);
+            const newGenres = currentParams.selectedGenres.includes(genreId)
+                ? currentParams.selectedGenres.filter((id) => id !== genreId)
+                : [...currentParams.selectedGenres, genreId];
             updateUrl(newGenres);
         },
         [currentParams.selectedGenres, updateUrl]
     );
+
+    const handleClearGenres = useCallback(() => {
+        updateUrl([]);
+    }, [updateUrl]);
 
     const handleMediaTypeChange = useCallback(
         (type: string) => {
@@ -231,102 +354,50 @@ export default function Home() {
     const currentGenres = currentParams.mediaType === "movie" ? movieGenres : tvshowGenres;
 
     return (
-        <div className="mb-20 w-full px-5 lg:px-10">
-            <div className="mb-8 flex flex-col gap-6">
-                <h1 className="text-4xl font-bold">Utforsk</h1>
+        <div className="w-full">
+            <LandingHero />
+            <LandingFeatures />
+
+            <div ref={pageRef} id="utforsk" className="mb-20 mt-16 w-full scroll-mt-44 px-5 lg:px-10">
+                <div className="mb-8 flex flex-col gap-6">
+                    <div className="space-y-2">
+                        <p className="text-sm font-medium uppercase tracking-[0.2em] text-filmlista-primary">
+                            Katalog
+                        </p>
+                        <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Utforsk</h2>
+                        <p className="max-w-2xl text-muted-foreground">
+                            Bla i populære titler, filtrer på sjangere og se hva som faktisk er tilgjengelig hos deg.
+                        </p>
+                    </div>
 
                 <Tabs value={currentParams.mediaType} onValueChange={handleMediaTypeChange} className="w-full">
-                    <TabsList className="mb-4">
-                        <TabsTrigger value="movie">Filmer</TabsTrigger>
-                        <TabsTrigger value="tv">TV-serier</TabsTrigger>
-                    </TabsList>
+                    <div className="mb-6 flex w-full flex-col items-start gap-4 md:flex-row md:items-end md:justify-between">
+                        <MediaTypeSelector
+                            value={currentParams.mediaType as "movie" | "tv"}
+                            onChange={handleMediaTypeChange}
+                        />
 
-                    <div className="mb-6 space-y-4">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                            <DropdownMenu>
-                                <div className="flex flex-row gap-2">
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="w-[200px] justify-between">
-                                            <span className="truncate">
-                                                {currentParams.selectedGenres.length === 0
-                                                    ? "Velg sjangere"
-                                                    : `${currentParams.selectedGenres.length} valgt`}
-                                            </span>
-                                            <ChevronDown className="h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                </div>
-                                <DropdownMenuContent className="w-[400px] p-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {currentGenres.map((genre) => (
-                                            <div key={genre.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`genre-${genre.id}`}
-                                                    checked={currentParams.selectedGenres.includes(
-                                                        genre.id.toString()
-                                                    )}
-                                                    onCheckedChange={(checked) =>
-                                                        handleGenreChange(genre.id.toString(), checked === true)
-                                                    }
-                                                />
-                                                <Label htmlFor={`genre-${genre.id}`}>
-                                                    {translateGenre(genre.name)}
-                                                </Label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {!isLoadingServices && (
-                                <div className="flex items-center gap-2">
-                                    {hasServices ? (
-                                        <>
-                                            <Checkbox
-                                                id="streaming-filter-explore"
-                                                checked={currentParams.streamingFilter}
-                                                onCheckedChange={(checked) =>
-                                                    handleStreamingFilterChange(checked === true)
-                                                }
-                                            />
-                                            <Label htmlFor="streaming-filter-explore" className="cursor-pointer">
-                                                På mine tjenester
-                                            </Label>
-                                        </>
-                                    ) : (
-                                        <Link
-                                            href="/profile"
-                                            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-                                        >
-                                            Legg til strømmetjenester i profilen
-                                        </Link>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {currentParams.selectedGenres.length > 0 && (
-                            <div className="space-y-4">
-                                <div className="flex max-w-[400px] flex-wrap gap-2">
-                                    {currentParams.selectedGenres.map((genreId) => {
-                                        const genre = currentGenres.find((g) => g.id.toString() === genreId);
-                                        if (!genre) return null;
-                                        return (
-                                            <Badge key={genreId} variant="secondary" className="py-1.5 pl-3 pr-2">
-                                                {translateGenre(genre.name)}
-                                                <button
-                                                    onClick={() => handleRemoveGenre(genreId)}
-                                                    className="ml-1 hover:text-secondary-foreground"
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </button>
-                                            </Badge>
-                                        );
-                                    })}
-                                </div>
+                        {!isLoadingServices && (
+                            <div className="w-full max-w-md space-y-1.5 sm:w-auto">
+                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                    Tilgjengelighet
+                                </p>
+                                <StreamingFilterSection
+                                    filterActive={currentParams.streamingFilter}
+                                    onFilterChange={handleStreamingFilterChange}
+                                />
                             </div>
                         )}
                     </div>
+
+                    <GenreSelector
+                        className="mb-6"
+                        genres={currentGenres}
+                        selectedIds={currentParams.selectedGenres}
+                        onToggle={handleGenreToggle}
+                        onClear={handleClearGenres}
+                        translateGenre={translateGenre}
+                    />
 
                     <TabsContent value="movie">
                         <MovieList
@@ -359,7 +430,6 @@ export default function Home() {
                     </TabsContent>
                 </Tabs>
 
-                {/* Infinite scroll trigger */}
                 <div ref={loadMoreRef} className="h-10 w-full">
                     {isFetchingMore && (
                         <div className="flex items-center justify-center py-4">
@@ -368,6 +438,7 @@ export default function Home() {
                     )}
                 </div>
             </div>
+        </div>
         </div>
     );
 }

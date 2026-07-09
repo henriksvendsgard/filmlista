@@ -25,7 +25,7 @@ Filmlista is a web application for tracking movies and TV shows you've watched o
 
 ## **Tech Stack**
 
-- **Frontend:** Next.js 14, TypeScript, Tailwind CSS, Shadcn UI
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS v4, Shadcn UI
 - **Backend:** Supabase (Authentication, Database, Storage)
 - **APIs:** TMDB (The Movie Database) for movie and TV show information
 

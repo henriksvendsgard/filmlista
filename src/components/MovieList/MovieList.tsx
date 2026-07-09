@@ -1,13 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { addToList, getLists, getListsForMediaBatch, List, removeFromList } from "@/lib/listRepository";
+import { useListActions } from "@/contexts/ListActionsContext";
 import { TMDBMovie } from "@/types/movie";
-import { useSupabase } from "@/components/SupabaseProvider";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
 import { MovieGridSkeleton } from "./MovieCardSkeleton";
 
@@ -21,145 +19,33 @@ interface MovieListProps {
     title: string;
     isOnFrontPage?: boolean;
     isLoading?: boolean;
+    hideTitle?: boolean;
     onPageChange?: (page: number) => void;
     currentPage?: number;
 }
-
-type MovieListAction = {
-    type: "added" | "removed";
-    listId: string;
-    movieId: string;
-};
 
 export default function MovieList({
     movies,
     title,
     isOnFrontPage,
     isLoading,
+    hideTitle,
     onPageChange,
     currentPage,
 }: MovieListProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const [lists, setLists] = useState<{ owned: List[]; shared: List[] }>({ owned: [], shared: [] });
-    const [movieListMap, setMovieListMap] = useState<{ [key: string]: string[] }>({});
+    const { lists, getMediaListIds, ensureMediaMembership } = useListActions();
 
-    const { supabase } = useSupabase();
-
-    const fetchLists = useCallback(async () => {
-        const {
-            data: { user },
-            error: userError,
-        } = await supabase.auth.getUser();
-        if (userError) {
-            console.error("Error fetching user:", userError);
-            return;
+    useEffect(() => {
+        if (!isLoading && movies.results.length > 0) {
+            ensureMediaMembership(
+                movies.results.map((movie) => movie.id.toString()),
+                "movie"
+            );
         }
-        if (!user) return;
-
-        try {
-            const result = await getLists(supabase, user.id);
-            setLists(result);
-        } catch (error) {
-            console.error("Error fetching lists:", error);
-            toast({
-                title: "Error",
-                description: "Failed to fetch lists",
-                variant: "destructive",
-            });
-        }
-    }, [supabase]);
-
-    const handleAddToList = async (movie: TMDBMovie, listId: string) => {
-        try {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            if (!user) return;
-
-            await addToList(supabase, {
-                mediaId: movie.id.toString(),
-                listId,
-                mediaType: "movie",
-                title: movie.title,
-                posterPath: movie.poster_path,
-                addedBy: user.id,
-                releaseDate: movie.release_date,
-            });
-
-            setMovieListMap((prev) => ({
-                ...prev,
-                [movie.id.toString()]: [...(prev[movie.id.toString()] || []), listId],
-            }));
-
-            const event = new CustomEvent("movieListUpdate", {
-                detail: {
-                    type: "added",
-                    listId,
-                    movieId: movie.id.toString(),
-                } as MovieListAction,
-            });
-            window.dispatchEvent(event);
-
-            toast({
-                title: "Film lagt til",
-                description: `"${movie.title}" er nå lagt til i "${lists.owned.find((list) => list.id === listId)?.name}"`,
-                className: "bg-blue-800",
-            });
-        } catch (error) {
-            console.error("Error adding movie to list:", error);
-            toast({
-                title: "Feil",
-                description: "Kunne ikke legge til filmen i listen",
-                variant: "destructive",
-            });
-        }
-    };
-
-    const handleRemoveFromList = async (movie: TMDBMovie, listId: string) => {
-        try {
-            await removeFromList(supabase, {
-                mediaId: movie.id.toString(),
-                listId,
-                mediaType: "movie",
-            });
-
-            setMovieListMap((prev) => {
-                const newMap = { ...prev };
-                const movieId = movie.id.toString();
-                if (newMap[movieId]) {
-                    newMap[movieId] = newMap[movieId].filter((id) => id !== listId);
-                    if (newMap[movieId].length === 0) {
-                        delete newMap[movieId];
-                    }
-                }
-                return newMap;
-            });
-
-            const event = new CustomEvent("movieListUpdate", {
-                detail: {
-                    type: "removed",
-                    listId,
-                    movieId: movie.id.toString(),
-                } as MovieListAction,
-            });
-            window.dispatchEvent(event);
-
-            toast({
-                title: "Film fjernet",
-                description: `"${movie.title}" er nå fjernet fra "${lists.owned.find((list) => list.id === listId)?.name}"`,
-                className: "bg-orange-800",
-            });
-        } catch (error) {
-            console.error("Error removing movie from list:", error);
-            toast({
-                title: "Feil",
-                description: "Kunne ikke fjerne filmen fra listen",
-                variant: "destructive",
-            });
-        }
-    };
+    }, [ensureMediaMembership, isLoading, movies.results]);
 
     const createPageURL = (pageNumber: number) => {
         const params = new URLSearchParams(Array.from(searchParams.entries()));
@@ -179,77 +65,25 @@ export default function MovieList({
         }
     };
 
-    const fetchMovieListMap = useCallback(async () => {
-        if (!movies.results.length) return;
-
-        try {
-            const movieMap = await getListsForMediaBatch(
-                supabase,
-                movies.results.map((m) => m.id.toString()),
-                "movie"
-            );
-            setMovieListMap(movieMap);
-        } catch (error) {
-            console.error("Error fetching movie list map:", error);
-        }
-    }, [supabase, movies.results]);
-
-    // Initial data fetch
-    useEffect(() => {
-        fetchLists();
-    }, [fetchLists]);
-
-    // Update list mapping when movies change
-    useEffect(() => {
-        if (!isLoading) {
-            fetchMovieListMap();
-        }
-    }, [fetchMovieListMap, movies.results, isLoading]);
-
-    useEffect(() => {
-        const handleMovieListUpdate = (event: CustomEvent<MovieListAction>) => {
-            const { type, movieId, listId } = event.detail;
-            setMovieListMap((prev) => {
-                const newMap = { ...prev };
-                if (type === "removed") {
-                    if (newMap[movieId]) {
-                        newMap[movieId] = newMap[movieId].filter((id) => id !== listId);
-                        if (newMap[movieId].length === 0) {
-                            delete newMap[movieId];
-                        }
-                    }
-                } else if (type === "added") {
-                    if (!newMap[movieId]) {
-                        newMap[movieId] = [];
-                    }
-                    newMap[movieId] = [...newMap[movieId], listId];
-                }
-                return newMap;
-            });
-        };
-
-        window.addEventListener("movieListUpdate", handleMovieListUpdate as EventListener);
-        return () => {
-            window.removeEventListener("movieListUpdate", handleMovieListUpdate as EventListener);
-        };
-    }, []);
-
     return (
         <section className="movie-list h-full w-full max-w-full">
-            <h2 className="mb-6 text-3xl font-bold tracking-tight">{title}</h2>
+            {!hideTitle && <h2 className="mb-6 text-3xl font-bold tracking-tight">{title}</h2>}
 
             <div className="w-full max-w-full">
-                {isLoading ? (
+                {isLoading && movies.results.length === 0 ? (
                     <MovieGridSkeleton />
                 ) : (
-                    <>
-                        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                            {movies.results.map((movie) => (
+                    <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                        {movies.results.map((movie) => {
+                            const mediaId = movie.id.toString();
+                            const movieLists = getMediaListIds(mediaId, "movie");
+
+                            return (
                                 <MovieCard
                                     key={movie.id}
                                     movie={{
-                                        id: movie.id.toString(),
-                                        movie_id: movie.id.toString(),
+                                        id: mediaId,
+                                        movie_id: mediaId,
                                         title: movie.title,
                                         poster_path: movie.poster_path || "",
                                         added_at: "",
@@ -259,20 +93,25 @@ export default function MovieList({
                                         watched_by: [],
                                         is_watched_by_me: false,
                                     }}
-                                    isInList={!!movieListMap[movie.id.toString()]?.length}
+                                    media={{
+                                        mediaId,
+                                        mediaType: "movie",
+                                        title: movie.title,
+                                        posterPath: movie.poster_path,
+                                        releaseDate: movie.release_date,
+                                    }}
+                                    isInList={movieLists.length > 0}
+                                    listCount={movieLists.length}
                                     lists={lists}
-                                    movieLists={movieListMap[movie.id.toString()] || []}
-                                    onAddToList={(listId) => handleAddToList(movie, listId)}
-                                    onRemoveFromList={(listId) => handleRemoveFromList(movie, listId)}
+                                    movieLists={movieLists}
                                     onToggleWatched={() => {}}
-                                    onClick={() => router.push(`/movie/${movie.id}`)}
-                                    currentListId={undefined}
+                                    href={`/movie/${movie.id}`}
                                     isWatchList={false}
                                     showAddedBy={false}
                                 />
-                            ))}
-                        </div>
-                    </>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
 

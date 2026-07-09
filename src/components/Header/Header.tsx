@@ -14,6 +14,7 @@ export default function Header() {
 
     const pathname = usePathname();
     const { user } = useSupabase();
+    const isLoginPage = pathname === "/login";
 
     useEffect(() => {
         const handleScroll = () => {
@@ -47,7 +48,7 @@ export default function Header() {
 
     return (
         <div
-            className={`fixed top-[-1px] z-50 w-full ${scrollDirection === "down" ? "pb-3" : "pb-6"} transition-all duration-300 sm:pb-0`}
+            className={`fixed -top-px z-50 w-full ${scrollDirection === "down" ? "pb-3" : "pb-6"} transition-all duration-300 sm:pb-0`}
         >
             {showInfoBar && (
                 <div className="bg-blue-800 py-3 text-center text-white">
@@ -83,11 +84,11 @@ export default function Header() {
                             <span className="sr-only">Watcher</span>
                         </div>
                     </Link>
-                    <SearchBox inHeader />
+                    {!isLoginPage && <SearchBox inHeader />}
                 </div>
-                <NavItems />
+                <NavItems hideAuthenticatedNav={isLoginPage} />
             </div>
-            <SearchBox />
+            {!isLoginPage && <SearchBox />}
             <div className="absolute bottom-0 left-0 right-0 top-0 z-[-1] rounded-bl-md rounded-br-md bg-background/75 backdrop-blur-lg"></div>
         </div>
     );

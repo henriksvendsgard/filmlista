@@ -2,7 +2,7 @@ export function MovieCardSkeleton() {
     return (
         <div className="group relative">
             {/* Poster skeleton with proper sizing */}
-            <div className="aspect-[2/3] overflow-hidden rounded-lg">
+            <div className="aspect-2/3 overflow-hidden rounded-lg">
                 <div className="inset-0 h-[750px] w-[500px] animate-pulse bg-muted" />
             </div>
         </div>
