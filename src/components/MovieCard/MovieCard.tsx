@@ -25,6 +25,7 @@ import {
 import { List } from "@/lib/listRepository";
 import { Check, Ellipsis } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 interface Movie {
     id: string;
@@ -55,7 +56,8 @@ interface MovieCardProps {
     movieLists?: string[];
     onRemoveFromList?: (listId: string) => void;
     onToggleWatched?: (currentWatchedStatus: boolean) => void;
-    onClick: () => void;
+    onClick?: () => void;
+    href?: string;
     currentListId?: string;
     isWatchList?: boolean;
     showAddedBy?: boolean;
@@ -69,6 +71,7 @@ export function MovieCard({
     onRemoveFromList,
     onToggleWatched,
     onClick,
+    href,
     currentListId,
     isWatchList = false,
     showAddedBy = false,
@@ -90,18 +93,33 @@ export function MovieCard({
 
     return (
         <div className="group relative">
-            <div
-                className={`relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg bg-muted/50 transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`}
-                onClick={onClick}
-            >
-                <Image
-                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                    alt={movie.title}
-                    width={500}
-                    height={750}
-                    className="h-full w-full cursor-pointer object-cover transition-all sm:hover:scale-105"
-                />
-            </div>
+            {href ? (
+                <Link
+                    href={href}
+                    className={`relative block aspect-2/3 overflow-hidden rounded-lg bg-muted/50 transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`}
+                >
+                    <Image
+                        src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                        alt={movie.title}
+                        width={500}
+                        height={750}
+                        className="h-full w-full object-cover transition-all sm:group-hover:scale-105"
+                    />
+                </Link>
+            ) : (
+                <div
+                    className={`relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg bg-muted/50 transition-all duration-300 ${movie.is_watched_by_me ? "opacity-50" : ""}`}
+                    onClick={onClick}
+                >
+                    <Image
+                        src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                        alt={movie.title}
+                        width={500}
+                        height={750}
+                        className="h-full w-full cursor-pointer object-cover transition-all sm:hover:scale-105"
+                    />
+                </div>
+            )}
 
             <div className="absolute bottom-0 left-0 right-0 p-2">
                 <div className="flex items-end justify-between">

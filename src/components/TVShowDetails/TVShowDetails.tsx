@@ -116,7 +116,6 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             <span className="text-gray-400">Ingen plakat</span>
                         </div>
                     )}
-                    {user && <div className="mt-4"><ListMembershipPanel media={mediaRef} /></div>}
                 </div>
 
                 <div className="col-span-1 md:col-span-2">
@@ -128,11 +127,6 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             {tvshow.number_of_seasons !== 1 ? "er" : ""} • {tvshow.number_of_episodes} episode
                             {tvshow.number_of_episodes !== 1 ? "r" : ""}
                         </p>
-                        {user && (
-                            <div className="xl:hidden">
-                                <ListMembershipPanel media={mediaRef} />
-                            </div>
-                        )}
                     </div>
 
                     <div className="mb-8">
@@ -150,6 +144,12 @@ export function TVShowDetails({ tvshow }: TVShowDetailsProps) {
                             ))}
                         </div>
                     </div>
+
+                    {user && (
+                        <div className="mb-8">
+                            <ListMembershipPanel media={mediaRef} />
+                        </div>
+                    )}
 
                     {tvshow.cast && tvshow.cast.length > 0 && (
                         <div>

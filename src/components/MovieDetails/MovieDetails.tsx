@@ -186,6 +186,8 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                         ))}
                     </div>
 
+                    {user && <ListMembershipPanel media={mediaRef} />}
+
                     <p className="leading-relaxed text-muted-foreground">{movie.overview}</p>
 
                     {cast.length > 0 && (
@@ -221,7 +223,7 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                 </div>
 
                 <div>
-                    <div className="sticky top-8 space-y-8">
+                    <div className="sticky top-8">
                         {movie.poster_path ? (
                             <Image
                                 src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
@@ -236,7 +238,6 @@ export default function MovieDetails({ movieId, initialData }: MovieDetailProps)
                                 <span className="text-muted-foreground">Ingen plakat tilgjengelig</span>
                             </div>
                         )}
-                        {user && <ListMembershipPanel media={mediaRef} />}
                     </div>
                 </div>
             </div>

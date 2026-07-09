@@ -21,8 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import {
-    createList,
     deleteList,
     getListsWithStats,
     ListWithStats,
@@ -30,13 +30,22 @@ import {
     updateList,
 } from "@/lib/listRepository";
 import { useSupabase } from "@/components/SupabaseProvider";
+import { useListActions } from "@/contexts/ListActionsContext";
 import { List, PlusCircle, Share2, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Skeleton } from "../ui/skeleton";
 import { ListCard } from "./ListCard";
+
+const UNDO_DELETE_MS = 5000;
+
+type PendingListDelete = {
+    list: ListWithStats;
+    timeoutId: ReturnType<typeof setTimeout>;
+    toastDismiss: () => void;
+};
 
 export default function Lists() {
     const [lists, setLists] = useState<{ owned: ListWithStats[]; shared: ListWithStats[] }>({
@@ -57,6 +66,8 @@ export default function Lists() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     const { supabase, user } = useSupabase();
+    const { createList, refreshLists } = useListActions();
+    const pendingDeleteRef = useRef<PendingListDelete | null>(null);
     const displayName = user?.user_metadata?.display_name as string | undefined;
 
     const fetchLists = useCallback(async () => {
@@ -81,6 +92,39 @@ export default function Lists() {
         fetchLists();
     }, [fetchLists]);
 
+    useEffect(() => {
+        return () => {
+            const pending = pendingDeleteRef.current;
+            if (!pending) return;
+            clearTimeout(pending.timeoutId);
+            void deleteList(supabase, pending.list.id).then(() => refreshLists({ silent: true }));
+        };
+    }, [supabase, refreshLists]);
+
+    const flushPendingDelete = useCallback(async () => {
+        const pending = pendingDeleteRef.current;
+        if (!pending) return;
+
+        clearTimeout(pending.timeoutId);
+        pendingDeleteRef.current = null;
+        pending.toastDismiss();
+
+        try {
+            await deleteList(supabase, pending.list.id);
+            await refreshLists({ silent: true });
+        } catch (error) {
+            console.error("Error deleting list:", error);
+            setLists((prev) => ({
+                ...prev,
+                owned: [pending.list, ...prev.owned],
+            }));
+            toast({
+                title: "Kunne ikke slette liste",
+                variant: "destructive",
+            });
+        }
+    }, [supabase, refreshLists]);
+
     const stats = useMemo(() => {
         const totalItems = [...lists.owned, ...lists.shared].reduce((sum, list) => sum + list.itemCount, 0);
         const totalSharedWith = lists.owned.reduce((sum, list) => sum + (list.sharedCount ?? 0), 0);
@@ -97,7 +141,9 @@ export default function Lists() {
         if (!user) return;
 
         try {
-            await createList(supabase, { name: newListName, ownerId: user.id });
+            const created = await createList(newListName);
+            if (!created) return;
+
             toast({
                 title: "Lista er opprettet",
                 description: `"${newListName}" er klar — legg til filmer fra Utforsk eller Min liste`,
@@ -105,7 +151,7 @@ export default function Lists() {
             });
             setNewListName("");
             setIsCreateDialogOpen(false);
-            fetchLists();
+            await fetchLists();
         } catch (error) {
             console.error("Error creating list:", error);
             toast({
@@ -130,7 +176,8 @@ export default function Lists() {
             setEditListName("");
             setEditListId(null);
             setIsEditDialogOpen(false);
-            fetchLists();
+            await fetchLists();
+            await refreshLists({ silent: true });
         } catch (error) {
             console.error("Error updating list:", error);
             toast({
@@ -140,27 +187,79 @@ export default function Lists() {
         }
     };
 
-    const handleDeleteList = async (listToDelete: { id: string; name: string }) => {
-        try {
-            await deleteList(supabase, listToDelete.id);
+    const handleDeleteList = (listToDelete: { id: string; name: string }) => {
+        const listSnapshot = lists.owned.find((list) => list.id === listToDelete.id);
+        if (!listSnapshot) return;
+
+        if (pendingDeleteRef.current) {
+            void flushPendingDelete();
+        }
+
+        setLists((prev) => ({
+            ...prev,
+            owned: prev.owned.filter((list) => list.id !== listToDelete.id),
+        }));
+
+        const undoDelete = () => {
+            const pending = pendingDeleteRef.current;
+            if (!pending || pending.list.id !== listSnapshot.id) return;
+
+            clearTimeout(pending.timeoutId);
+            pendingDeleteRef.current = null;
             setLists((prev) => ({
                 ...prev,
-                owned: prev.owned.filter((list) => list.id !== listToDelete.id),
+                owned: [pending.list, ...prev.owned],
             }));
+            pending.toastDismiss();
             toast({
-                title: "Lista ble slettet",
-                description: `"${listToDelete.name}" er fjernet`,
+                title: "Sletting angret",
+                description: `"${pending.list.name}" er tilbake`,
             });
-        } catch (error) {
-            console.error("Error deleting list:", error);
-            toast({
-                title: "Kunne ikke slette liste",
-                variant: "destructive",
-            });
-        } finally {
-            setIsDeleteDialogOpen(false);
-            setListToDelete(null);
-        }
+        };
+
+        const { dismiss } = toast({
+            title: "Lista ble slettet",
+            description: `"${listSnapshot.name}" er fjernet`,
+            duration: UNDO_DELETE_MS + 1000,
+            action: (
+                <ToastAction altText="Angre sletting av liste" onClick={undoDelete}>
+                    Angre
+                </ToastAction>
+            ),
+        });
+
+        const timeoutId = setTimeout(() => {
+            if (pendingDeleteRef.current?.list.id !== listSnapshot.id) return;
+
+            pendingDeleteRef.current = null;
+            dismiss();
+
+            void (async () => {
+                try {
+                    await deleteList(supabase, listSnapshot.id);
+                    await refreshLists({ silent: true });
+                } catch (error) {
+                    console.error("Error deleting list:", error);
+                    setLists((prev) => ({
+                        ...prev,
+                        owned: [listSnapshot, ...prev.owned],
+                    }));
+                    toast({
+                        title: "Kunne ikke slette liste",
+                        variant: "destructive",
+                    });
+                }
+            })();
+        }, UNDO_DELETE_MS);
+
+        pendingDeleteRef.current = {
+            list: listSnapshot,
+            timeoutId,
+            toastDismiss: dismiss,
+        };
+
+        setIsDeleteDialogOpen(false);
+        setListToDelete(null);
     };
 
     const handleShareList = async (e: React.FormEvent) => {
@@ -178,7 +277,8 @@ export default function Lists() {
             setSelectedList(null);
             setShareListName("");
             setIsShareDialogOpen(false);
-            fetchLists();
+            await fetchLists();
+            await refreshLists({ silent: true });
         } catch (error) {
             if (error instanceof Error && error.message === "USER_NOT_FOUND") {
                 toast({
@@ -402,7 +502,7 @@ export default function Lists() {
             </Dialog>
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Slett «{listToDelete?.name}»?</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -410,9 +510,11 @@ export default function Lists() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setListToDelete(null)}>Avbryt</AlertDialogCancel>
+                        <AlertDialogCancel className="rounded-full" onClick={() => setListToDelete(null)}>
+                            Avbryt
+                        </AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            className="rounded-full bg-red-600 text-white hover:bg-red-700"
                             onClick={() => listToDelete && handleDeleteList(listToDelete)}
                         >
                             Slett liste

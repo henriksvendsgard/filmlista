@@ -53,7 +53,8 @@ interface ListActionsContextValue {
     removeFromList: (media: MediaRef, listId: string, options?: { alsoRemoveWatched?: boolean }) => Promise<void>;
     toggleListMembership: (media: MediaRef, listId: string, isMember: boolean) => Promise<void>;
     createListAndAdd: (name: string, media: MediaRef) => Promise<void>;
-    refreshLists: () => Promise<void>;
+    refreshLists: (options?: { silent?: boolean }) => Promise<void>;
+    createList: (name: string) => Promise<List | null>;
     canEditList: (listId: string) => boolean;
 }
 
@@ -72,6 +73,7 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
     const [membershipVersion, setMembershipVersion] = useState(0);
     const listsRef = useRef(lists);
     const mediaListMapRef = useRef(mediaListMap);
+    const refreshRequestIdRef = useRef(0);
 
     listsRef.current = lists;
     mediaListMapRef.current = mediaListMap;
@@ -81,28 +83,39 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
         setLists(next);
     }, []);
 
-    const refreshLists = useCallback(async () => {
-        if (!user) {
-            setListsState({ owned: [], shared: [] });
-            setIsLoadingLists(false);
-            return;
-        }
+    const refreshLists = useCallback(
+        async (options?: { silent?: boolean }) => {
+            if (!user) {
+                setListsState({ owned: [], shared: [] });
+                setIsLoadingLists(false);
+                return;
+            }
 
-        setIsLoadingLists(true);
-        try {
-            const result = await getLists(supabase, user.id);
-            setListsState(result);
-        } catch (error) {
-            console.error("Error fetching lists:", error);
-            toast({
-                title: "Kunne ikke hente lister",
-                description: "Prøv å laste siden på nytt",
-                variant: "destructive",
-            });
-        } finally {
-            setIsLoadingLists(false);
-        }
-    }, [supabase, user, setListsState]);
+            const requestId = ++refreshRequestIdRef.current;
+            if (!options?.silent) {
+                setIsLoadingLists(true);
+            }
+
+            try {
+                const result = await getLists(supabase, user.id);
+                if (requestId !== refreshRequestIdRef.current) return;
+                setListsState(result);
+            } catch (error) {
+                if (requestId !== refreshRequestIdRef.current) return;
+                console.error("Error fetching lists:", error);
+                toast({
+                    title: "Kunne ikke hente lister",
+                    description: "Prøv å laste siden på nytt",
+                    variant: "destructive",
+                });
+            } finally {
+                if (requestId === refreshRequestIdRef.current && !options?.silent) {
+                    setIsLoadingLists(false);
+                }
+            }
+        },
+        [supabase, user, setListsState]
+    );
 
     useEffect(() => {
         setLastUsedListIdState(getLastUsedListId());
@@ -112,12 +125,10 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
     const editableShared = useMemo(() => lists.shared.filter((list) => list.can_edit), [lists.shared]);
     const readOnlyShared = useMemo(() => lists.shared.filter((list) => !list.can_edit), [lists.shared]);
 
-    const allLists = useMemo(() => [...lists.owned, ...lists.shared], [lists.owned, lists.shared]);
-
-    const getListName = useCallback(
-        (listId: string) => allLists.find((list) => list.id === listId)?.name,
-        [allLists]
-    );
+    const getListName = useCallback((listId: string) => {
+        const { owned, shared } = listsRef.current;
+        return [...owned, ...shared].find((list) => list.id === listId)?.name;
+    }, []);
 
     const canEditList = useCallback((listId: string) => {
         const { owned, shared } = listsRef.current;
@@ -311,31 +322,42 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
         [addToList, removeFromList]
     );
 
-    const createListAndAdd = useCallback(
-        async (name: string, media: MediaRef) => {
-            if (!user) return;
+    const createListByName = useCallback(
+        async (name: string): Promise<List | null> => {
+            if (!user) return null;
 
             const trimmed = name.trim();
-            if (!trimmed) return;
+            if (!trimmed) return null;
 
             try {
                 const newList = await createList(supabase, { name: trimmed, ownerId: user.id });
-                const nextLists = {
+                refreshRequestIdRef.current += 1;
+                setListsState({
                     owned: [newList, ...listsRef.current.owned],
                     shared: listsRef.current.shared,
-                };
-                setListsState(nextLists);
-                await addToList(media, newList.id);
+                });
+                await refreshLists({ silent: true });
+                return newList;
             } catch (error) {
-                console.error("Error creating list and adding media:", error);
+                console.error("Error creating list:", error);
                 toast({
                     title: "Kunne ikke opprette liste",
                     description: "Det oppstod en feil",
                     variant: "destructive",
                 });
+                return null;
             }
         },
-        [user, supabase, addToList, setListsState]
+        [user, supabase, setListsState, refreshLists]
+    );
+
+    const createListAndAdd = useCallback(
+        async (name: string, media: MediaRef) => {
+            const newList = await createListByName(name);
+            if (!newList) return;
+            await addToList(media, newList.id);
+        },
+        [createListByName, addToList]
     );
 
     const value = useMemo(
@@ -356,6 +378,7 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
             removeFromList,
             toggleListMembership,
             createListAndAdd,
+            createList: createListByName,
             refreshLists,
             canEditList,
         }),
@@ -376,6 +399,7 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
             removeFromList,
             toggleListMembership,
             createListAndAdd,
+            createListByName,
             refreshLists,
             canEditList,
         ]

@@ -238,7 +238,7 @@ export default function Profile() {
                             </Button>
                             <Button
                                 variant="outline"
-                                className="justify-start gap-2 text-destructive hover:text-destructive"
+                                className="justify-start gap-2 text-red-600 hover:text-red-600"
                                 onClick={handleSignOut}
                             >
                                 <LogOut className="h-4 w-4" />

@@ -19,6 +19,7 @@ interface TVShowListProps {
     title: string;
     isOnFrontPage?: boolean;
     isLoading?: boolean;
+    hideTitle?: boolean;
     onPageChange?: (page: number) => void;
     currentPage?: number;
 }
@@ -28,6 +29,7 @@ export default function TVShowList({
     title,
     isOnFrontPage,
     isLoading,
+    hideTitle,
     onPageChange,
     currentPage,
 }: TVShowListProps) {
@@ -65,7 +67,7 @@ export default function TVShowList({
 
     return (
         <section className="tv-show-list h-full w-full max-w-full">
-            <h2 className="mb-6 text-3xl font-bold tracking-tight">{title}</h2>
+            {!hideTitle && <h2 className="mb-6 text-3xl font-bold tracking-tight">{title}</h2>}
 
             <div className="w-full max-w-full">
                 {isLoading && tvshows.results.length === 0 ? (

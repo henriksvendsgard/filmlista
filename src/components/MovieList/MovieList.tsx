@@ -19,6 +19,7 @@ interface MovieListProps {
     title: string;
     isOnFrontPage?: boolean;
     isLoading?: boolean;
+    hideTitle?: boolean;
     onPageChange?: (page: number) => void;
     currentPage?: number;
 }
@@ -28,6 +29,7 @@ export default function MovieList({
     title,
     isOnFrontPage,
     isLoading,
+    hideTitle,
     onPageChange,
     currentPage,
 }: MovieListProps) {
@@ -65,7 +67,7 @@ export default function MovieList({
 
     return (
         <section className="movie-list h-full w-full max-w-full">
-            <h2 className="mb-6 text-3xl font-bold tracking-tight">{title}</h2>
+            {!hideTitle && <h2 className="mb-6 text-3xl font-bold tracking-tight">{title}</h2>}
 
             <div className="w-full max-w-full">
                 {isLoading && movies.results.length === 0 ? (
@@ -103,7 +105,7 @@ export default function MovieList({
                                     lists={lists}
                                     movieLists={movieLists}
                                     onToggleWatched={() => {}}
-                                    onClick={() => router.push(`/movie/${movie.id}`)}
+                                    href={`/movie/${movie.id}`}
                                     isWatchList={false}
                                     showAddedBy={false}
                                 />
