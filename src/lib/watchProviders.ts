@@ -33,7 +33,7 @@ export function isAvailableOnServices(providerIds: number[], userServiceIds: num
 export function matchesUserServices(
     providers: WatchProvidersNO | null | undefined,
     userServiceIds: number[],
-    monetizationTypes: MonetizationType[] = ["flatrate", "rent", "buy"]
+    monetizationTypes: MonetizationType[] = ["flatrate"]
 ): boolean {
     if (userServiceIds.length === 0) return true;
     const providerIds = getProviderIds(providers, monetizationTypes);
