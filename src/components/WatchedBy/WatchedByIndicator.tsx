@@ -31,6 +31,19 @@ function formatWatchedSummary(watchers: Watcher[], currentUserId?: string): stri
     return `Sett av ${others.length} personer`;
 }
 
+function formatWatchedSummaryCompact(watchers: Watcher[], currentUserId?: string): string {
+    const others = watchers.filter((watcher) => watcher.user_id !== currentUserId);
+    const includesMe = !!currentUserId && watchers.some((watcher) => watcher.user_id === currentUserId);
+
+    if (watchers.length === 1 && includesMe) return "Sett av deg";
+    if (watchers.length === 1) {
+        const firstName = others[0]?.displayname.split(/\s+/)[0] ?? "ukjent";
+        return firstName.length > 9 ? `Sett av ${firstName.slice(0, 8)}…` : `Sett av ${firstName}`;
+    }
+    if (includesMe) return `Sett av deg +${others.length}`;
+    return `Sett av ${watchers.length}`;
+}
+
 function formatWatchedDate(dateStr: string): string {
     const date = new Date(dateStr);
     const now = new Date();
@@ -69,12 +82,12 @@ function WatcherAvatar({
             style={style}
             title={isMe ? "Deg" : watcher.displayname}
             className={cn(
-                "flex h-5 w-5 items-center justify-center rounded-full border border-black/20 text-[9px] font-semibold",
+                "flex size-5 shrink-0 items-center justify-center rounded-full border border-white/20 text-[9px] font-semibold leading-none",
                 isMe ? "bg-green-700 text-white" : "bg-muted text-foreground",
                 className
             )}
         >
-            {isMe ? <Check className="h-3 w-3" /> : getInitials(watcher.displayname || "?")}
+            {isMe ? <Check className="size-3 shrink-0" strokeWidth={2.5} /> : getInitials(watcher.displayname || "?")}
         </div>
     );
 }
@@ -89,7 +102,14 @@ function WatcherAvatarStack({
     const visible = watchers.slice(0, 3);
 
     return (
-        <div className="flex items-center">
+        <div
+            className={cn(
+                "flex shrink-0 items-center",
+                visible.length === 1 && "w-5",
+                visible.length === 2 && "w-8.5",
+                visible.length >= 3 && "w-12"
+            )}
+        >
             {visible.map((watcher, index) => (
                 <WatcherAvatar
                     key={watcher.user_id}
@@ -119,6 +139,7 @@ export function WatchedByIndicator({ watchers, currentUserId, className }: Watch
     });
 
     const summary = formatWatchedSummary(sortedWatchers, currentUserId);
+    const compactSummary = formatWatchedSummaryCompact(sortedWatchers, currentUserId);
     const dialogTitle =
         sortedWatchers.length === 1 && sortedWatchers[0].user_id === currentUserId
             ? "Sett av deg"
@@ -133,12 +154,12 @@ export function WatchedByIndicator({ watchers, currentUserId, className }: Watch
                     onClick={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
                     className={cn(
-                        "flex max-w-full items-center gap-1.5 rounded-full bg-black/70 px-2 py-1 text-left text-xs text-white backdrop-blur-sm transition-colors hover:bg-black/80",
+                        "inline-flex min-w-0 max-w-full items-center gap-1 rounded-full bg-black/70 py-1 pl-1 pr-2 text-left text-xs text-white backdrop-blur-sm transition-colors hover:bg-black/80",
                         className
                     )}
                 >
                     <WatcherAvatarStack watchers={sortedWatchers} currentUserId={currentUserId} />
-                    <span className="truncate font-medium">{summary}</span>
+                    <span className="min-w-0 truncate font-medium leading-none">{compactSummary}</span>
                 </button>
             </DialogTrigger>
             <DialogContent className="max-w-sm rounded-lg" onClick={(e) => e.stopPropagation()}>
