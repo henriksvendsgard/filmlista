@@ -80,7 +80,10 @@ export default function Lists() {
             console.error("Error fetching lists:", error);
             toast({
                 title: "Kunne ikke hente lister",
-                description: "Prøv å laste siden på nytt",
+                description:
+                    error instanceof Error
+                        ? error.message
+                        : "Prøv å laste siden på nytt. Manglende database-migrasjoner kan også være årsaken.",
                 variant: "destructive",
             });
         } finally {
