@@ -11,9 +11,9 @@ import {
 import { useListActions } from "@/contexts/ListActionsContext";
 import { useCelebration } from "@/contexts/CelebrationContext";
 import { Movie } from "@/types/movie";
-import { ArrowRight, Film } from "lucide-react";
+import { ArrowRight, CheckCircle2, CircleDashed, Film, ListIcon, Settings2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
 import { Skeleton } from "../ui/skeleton";
 import { useSupabase } from "@/components/SupabaseProvider";
@@ -22,6 +22,7 @@ import { useStreamingServices } from "@/hooks/useStreamingServices";
 import { StreamingFilterSection } from "@/components/StreamingServicesSelector/StreamingFilterSection";
 import { fetchWatchProvidersBatch, matchesUserServices, WatchProvidersNO } from "@/lib/watchProviders";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface List {
     id: string;
@@ -39,6 +40,49 @@ type ProcessedMovie = Movie & {
     is_watched_by_me: boolean;
     media_type: string;
 };
+
+function StatPill({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: typeof Film;
+    label: string;
+    value: number;
+}) {
+    return (
+        <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/80 px-3 py-2 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-filmlista-primary/10 text-filmlista-primary">
+                <Icon className="h-4 w-4" />
+            </div>
+            <div>
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="font-heading text-lg font-semibold leading-none">{value}</p>
+            </div>
+        </div>
+    );
+}
+
+function WatchListEmptyState({
+    title,
+    description,
+    action,
+}: {
+    title: string;
+    description: string;
+    action?: ReactNode;
+}) {
+    return (
+        <div className="flex flex-col items-center rounded-2xl border border-dashed py-16 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-filmlista-primary/10 text-filmlista-primary">
+                <Film className="h-7 w-7 shrink-0" strokeWidth={1.75} />
+            </div>
+            <h3 className="font-heading text-lg font-semibold">{title}</h3>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">{description}</p>
+            {action && <div className="mt-6">{action}</div>}
+        </div>
+    );
+}
 
 function MovieGrid({
     movies,
@@ -61,17 +105,15 @@ function MovieGrid({
 }) {
     if (movies.length === 0 && streamingFilter && hasServices) {
         return (
-            <div className="flex flex-col items-center py-16 text-center">
-                <Film className="mb-4 h-12 w-12 opacity-50" />
-                <h3 className="text-lg font-semibold">Ingen titler på dine tjenester</h3>
-                <p className="text-muted-foreground">
-                    Prøv å fjerne filteret eller legg til flere tjenester i{" "}
-                    <Link href="/profile" className="underline hover:text-foreground">
-                        profilen
-                    </Link>
-                    .
-                </p>
-            </div>
+            <WatchListEmptyState
+                title="Ingen titler på dine tjenester"
+                description="Prøv å fjerne filteret eller legg til flere tjenester i profilen din."
+                action={
+                    <Button asChild variant="outline">
+                        <Link href="/profile">Gå til profil</Link>
+                    </Button>
+                }
+            />
         );
     }
 
@@ -314,9 +356,35 @@ export default function Watchlist() {
 
     const isLoading = isLoadingLists || isLoadingMovies;
 
+    const selectedListName = useMemo(() => {
+        if (!selectedList) return null;
+        return [...lists.owned, ...lists.shared].find((list) => list.id === selectedList)?.name ?? null;
+    }, [lists.owned, lists.shared, selectedList]);
+
+    const watchedCount = useMemo(() => movies.filter((movie) => movie.is_watched_by_me).length, [movies]);
+    const unwatchedCount = movies.length - watchedCount;
+
     return (
         <div>
-            <h2 className="mb-6 text-3xl font-bold tracking-tight">Filmlista</h2>
+            <div className="mb-8 space-y-5">
+                <div className="space-y-2">
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-filmlista-primary">
+                        Dine filmer og serier
+                    </p>
+                    <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Filmlista</h1>
+                    <p className="max-w-2xl text-muted-foreground">
+                        Hold oversikt over hva dere vil se — og hva dere allerede har sett sammen.
+                    </p>
+                </div>
+
+                {!isLoading && selectedList && movies.length > 0 && (
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                        <StatPill icon={ListIcon} label="I listen" value={movies.length} />
+                        <StatPill icon={CircleDashed} label="Ikke sett" value={unwatchedCount} />
+                        <StatPill icon={CheckCircle2} label="Sett" value={watchedCount} />
+                    </div>
+                )}
+            </div>
 
             {isLoading ? (
                 <div className="space-y-6">
@@ -346,11 +414,15 @@ export default function Watchlist() {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                        <Select value={selectedList || undefined} onValueChange={handleListSelection}>
-                            <SelectTrigger className="w-[200px]">
-                                <SelectValue placeholder="Velg en liste" />
-                            </SelectTrigger>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="space-y-1.5">
+                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Aktiv liste
+                            </p>
+                            <Select value={selectedList || undefined} onValueChange={handleListSelection}>
+                                <SelectTrigger className="h-11 w-full min-w-[220px] border-filmlista-primary/20 bg-card/80 sm:w-[260px]">
+                                    <SelectValue placeholder="Velg en liste" />
+                                </SelectTrigger>
                             <SelectContent>
                                 {lists.owned.length > 0 || lists.shared.length > 0 ? (
                                     <>
@@ -386,6 +458,14 @@ export default function Watchlist() {
                                 )}
                             </SelectContent>
                         </Select>
+                        </div>
+
+                        <Button asChild variant="outline" size="sm" className="shrink-0 gap-2">
+                            <Link href="/lists">
+                                <Settings2 className="h-4 w-4" />
+                                Administrer lister
+                            </Link>
+                        </Button>
                     </div>
 
                     {!isLoadingServices && (
@@ -400,36 +480,45 @@ export default function Watchlist() {
                     {!isLoading && (
                         <>
                             {lists.owned.length === 0 && lists.shared.length === 0 ? (
-                                <div className="flex flex-col items-center pt-16 text-center sm:py-32">
-                                    <Film className="mb-4 h-16 w-16 opacity-50" />
-                                    <h3 className="text-lg font-semibold">Du har ingen lister enda</h3>
-                                    <p className="text-muted-foreground">Opprett en liste for å komme i gang!</p>
-                                    <Link
-                                        href="/lists"
-                                        className="mt-8 flex items-center rounded-full bg-filmlista-primary px-4 py-2 text-white transition-colors hover:bg-filmlista-primary/80"
-                                    >
-                                        Opprett en liste
-                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Link>
-                                </div>
+                                <WatchListEmptyState
+                                    title="Du har ingen lister enda"
+                                    description="Opprett en liste for å samle filmer og serier du vil se sammen med venner."
+                                    action={
+                                        <Button asChild className="rounded-full bg-filmlista-primary hover:bg-filmlista-hover">
+                                            <Link href="/lists">
+                                                Opprett en liste
+                                                <ArrowRight className="ml-2 h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    }
+                                />
                             ) : selectedList && !isLoadingMovies && (!movies || movies.length === 0) ? (
-                                <div className="flex flex-col items-center pt-16 text-center sm:py-32">
-                                    <Film className="mb-4 h-16 w-16 opacity-50" />
-                                    <h3 className="text-lg font-semibold">Ingen filmer i denne lista enda</h3>
-                                    <p className="text-muted-foreground">Legg til filmer for å bygge din filmliste!</p>
-                                </div>
+                                <WatchListEmptyState
+                                    title="Ingen titler i denne lista enda"
+                                    description="Utforsk forsiden eller søk etter filmer og serier, og legg dem til i lista di."
+                                    action={
+                                        <Button asChild variant="outline">
+                                            <Link href="/">Utforsk titler</Link>
+                                        </Button>
+                                    }
+                                />
                             ) : null}
                         </>
                     )}
 
                     {selectedList && movies && movies.length > 0 && !isLoading && (
                         <Tabs defaultValue="all" className="w-full">
-                            <div className="mb-4">
-                                <TabsList>
-                                    <TabsTrigger value="all">Alle</TabsTrigger>
-                                    <TabsTrigger value="unwatched">Ikke sett</TabsTrigger>
-                                    <TabsTrigger value="watched">Sett</TabsTrigger>
+                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <TabsList className="w-fit">
+                                    <TabsTrigger value="all">Alle ({movies.length})</TabsTrigger>
+                                    <TabsTrigger value="unwatched">Ikke sett ({unwatchedCount})</TabsTrigger>
+                                    <TabsTrigger value="watched">Sett ({watchedCount})</TabsTrigger>
                                 </TabsList>
+                                {streamingFilter && hasServices && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Viser titler på dine tjenester
+                                    </p>
+                                )}
                             </div>
 
                             {streamingFilter && hasServices && isLoadingProviders && providerMap.size === 0 && movies.some((m) => m.provider_ids.length === 0) ? (

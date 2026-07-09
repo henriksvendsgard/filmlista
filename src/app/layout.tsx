@@ -33,7 +33,7 @@ const fontBody = Lexend({
 
 export const metadata: Metadata = {
     title: "Filmlista",
-    description: "En enkel filmliste for å holde styr på filmer du vil se.",
+    description: "Lag delte filmlister, filtrer på strømmetjenestene dine, og finn neste filmkveld sammen.",
 };
 
 export default async function RootLayout({

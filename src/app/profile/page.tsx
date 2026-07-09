@@ -199,7 +199,7 @@ export default function Profile() {
                                             <Button
                                                 type="submit"
                                                 disabled={!displayName.trim() || isSavingName}
-                                                className="bg-filmlista-primary hover:bg-filmlista-primary/80"
+                                                className="bg-filmlista-primary hover:bg-filmlista-primary/80 text-white"
                                             >
                                                 {isSavingName ? "Lagrer..." : "Lagre"}
                                             </Button>

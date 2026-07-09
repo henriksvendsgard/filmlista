@@ -2,12 +2,10 @@
 
 import MovieList from "@/components/MovieList/MovieList";
 import TVShowList from "@/components/TVShowList/TVShowList";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GenreSelector } from "@/components/GenreSelector/GenreSelector";
+import { MediaTypeSelector } from "@/components/MediaTypeSelector/MediaTypeSelector";
+import { StreamingFilterSection } from "@/components/StreamingServicesSelector/StreamingFilterSection";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { getDiscoverMovies, getMovieGenres, getPopularMovies } from "@/lib/getMovies";
 import { getDiscoverTVShows, getPopularTVShows, getTVShowGenres } from "@/lib/getTVShows";
 import {
@@ -20,9 +18,9 @@ import {
 } from "@/lib/exploreCache";
 import { dedupeById } from "@/lib/dedupeById";
 import { useStreamingServices } from "@/hooks/useStreamingServices";
-import { StreamingFilterSection } from "@/components/StreamingServicesSelector/StreamingFilterSection";
-import { ChevronDown, Loader2, X } from "lucide-react";
-import Link from "next/link";
+import { LandingFeatures } from "@/components/Landing/LandingFeatures";
+import { LandingHero } from "@/components/Landing/LandingHero";
+import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -299,24 +297,19 @@ export default function Home() {
         requestAnimationFrame(apply);
     }, [exploreKey, isLoading]);
 
-    const handleGenreChange = useCallback(
-        (genreId: string, checked: boolean | "indeterminate") => {
-            const newGenres =
-                checked === true
-                    ? [...currentParams.selectedGenres, genreId]
-                    : currentParams.selectedGenres.filter((id) => id !== genreId);
+    const handleGenreToggle = useCallback(
+        (genreId: string) => {
+            const newGenres = currentParams.selectedGenres.includes(genreId)
+                ? currentParams.selectedGenres.filter((id) => id !== genreId)
+                : [...currentParams.selectedGenres, genreId];
             updateUrl(newGenres);
         },
         [currentParams.selectedGenres, updateUrl]
     );
 
-    const handleRemoveGenre = useCallback(
-        (genreId: string) => {
-            const newGenres = currentParams.selectedGenres.filter((id) => id !== genreId);
-            updateUrl(newGenres);
-        },
-        [currentParams.selectedGenres, updateUrl]
-    );
+    const handleClearGenres = useCallback(() => {
+        updateUrl([]);
+    }, [updateUrl]);
 
     const handleMediaTypeChange = useCallback(
         (type: string) => {
@@ -361,83 +354,50 @@ export default function Home() {
     const currentGenres = currentParams.mediaType === "movie" ? movieGenres : tvshowGenres;
 
     return (
-        <div ref={pageRef} className="mb-20 w-full px-5 lg:px-10">
-            <div className="mb-8 flex flex-col gap-6">
-                <h1 className="text-4xl font-bold">Utforsk</h1>
+        <div className="w-full">
+            <LandingHero />
+            <LandingFeatures />
+
+            <div ref={pageRef} id="utforsk" className="mb-20 mt-16 w-full scroll-mt-44 px-5 lg:px-10">
+                <div className="mb-8 flex flex-col gap-6">
+                    <div className="space-y-2">
+                        <p className="text-sm font-medium uppercase tracking-[0.2em] text-filmlista-primary">
+                            Katalog
+                        </p>
+                        <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Utforsk</h2>
+                        <p className="max-w-2xl text-muted-foreground">
+                            Bla i populære titler, filtrer på sjangere og se hva som faktisk er tilgjengelig hos deg.
+                        </p>
+                    </div>
 
                 <Tabs value={currentParams.mediaType} onValueChange={handleMediaTypeChange} className="w-full">
-                    <TabsList className="mb-4">
-                        <TabsTrigger value="movie">Filmer</TabsTrigger>
-                        <TabsTrigger value="tv">TV-serier</TabsTrigger>
-                    </TabsList>
+                    <div className="mb-6 flex w-full flex-col items-start gap-4 md:flex-row md:items-end md:justify-between">
+                        <MediaTypeSelector
+                            value={currentParams.mediaType as "movie" | "tv"}
+                            onChange={handleMediaTypeChange}
+                        />
 
-                    <div className="mb-6 space-y-4">
-                        <div className="flex flex-col gap-4">
-                            <DropdownMenu>
-                                <div className="flex flex-row gap-2">
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="w-[200px] justify-between">
-                                            <span className="truncate">
-                                                {currentParams.selectedGenres.length === 0
-                                                    ? "Velg sjangere"
-                                                    : `${currentParams.selectedGenres.length} valgt`}
-                                            </span>
-                                            <ChevronDown className="h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                </div>
-                                <DropdownMenuContent className="w-[400px] p-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {currentGenres.map((genre) => (
-                                            <div key={genre.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`genre-${genre.id}`}
-                                                    checked={currentParams.selectedGenres.includes(
-                                                        genre.id.toString()
-                                                    )}
-                                                    onCheckedChange={(checked) =>
-                                                        handleGenreChange(genre.id.toString(), checked === true)
-                                                    }
-                                                />
-                                                <Label htmlFor={`genre-${genre.id}`}>
-                                                    {translateGenre(genre.name)}
-                                                </Label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {!isLoadingServices && (
+                        {!isLoadingServices && (
+                            <div className="w-full max-w-md space-y-1.5 sm:w-auto">
+                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                    Tilgjengelighet
+                                </p>
                                 <StreamingFilterSection
                                     filterActive={currentParams.streamingFilter}
                                     onFilterChange={handleStreamingFilterChange}
                                 />
-                            )}
-                        </div>
-
-                        {currentParams.selectedGenres.length > 0 && (
-                            <div className="space-y-4">
-                                <div className="flex max-w-[400px] flex-wrap gap-2">
-                                    {currentParams.selectedGenres.map((genreId) => {
-                                        const genre = currentGenres.find((g) => g.id.toString() === genreId);
-                                        if (!genre) return null;
-                                        return (
-                                            <Badge key={genreId} variant="secondary" className="py-1.5 pl-3 pr-2">
-                                                {translateGenre(genre.name)}
-                                                <button
-                                                    onClick={() => handleRemoveGenre(genreId)}
-                                                    className="ml-1 hover:text-secondary-foreground"
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </button>
-                                            </Badge>
-                                        );
-                                    })}
-                                </div>
                             </div>
                         )}
                     </div>
+
+                    <GenreSelector
+                        className="mb-6"
+                        genres={currentGenres}
+                        selectedIds={currentParams.selectedGenres}
+                        onToggle={handleGenreToggle}
+                        onClear={handleClearGenres}
+                        translateGenre={translateGenre}
+                    />
 
                     <TabsContent value="movie">
                         <MovieList
@@ -478,6 +438,7 @@ export default function Home() {
                     )}
                 </div>
             </div>
+        </div>
         </div>
     );
 }

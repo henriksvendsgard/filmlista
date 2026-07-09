@@ -485,3 +485,70 @@ html.celebration-pending body {
 .celebration-watched__check {
     animation: celebration-check-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
 }
+
+.landing-hero__backdrop {
+    animation: landing-ken-burns 18s ease-out forwards;
+}
+
+.landing-hero__glow {
+    animation: landing-glow-pulse 8s ease-in-out infinite;
+}
+
+.landing-hero__content {
+    animation: landing-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-hero__posters {
+    animation: landing-fade-up 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.landing-hero__scroll {
+    animation: landing-fade-up 1s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+}
+
+.landing-feature {
+    animation: landing-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes landing-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes landing-ken-burns {
+    from {
+        transform: scale(1.05);
+    }
+    to {
+        transform: scale(1.12);
+    }
+}
+
+@keyframes landing-glow-pulse {
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.08);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-hero__backdrop,
+    .landing-hero__glow,
+    .landing-hero__content,
+    .landing-hero__posters,
+    .landing-hero__scroll,
+    .landing-feature {
+        animation: none;
+    }
+}

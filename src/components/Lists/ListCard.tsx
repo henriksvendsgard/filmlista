@@ -61,7 +61,9 @@ export function ListCard({ list, variant, onEdit, onShare, onDelete }: ListCardP
                                             />
                                         ) : (
                                             <div className="flex h-full items-center justify-center">
-                                                <Film className="h-6 w-6 text-muted-foreground/40" />
+                                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-filmlista-primary/10 text-filmlista-primary">
+                                                    <Film className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -69,9 +71,11 @@ export function ListCard({ list, variant, onEdit, onShare, onDelete }: ListCardP
                             })}
                         </div>
                     ) : (
-                        <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                            <Film className="h-10 w-10 opacity-40" />
-                            <span className="text-sm">Tom liste</span>
+                        <div className="flex h-full flex-col items-center justify-center gap-2">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-filmlista-primary/10 text-filmlista-primary">
+                                <Film className="h-6 w-6 shrink-0" strokeWidth={1.75} />
+                            </div>
+                            <span className="text-sm text-muted-foreground">Tom liste</span>
                         </div>
                     )}
                 </div>

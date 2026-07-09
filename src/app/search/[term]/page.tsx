@@ -3,8 +3,9 @@
 import MovieList from "@/components/MovieList/MovieList";
 import TVShowList from "@/components/TVShowList/TVShowList";
 import { StreamingFilterSection } from "@/components/StreamingServicesSelector/StreamingFilterSection";
+import { MediaTypeSelector } from "@/components/MediaTypeSelector/MediaTypeSelector";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useStreamingServices } from "@/hooks/useStreamingServices";
 import { getSearchedMovies } from "@/lib/getMovies";
 import { getSearchedTVShows } from "@/lib/getTVShows";
@@ -13,10 +14,10 @@ import {
     matchesUserServices,
     type WatchProvidersNO,
 } from "@/lib/watchProviders";
-import { Film, Loader2, SearchX } from "lucide-react";
+import { Film, Loader2, Search, SearchX } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 interface SearchResults {
     results: any[];
@@ -45,6 +46,27 @@ function providerKey(mediaType: "movie" | "tv", mediaId: string | number) {
     return `${mediaType}:${mediaId}`;
 }
 
+function SearchEmptyState({
+    icon: Icon,
+    title,
+    description,
+    action,
+}: {
+    icon: typeof Film;
+    title: string;
+    description: string;
+    action?: ReactNode;
+}) {
+    return (
+        <div className="flex flex-col items-center rounded-2xl border border-dashed py-16 text-center">
+            <Icon className="mb-4 h-12 w-12 text-muted-foreground/50" />
+            <h2 className="font-heading text-lg font-semibold">{title}</h2>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">{description}</p>
+            {action && <div className="mt-6">{action}</div>}
+        </div>
+    );
+}
+
 export default function SearchPage() {
     const [movies, setMovies] = useState<SearchResults | null>(null);
     const [tvshows, setTVShows] = useState<SearchResults | null>(null);
@@ -71,7 +93,6 @@ export default function SearchPage() {
     const useStreamingFilter = streamingFilter && hasServices && !isLoadingServices;
 
     const activeResults = mediaType === "movie" ? movies : tvshows;
-    const activeTotal = mediaType === "movie" ? movieTotalResults : tvTotalResults;
     const activeItems = activeResults?.results ?? [];
 
     const missingProviderItems = useMemo(() => {
@@ -277,21 +298,7 @@ export default function SearchPage() {
         activeItems.length > 0 &&
         activeFilteredResults.length === 0;
 
-    const resultSummary = (() => {
-        if (isLoading) return "Søker...";
-        if (error) return null;
-        if (isResolvingProviders && activeFilteredResults.length === 0) {
-            return "Sjekker tilgjengelighet på dine tjenester...";
-        }
-
-        const label = mediaType === "movie" ? "filmer" : "TV-serier";
-        if (useStreamingFilter) {
-            const loadedCount = activeItems.length;
-            return `${activeFilteredResults.length} ${label} på dine tjenester${loadedCount < activeTotal ? ` (av ${loadedCount} lastede treff)` : ""}`;
-        }
-
-        return `${activeTotal} ${label}`;
-    })();
+    const totalResults = movieTotalResults + tvTotalResults;
 
     const displayMovies: SearchResults = {
         ...(movies ?? EMPTY_RESULTS),
@@ -306,33 +313,55 @@ export default function SearchPage() {
         !showNoSearchResults && !showNoStreamingMatches;
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-4xl font-bold">Søkeresultater for &quot;{decodedTerm}&quot;</h1>
-            <p className="mt-2 text-muted-foreground" aria-live="polite">
-                {resultSummary}
-            </p>
+        <div className="container mx-auto px-4 py-8 lg:px-6">
+            <div className="mb-8 space-y-5">
+                <div className="space-y-3">
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-filmlista-primary">Søk</p>
+                    <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+                        Resultater for{" "}
+                        <span className="text-filmlista-primary">«{decodedTerm}»</span>
+                    </h1>
+                    <div aria-live="polite">
+                        {isLoading ? (
+                            <p className="text-muted-foreground">Søker...</p>
+                        ) : error ? null : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground">
+                                <Search className="h-3.5 w-3.5 text-filmlista-primary" />
+                                {totalResults} treff totalt
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
 
             {error && !isLoading && (
-                <div className="mt-8 flex flex-col items-center rounded-lg border border-dashed py-16 text-center">
-                    <SearchX className="mb-4 h-12 w-12 text-muted-foreground/60" />
-                    <h2 className="text-lg font-semibold">Noe gikk galt</h2>
-                    <p className="mt-2 max-w-sm text-sm text-muted-foreground">{error}</p>
-                    <Button className="mt-6" onClick={() => loadInitialResults()}>
-                        Prøv igjen
-                    </Button>
-                </div>
+                <SearchEmptyState
+                    icon={SearchX}
+                    title="Noe gikk galt"
+                    description={error}
+                    action={
+                        <Button className="rounded-full bg-filmlista-primary hover:bg-filmlista-hover" onClick={() => loadInitialResults()}>
+                            Prøv igjen
+                        </Button>
+                    }
+                />
             )}
 
             {!error && (
-                <Tabs value={mediaType} onValueChange={handleTabChange} className="mt-8">
-                    <div className="mb-6 flex w-full flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <TabsList className="w-fit shrink-0">
-                            <TabsTrigger value="movie">Filmer ({movieTotalResults})</TabsTrigger>
-                            <TabsTrigger value="tv">TV-serier ({tvTotalResults})</TabsTrigger>
-                        </TabsList>
+                <Tabs value={mediaType} onValueChange={handleTabChange} className="mt-2">
+                    <div className="mb-6 flex w-full flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <MediaTypeSelector
+                            value={mediaType}
+                            onChange={handleTabChange}
+                            movieCount={movieTotalResults}
+                            tvCount={tvTotalResults}
+                        />
 
                         {!isLoadingServices && (
-                            <div className="w-full max-w-md sm:w-auto">
+                            <div className="w-full max-w-md space-y-1.5 sm:w-auto">
+                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                    Tilgjengelighet
+                                </p>
                                 <StreamingFilterSection
                                     filterActive={streamingFilter}
                                     onFilterChange={handleStreamingFilterChange}
@@ -343,37 +372,33 @@ export default function SearchPage() {
                     </div>
 
                     {showNoSearchResults && (
-                        <div className="flex flex-col items-center rounded-lg border border-dashed py-16 text-center">
-                            <Film className="mb-4 h-12 w-12 text-muted-foreground/50" />
-                            <h2 className="text-lg font-semibold">
-                                Ingen {mediaType === "movie" ? "filmer" : "TV-serier"}
-                            </h2>
-                            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                                Fant ingen treff for «{decodedTerm}». Prøv et annet søkeord, sjekk
-                                stavingen, eller søk på originaltittel.
-                            </p>
-                            <Button asChild variant="outline" className="mt-6">
-                                <Link href="/">Utforsk populære titler</Link>
-                            </Button>
-                        </div>
+                        <SearchEmptyState
+                            icon={Film}
+                            title={`Ingen ${mediaType === "movie" ? "filmer" : "TV-serier"}`}
+                            description={`Fant ingen treff for «${decodedTerm}». Prøv et annet søkeord, sjekk stavingen, eller søk på originaltittel.`}
+                            action={
+                                <Button asChild variant="outline" className="rounded-full">
+                                    <Link href="/">Utforsk populære titler</Link>
+                                </Button>
+                            }
+                        />
                     )}
 
                     {showNoStreamingMatches && (
-                        <div className="flex flex-col items-center rounded-lg border border-dashed py-16 text-center">
-                            <Film className="mb-4 h-12 w-12 text-muted-foreground/50" />
-                            <h2 className="text-lg font-semibold">Ingen treff på dine tjenester</h2>
-                            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                                Ingen av de lastede resultatene for «{decodedTerm}» er tilgjengelige på
-                                tjenestene dine. Prøv å skru av filteret eller last flere resultater.
-                            </p>
-                            <Button
-                                variant="outline"
-                                className="mt-6"
-                                onClick={() => handleStreamingFilterChange(false)}
-                            >
-                                Vis alle treff
-                            </Button>
-                        </div>
+                        <SearchEmptyState
+                            icon={SearchX}
+                            title="Ingen treff på dine tjenester"
+                            description={`Ingen av de lastede resultatene for «${decodedTerm}» er tilgjengelige på tjenestene dine. Prøv å skru av filteret eller last flere resultater.`}
+                            action={
+                                <Button
+                                    variant="outline"
+                                    className="rounded-full"
+                                    onClick={() => handleStreamingFilterChange(false)}
+                                >
+                                    Vis alle treff
+                                </Button>
+                            }
+                        />
                     )}
 
                     {showResultsGrid && (
@@ -415,7 +440,7 @@ export default function SearchPage() {
                         )}
                         {hasReachedEnd && showResultsGrid && (
                             <p className="py-6 text-center text-sm text-muted-foreground">
-                                Du har nådd slutten av resultatene
+                                Du har nådd slutten av resultatene for «{decodedTerm}»
                             </p>
                         )}
                     </div>

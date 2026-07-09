@@ -398,9 +398,11 @@ export default function Lists() {
                     <>
                         <TabsContent value="owned" className="mt-6">
                             {lists.owned.length === 0 ? (
-                                <div className="flex flex-col items-center rounded-lg border border-dashed py-16 text-center">
-                                    <List className="mb-4 h-12 w-12 text-muted-foreground/50" />
-                                    <h3 className="text-lg font-semibold">Ingen lister ennå</h3>
+                                <div className="flex flex-col items-center rounded-2xl border border-dashed py-16 text-center">
+                                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-filmlista-primary/10 text-filmlista-primary">
+                                        <List className="h-7 w-7 shrink-0" strokeWidth={1.75} />
+                                    </div>
+                                    <h3 className="font-heading text-lg font-semibold">Ingen lister ennå</h3>
                                     <p className="mt-2 max-w-sm text-sm text-muted-foreground">
                                         Opprett en liste for å samle filmer og serier du vil se — alene eller sammen med
                                         andre.
@@ -428,9 +430,11 @@ export default function Lists() {
 
                         <TabsContent value="shared" className="mt-6">
                             {lists.shared.length === 0 ? (
-                                <div className="flex flex-col items-center rounded-lg border border-dashed py-16 text-center">
-                                    <Users className="mb-4 h-12 w-12 text-muted-foreground/50" />
-                                    <h3 className="text-lg font-semibold">Ingen delte lister</h3>
+                                <div className="flex flex-col items-center rounded-2xl border border-dashed py-16 text-center">
+                                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-filmlista-primary/10 text-filmlista-primary">
+                                        <Users className="h-7 w-7 shrink-0" strokeWidth={1.75} />
+                                    </div>
+                                    <h3 className="font-heading text-lg font-semibold">Ingen delte lister</h3>
                                     <p className="mt-2 max-w-sm text-sm text-muted-foreground">
                                         Når noen deler en liste med deg, dukker den opp her.
                                     </p>
@@ -493,7 +497,7 @@ export default function Lists() {
                             />
                         </div>
                         <DialogFooter>
-                            <Button type="submit" disabled={!editListName.trim()} className="bg-filmlista-primary hover:bg-filmlista-primary/80">
+                            <Button type="submit" disabled={!editListName.trim()} className="bg-filmlista-primary hover:bg-filmlista-primary/80 text-white">
                                 Lagre
                             </Button>
                         </DialogFooter>
