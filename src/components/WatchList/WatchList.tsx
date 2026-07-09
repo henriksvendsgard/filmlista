@@ -9,9 +9,10 @@ import {
     toggleWatched,
 } from "@/lib/listRepository";
 import { useListActions } from "@/contexts/ListActionsContext";
+import { useCelebration } from "@/contexts/CelebrationContext";
 import { Movie } from "@/types/movie";
 import { ArrowRight, Film } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MovieCard } from "../MovieCard/MovieCard";
 import { Skeleton } from "../ui/skeleton";
@@ -109,20 +110,22 @@ export default function Watchlist() {
 
     const { supabase, user } = useSupabase();
     const { lists, isLoadingLists, membershipVersion, removeFromList } = useListActions();
+    const { celebrateWatched } = useCelebration();
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const listIdFromUrl = searchParams.get("list");
     const { services, hasServices, isLoading: isLoadingServices } = useStreamingServices();
     const [streamingFilter, setStreamingFilter] = useState(false);
     const [isLoadingProviders, setIsLoadingProviders] = useState(false);
     const [providerMap, setProviderMap] = useState<Map<string, WatchProvidersNO | null>>(new Map());
-    const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-    const listIdFromUrl = searchParams.get("list");
 
     const updateUrlWithList = useCallback(
         (listId: string | null) => {
-            const newUrl = listId ? `${window.location.pathname}?list=${listId}` : window.location.pathname;
+            const newUrl = listId ? `${pathname}?list=${listId}` : pathname;
             router.replace(newUrl);
         },
-        [router]
+        [router, pathname]
     );
 
     const handleListSelection = useCallback(
@@ -134,20 +137,25 @@ export default function Watchlist() {
         [updateUrlWithList]
     );
 
-    const initializeSelectedList = useCallback(() => {
-        if (selectedList) return;
-        const initialList = listIdFromUrl || lists.owned[0]?.id || lists.shared[0]?.id;
-        if (initialList) {
-            setSelectedList(initialList);
-            if (!listIdFromUrl) updateUrlWithList(initialList);
-        }
-    }, [selectedList, listIdFromUrl, lists.owned, lists.shared, updateUrlWithList]);
-
     useEffect(() => {
-        if (!isLoadingLists && user) {
-            initializeSelectedList();
+        if (isLoadingLists || !user) return;
+
+        const availableLists = [...lists.owned, ...lists.shared];
+        const availableIds = new Set(availableLists.map((list) => list.id));
+
+        if (listIdFromUrl && availableIds.has(listIdFromUrl)) {
+            setSelectedList(listIdFromUrl);
+            return;
         }
-    }, [isLoadingLists, user, initializeSelectedList]);
+
+        const fallback = lists.owned[0]?.id ?? lists.shared[0]?.id;
+        if (!fallback) return;
+
+        setSelectedList(fallback);
+        if (!listIdFromUrl || !availableIds.has(listIdFromUrl)) {
+            updateUrlWithList(fallback);
+        }
+    }, [isLoadingLists, user, listIdFromUrl, lists.owned, lists.shared, updateUrlWithList]);
 
     const fetchMovies = useCallback(async () => {
         if (!selectedList || !user) return;
@@ -226,11 +234,19 @@ export default function Watchlist() {
                 })
             );
 
-            toast({
-                title: currentWatchedStatus ? "Markert som usett" : "Markert som sett",
-                description: `${mediaType === "movie" ? "Filmen" : "TV-serien"} er nå markert som ${currentWatchedStatus ? "usett" : "sett"}`,
-                className: currentWatchedStatus ? "bg-yellow-600" : "bg-green-800",
-            });
+            if (!currentWatchedStatus) {
+                const title = movies.find((m) => m.movie_id === movieId)?.title ?? "Ukjent tittel";
+                celebrateWatched({
+                    title,
+                    mediaType: mediaType as "movie" | "tv",
+                });
+            } else {
+                toast({
+                    title: "Markert som usett",
+                    description: `${mediaType === "movie" ? "Filmen" : "TV-serien"} er nå markert som usett`,
+                    className: "bg-yellow-600",
+                });
+            }
         } catch (error) {
             console.error("Error toggling watched status:", error);
             toast({

@@ -58,6 +58,45 @@
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
+  --animate-celebration-pop: celebration-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  --animate-celebration-fade-up: celebration-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+
+  @keyframes celebration-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes celebration-fade-up {
+    0% {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes celebration-check-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    60% {
+      transform: scale(1.08);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   @keyframes accordion-down {
     from {
       height: 0;
@@ -180,4 +219,194 @@
     body {
         @apply bg-background text-foreground;
     }
+}
+
+/* Celebration overlays */
+@keyframes celebration-pop {
+    0% {
+        transform: scale(0.85);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.03);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes celebration-fade-up {
+    0% {
+        transform: translateY(16px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes celebration-check-pop {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    55% {
+        transform: scale(1.12);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.celebration-welcome__content--in {
+    animation: celebration-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+}
+
+.celebration-welcome__logo {
+    animation: celebration-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
+
+/* Theater stage spotlight */
+.celebration-welcome__spotlight {
+    background: radial-gradient(
+        ellipse 55% 70% at 50% 45%,
+        rgba(255, 248, 235, 0.14) 0%,
+        rgba(255, 220, 160, 0.06) 35%,
+        transparent 70%
+    );
+}
+
+/* Top valance / pelmet */
+.celebration-welcome__valance {
+    height: 3.5rem;
+    background:
+        linear-gradient(180deg, #2a0408 0%, #5c0d18 40%, #7a1020 100%),
+        repeating-linear-gradient(
+            90deg,
+            #4a0812 0px,
+            #6b1020 18px,
+            #4a0812 36px
+        );
+    box-shadow:
+        0 6px 24px rgba(0, 0, 0, 0.6),
+        inset 0 -3px 0 rgba(212, 175, 55, 0.45);
+}
+
+.celebration-welcome__valance::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -10px;
+    height: 20px;
+    background: repeating-linear-gradient(
+        90deg,
+        #5c0d18 0px,
+        #5c0d18 14px,
+        #3d060e 14px,
+        #3d060e 28px
+    );
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+    opacity: 0.9;
+}
+
+/* Red velvet curtains */
+.celebration-curtain {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 51%;
+    z-index: 30;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(0, 0, 0, 0.45) 0%,
+            rgba(255, 255, 255, 0.06) 12%,
+            rgba(0, 0, 0, 0.2) 28%,
+            rgba(255, 255, 255, 0.04) 42%,
+            rgba(0, 0, 0, 0.35) 50%,
+            rgba(255, 255, 255, 0.05) 58%,
+            rgba(0, 0, 0, 0.22) 72%,
+            rgba(255, 255, 255, 0.03) 88%,
+            rgba(0, 0, 0, 0.4) 100%
+        ),
+        linear-gradient(180deg, #3d060e 0%, #6b1020 22%, #8b1428 45%, #5c0d18 72%, #2a0408 100%);
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.35);
+    transition: transform 1.35s cubic-bezier(0.65, 0, 0.35, 1);
+    will-change: transform;
+}
+
+.celebration-curtain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        transparent 22px,
+        rgba(0, 0, 0, 0.18) 22px,
+        rgba(0, 0, 0, 0.18) 26px,
+        transparent 26px,
+        transparent 48px,
+        rgba(255, 255, 255, 0.025) 48px,
+        rgba(255, 255, 255, 0.025) 52px
+    );
+    pointer-events: none;
+}
+
+.celebration-curtain--left {
+    left: 0;
+    transform: translateX(0);
+    border-right: 3px solid rgba(212, 175, 55, 0.35);
+    box-shadow:
+        inset -20px 0 40px rgba(0, 0, 0, 0.4),
+        4px 0 24px rgba(0, 0, 0, 0.5);
+}
+
+.celebration-curtain--right {
+    right: 0;
+    transform: translateX(0);
+    border-left: 3px solid rgba(212, 175, 55, 0.35);
+    box-shadow:
+        inset 20px 0 40px rgba(0, 0, 0, 0.4),
+        -4px 0 24px rgba(0, 0, 0, 0.5);
+}
+
+.celebration-curtain--left.celebration-curtain--open {
+    transform: translateX(-100%);
+}
+
+.celebration-curtain--right.celebration-curtain--open {
+    transform: translateX(100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .celebration-curtain {
+        transition-duration: 0.01ms;
+    }
+
+    .celebration-curtain--left.celebration-curtain--open {
+        transform: translateX(-100%);
+    }
+
+    .celebration-curtain--right.celebration-curtain--open {
+        transform: translateX(100%);
+    }
+
+    .celebration-welcome__content--in,
+    .celebration-welcome__logo {
+        animation-delay: 0s;
+    }
+}
+
+.celebration-watched__card--in {
+    animation: celebration-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.celebration-watched__check {
+    animation: celebration-check-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
 }

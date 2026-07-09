@@ -41,8 +41,14 @@ export function ListMembershipPanel({ media }: ListMembershipPanelProps) {
         !memberListIds.includes(lastUsedListId);
 
     useEffect(() => {
+        let cancelled = false;
         setIsLoading(true);
-        ensureSingleMediaMembership(media.mediaId, media.mediaType).finally(() => setIsLoading(false));
+        ensureSingleMediaMembership(media.mediaId, media.mediaType).finally(() => {
+            if (!cancelled) setIsLoading(false);
+        });
+        return () => {
+            cancelled = true;
+        };
     }, [media.mediaId, media.mediaType, ensureSingleMediaMembership]);
 
     const handleToggle = async (listId: string, checked: boolean) => {

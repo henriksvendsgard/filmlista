@@ -23,6 +23,7 @@ import {
     useContext,
     useEffect,
     useMemo,
+    useRef,
     useState,
     type ReactNode,
 } from "react";
@@ -69,10 +70,20 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
     const [lastUsedListId, setLastUsedListIdState] = useState<string | null>(null);
     const [mediaListMap, setMediaListMap] = useState<Record<string, string[]>>({});
     const [membershipVersion, setMembershipVersion] = useState(0);
+    const listsRef = useRef(lists);
+    const mediaListMapRef = useRef(mediaListMap);
+
+    listsRef.current = lists;
+    mediaListMapRef.current = mediaListMap;
+
+    const setListsState = useCallback((next: { owned: List[]; shared: SharedList[] }) => {
+        listsRef.current = next;
+        setLists(next);
+    }, []);
 
     const refreshLists = useCallback(async () => {
         if (!user) {
-            setLists({ owned: [], shared: [] });
+            setListsState({ owned: [], shared: [] });
             setIsLoadingLists(false);
             return;
         }
@@ -80,7 +91,7 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
         setIsLoadingLists(true);
         try {
             const result = await getLists(supabase, user.id);
-            setLists(result);
+            setListsState(result);
         } catch (error) {
             console.error("Error fetching lists:", error);
             toast({
@@ -91,7 +102,7 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoadingLists(false);
         }
-    }, [supabase, user]);
+    }, [supabase, user, setListsState]);
 
     useEffect(() => {
         setLastUsedListIdState(getLastUsedListId());
@@ -108,13 +119,11 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
         [allLists]
     );
 
-    const canEditList = useCallback(
-        (listId: string) => {
-            if (lists.owned.some((list) => list.id === listId)) return true;
-            return editableShared.some((list) => list.id === listId);
-        },
-        [lists.owned, editableShared]
-    );
+    const canEditList = useCallback((listId: string) => {
+        const { owned, shared } = listsRef.current;
+        if (owned.some((list) => list.id === listId)) return true;
+        return shared.some((list) => list.can_edit && list.id === listId);
+    }, []);
 
     const getMediaListIds = useCallback(
         (mediaId: string, mediaType: "movie" | "tv") => mediaListMap[membershipKey(mediaType, mediaId)] ?? [],
@@ -139,7 +148,9 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
         async (mediaIds: string[], mediaType: "movie" | "tv") => {
             if (!user || mediaIds.length === 0) return;
 
-            const missing = mediaIds.filter((id) => mediaListMap[membershipKey(mediaType, id)] === undefined);
+            const missing = mediaIds.filter(
+                (id) => mediaListMapRef.current[membershipKey(mediaType, id)] === undefined
+            );
             if (missing.length === 0) return;
 
             try {
@@ -147,7 +158,10 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
                 setMediaListMap((prev) => {
                     const next = { ...prev };
                     for (const id of missing) {
-                        next[membershipKey(mediaType, id)] = batch[id] ?? [];
+                        const key = membershipKey(mediaType, id);
+                        if (next[key] === undefined) {
+                            next[key] = batch[id] ?? [];
+                        }
                     }
                     return next;
                 });
@@ -155,26 +169,30 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
                 console.error("Error fetching media list membership:", error);
             }
         },
-        [supabase, user, mediaListMap]
+        [supabase, user]
     );
 
     const ensureSingleMediaMembership = useCallback(
         async (mediaId: string, mediaType: "movie" | "tv") => {
             const key = membershipKey(mediaType, mediaId);
-            if (mediaListMap[key] !== undefined) {
-                return mediaListMap[key];
+            const cached = mediaListMapRef.current[key];
+            if (cached !== undefined) {
+                return cached;
             }
 
             try {
                 const listIds = await getListsForMedia(supabase, mediaId, mediaType);
-                setMediaListMap((prev) => ({ ...prev, [key]: listIds }));
+                setMediaListMap((prev) => {
+                    if (prev[key] !== undefined) return prev;
+                    return { ...prev, [key]: listIds };
+                });
                 return listIds;
             } catch (error) {
                 console.error("Error fetching media list membership:", error);
                 return [];
             }
         },
-        [supabase, mediaListMap]
+        [supabase]
     );
 
     const addToList = useCallback(
@@ -302,7 +320,11 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
 
             try {
                 const newList = await createList(supabase, { name: trimmed, ownerId: user.id });
-                setLists((prev) => ({ ...prev, owned: [newList, ...prev.owned] }));
+                const nextLists = {
+                    owned: [newList, ...listsRef.current.owned],
+                    shared: listsRef.current.shared,
+                };
+                setListsState(nextLists);
                 await addToList(media, newList.id);
             } catch (error) {
                 console.error("Error creating list and adding media:", error);
@@ -313,7 +335,7 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
                 });
             }
         },
-        [user, supabase, addToList]
+        [user, supabase, addToList, setListsState]
     );
 
     const value = useMemo(
