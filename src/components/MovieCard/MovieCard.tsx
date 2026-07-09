@@ -121,12 +121,11 @@ export function MovieCard({
 
             <div className="absolute bottom-0 left-0 right-0 p-2">
                 <div className="flex items-end justify-between">
-                    <div className="flex min-w-0 max-w-full flex-1 flex-col items-start gap-1">
+                    <div className="flex max-w-full flex-col items-start gap-1">
                         {hasWatchers && (
                             <WatchedByIndicator
                                 watchers={movie.watched_by}
                                 currentUserId={user?.id}
-                                className="w-full"
                             />
                         )}
                         {showAddedBy && (

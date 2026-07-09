@@ -154,7 +154,7 @@ export function WatchedByIndicator({ watchers, currentUserId, className }: Watch
                     onClick={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
                     className={cn(
-                        "inline-flex min-w-0 max-w-full items-center gap-1 rounded-full bg-black/70 py-1 pl-1 pr-2 text-left text-xs text-white backdrop-blur-sm transition-colors hover:bg-black/80",
+                        "inline-flex w-fit max-w-full items-center gap-1 rounded-full bg-black/70 py-1 pl-1 pr-2 text-left text-xs text-white backdrop-blur-sm transition-colors hover:bg-black/80",
                         className
                     )}
                 >
