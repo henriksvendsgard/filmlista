@@ -57,25 +57,46 @@ export interface MediaEntry {
     isWatchedByMe: boolean;
 }
 
+function mapSharedListRows(
+    rows: Array<{ can_edit?: boolean; lists: List | List[] | null }> | null,
+    defaultCanEdit = false
+): SharedList[] {
+    return (rows ?? [])
+        .map((row) => {
+            const list = Array.isArray(row.lists) ? row.lists[0] : row.lists;
+            if (!list) return null;
+            return { ...list, can_edit: row.can_edit ?? defaultCanEdit };
+        })
+        .filter((list): list is SharedList => list !== null);
+}
+
+async function fetchSharedListsForUser(supabase: SupabaseClient, userId: string): Promise<SharedList[]> {
+    const withCanEdit = await supabase
+        .from("shared_lists")
+        .select("can_edit, lists(*)")
+        .eq("user_id", userId);
+
+    if (!withCanEdit.error) {
+        return mapSharedListRows(withCanEdit.data);
+    }
+
+    // Graceful fallback when production schema predates shared_lists.can_edit
+    if (withCanEdit.error.code === "42703") {
+        const fallback = await supabase.from("shared_lists").select("lists(*)").eq("user_id", userId);
+        if (fallback.error) throw fallback.error;
+        return mapSharedListRows(fallback.data);
+    }
+
+    throw withCanEdit.error;
+}
+
 export async function getLists(supabase: SupabaseClient, userId: string): Promise<ListsResult> {
-    const [ownedResult, sharedResult] = await Promise.all([
+    const [ownedResult, shared] = await Promise.all([
         supabase.from("lists").select("*").eq("owner_id", userId).order("created_at", { ascending: false }),
-        supabase
-            .from("shared_lists")
-            .select("can_edit, lists(*)")
-            .eq("user_id", userId),
+        fetchSharedListsForUser(supabase, userId),
     ]);
 
     if (ownedResult.error) throw ownedResult.error;
-    if (sharedResult.error) throw sharedResult.error;
-
-    const shared = (sharedResult.data ?? [])
-        .map((row: { can_edit: boolean; lists: List | List[] | null }) => {
-            const list = Array.isArray(row.lists) ? row.lists[0] : row.lists;
-            if (!list) return null;
-            return { ...list, can_edit: row.can_edit };
-        })
-        .filter((list): list is SharedList => list !== null);
 
     return {
         owned: ownedResult.data ?? [],

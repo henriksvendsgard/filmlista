@@ -177,6 +177,7 @@ Recent migrations include:
 - `20240708130000_tighten_rls.sql` — stricter row-level security policies
 - `20240708140000_add_provider_ids_cache.sql` — cached TMDB provider IDs on media items
 - `20240708150000_fix_lists_insert_returning.sql` — fix list SELECT/INSERT policies after RLS tightening
+- `20240709120000_add_shared_lists_can_edit.sql` — add `can_edit` column to `shared_lists` (required for list fetching)
 
 **Important:** List fetching and creation in production depend on all of the above migrations. If `tighten_rls` is applied without the later fixes, authenticated users may be unable to read or create lists.
 
