@@ -221,14 +221,23 @@
     }
 }
 
+/* Block page paint before React mounts the login curtain overlay */
+html.celebration-pending {
+    background: radial-gradient(ellipse at center, #0e0204 0%, #020101 70%);
+}
+
+html.celebration-pending body {
+    visibility: hidden;
+}
+
 /* Celebration overlays */
 @keyframes celebration-pop {
     0% {
-        transform: scale(0.85);
+        transform: scale(0.88);
         opacity: 0;
     }
     60% {
-        transform: scale(1.03);
+        transform: scale(1.02);
         opacity: 1;
     }
     100% {
@@ -263,55 +272,106 @@
 }
 
 .celebration-welcome__content--in {
-    animation: celebration-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+    animation: celebration-pop 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
 }
 
 .celebration-welcome__logo {
-    animation: celebration-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+    animation: celebration-pop 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.65s both;
+    border-radius: 9999px;
+    background:
+        radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.08), transparent 55%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
-/* Theater stage spotlight */
+.celebration-welcome__eyebrow {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(255, 248, 240, 0.55);
+}
+
+.celebration-welcome__rule {
+    display: block;
+    width: 2.5rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+}
+
+.celebration-welcome__title {
+    background: linear-gradient(180deg, #ffffff 0%, #f0ebe4 60%, #d4ccc4 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 16px rgba(0, 0, 0, 0.4));
+}
+
+.celebration-welcome__subtitle {
+    color: rgba(255, 248, 240, 0.58);
+    letter-spacing: 0.01em;
+    line-height: 1.65;
+}
+
+/* Theater stage */
+.celebration-welcome__stage {
+    background:
+        radial-gradient(ellipse 80% 60% at 50% 100%, rgba(30, 4, 8, 0.6) 0%, transparent 55%),
+        radial-gradient(ellipse 100% 80% at 50% 0%, #0a0204 0%, #020101 55%, #000000 100%);
+}
+
+.celebration-welcome__vignette {
+    background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.6) 100%);
+    pointer-events: none;
+}
+
 .celebration-welcome__spotlight {
     background: radial-gradient(
-        ellipse 55% 70% at 50% 45%,
-        rgba(255, 248, 235, 0.14) 0%,
-        rgba(255, 220, 160, 0.06) 35%,
-        transparent 70%
+        ellipse 42% 58% at 50% 42%,
+        rgba(255, 248, 240, 0.12) 0%,
+        rgba(255, 240, 230, 0.04) 32%,
+        transparent 68%
     );
+}
+
+.celebration-welcome__proscenium {
+    pointer-events: none;
+    box-shadow:
+        inset 0 0 120px rgba(0, 0, 0, 0.7),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+        inset 0 0 0 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Top valance / pelmet */
 .celebration-welcome__valance {
-    height: 3.5rem;
+    height: 4.25rem;
     background:
-        linear-gradient(180deg, #2a0408 0%, #5c0d18 40%, #7a1020 100%),
-        repeating-linear-gradient(
-            90deg,
-            #4a0812 0px,
-            #6b1020 18px,
-            #4a0812 36px
-        );
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 18%),
+        linear-gradient(180deg, #0e0206 0%, #3a0818 35%, #5c1028 65%, #2a0610 100%),
+        repeating-linear-gradient(90deg, #2a0610 0px, #4a0c1e 24px, #2a0610 48px);
     box-shadow:
-        0 6px 24px rgba(0, 0, 0, 0.6),
-        inset 0 -3px 0 rgba(212, 175, 55, 0.45);
+        0 8px 32px rgba(0, 0, 0, 0.75),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        inset 0 -3px 0 rgba(0, 0, 0, 0.4);
 }
 
-.celebration-welcome__valance::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -10px;
-    height: 20px;
+.celebration-welcome__valance-fringe {
+    top: 4.25rem;
+    height: 1.75rem;
     background: repeating-linear-gradient(
         90deg,
-        #5c0d18 0px,
-        #5c0d18 14px,
-        #3d060e 14px,
-        #3d060e 28px
+        #3a0816 0px,
+        #3a0816 10px,
+        #5c1028 10px,
+        #5c1028 12px,
+        #2a0610 12px,
+        #2a0610 22px
     );
-    border-radius: 0 0 50% 50% / 0 0 100% 100%;
-    opacity: 0.9;
+    mask-image: radial-gradient(ellipse 100% 100% at 50% 0%, black 30%, transparent 75%);
+    opacity: 0.85;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
 }
 
 /* Red velvet curtains */
@@ -323,20 +383,35 @@
     z-index: 30;
     background:
         linear-gradient(
-            90deg,
-            rgba(0, 0, 0, 0.45) 0%,
-            rgba(255, 255, 255, 0.06) 12%,
-            rgba(0, 0, 0, 0.2) 28%,
-            rgba(255, 255, 255, 0.04) 42%,
-            rgba(0, 0, 0, 0.35) 50%,
-            rgba(255, 255, 255, 0.05) 58%,
-            rgba(0, 0, 0, 0.22) 72%,
-            rgba(255, 255, 255, 0.03) 88%,
-            rgba(0, 0, 0, 0.4) 100%
+            105deg,
+            transparent 40%,
+            rgba(255, 180, 170, 0.04) 48%,
+            transparent 56%
         ),
-        linear-gradient(180deg, #3d060e 0%, #6b1020 22%, #8b1428 45%, #5c0d18 72%, #2a0408 100%);
-    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.35);
-    transition: transform 1.35s cubic-bezier(0.65, 0, 0.35, 1);
+        linear-gradient(
+            90deg,
+            rgba(0, 0, 0, 0.5) 0%,
+            rgba(255, 140, 130, 0.05) 10%,
+            rgba(0, 0, 0, 0.3) 22%,
+            rgba(255, 160, 150, 0.04) 34%,
+            rgba(0, 0, 0, 0.4) 46%,
+            rgba(255, 140, 130, 0.05) 58%,
+            rgba(0, 0, 0, 0.32) 70%,
+            rgba(255, 120, 110, 0.03) 82%,
+            rgba(0, 0, 0, 0.48) 100%
+        ),
+        linear-gradient(
+            180deg,
+            #0c0206 0%,
+            #2a0814 14%,
+            #4a0c1e 30%,
+            #6b1430 46%,
+            #4a0c1e 62%,
+            #2a0814 80%,
+            #0c0206 100%
+        );
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.45);
+    transition: transform 2.4s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform;
 }
 
@@ -347,13 +422,13 @@
     background: repeating-linear-gradient(
         90deg,
         transparent 0px,
-        transparent 22px,
-        rgba(0, 0, 0, 0.18) 22px,
-        rgba(0, 0, 0, 0.18) 26px,
-        transparent 26px,
-        transparent 48px,
-        rgba(255, 255, 255, 0.025) 48px,
-        rgba(255, 255, 255, 0.025) 52px
+        transparent 20px,
+        rgba(0, 0, 0, 0.2) 20px,
+        rgba(0, 0, 0, 0.2) 23px,
+        transparent 23px,
+        transparent 42px,
+        rgba(255, 140, 130, 0.035) 42px,
+        rgba(255, 140, 130, 0.035) 45px
     );
     pointer-events: none;
 }
@@ -361,19 +436,19 @@
 .celebration-curtain--left {
     left: 0;
     transform: translateX(0);
-    border-right: 3px solid rgba(212, 175, 55, 0.35);
     box-shadow:
-        inset -20px 0 40px rgba(0, 0, 0, 0.4),
-        4px 0 24px rgba(0, 0, 0, 0.5);
+        inset -24px 0 48px rgba(0, 0, 0, 0.4),
+        inset -2px 0 0 rgba(255, 255, 255, 0.06),
+        6px 0 32px rgba(0, 0, 0, 0.45);
 }
 
 .celebration-curtain--right {
     right: 0;
     transform: translateX(0);
-    border-left: 3px solid rgba(212, 175, 55, 0.35);
     box-shadow:
-        inset 20px 0 40px rgba(0, 0, 0, 0.4),
-        -4px 0 24px rgba(0, 0, 0, 0.5);
+        inset 24px 0 48px rgba(0, 0, 0, 0.4),
+        inset 2px 0 0 rgba(255, 255, 255, 0.06),
+        -6px 0 32px rgba(0, 0, 0, 0.45);
 }
 
 .celebration-curtain--left.celebration-curtain--open {

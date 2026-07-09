@@ -16,6 +16,10 @@ import {
 } from "react";
 
 const WELCOME_LOGIN_KEY = "filmlista-welcome-login";
+const CURTAIN_HANG_MS = 500;
+const CURTAIN_OPEN_MS = 2400;
+const WELCOME_DISPLAY_MS = 650;
+const WELCOME_FADE_MS = 700;
 
 export function setWelcomeAfterLogin() {
     if (typeof window !== "undefined") {
@@ -47,6 +51,12 @@ function FilmlistaLogo({ className }: { className?: string }) {
     );
 }
 
+function clearCelebrationPendingClass() {
+    if (typeof document !== "undefined") {
+        document.documentElement.classList.remove("celebration-pending");
+    }
+}
+
 function shouldShowLoginWelcome(): boolean {
     if (typeof window === "undefined") return false;
 
@@ -67,6 +77,7 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
     const [watchedMoment, setWatchedMoment] = useState<WatchedMoment | null>(null);
     const [watchedVisible, setWatchedVisible] = useState(false);
     const welcomeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const curtainTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const watchedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const welcomeStarted = useRef(false);
 
@@ -74,6 +85,13 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
         if (welcomeTimer.current) {
             clearTimeout(welcomeTimer.current);
             welcomeTimer.current = null;
+        }
+    };
+
+    const clearCurtainTimer = () => {
+        if (curtainTimer.current) {
+            clearTimeout(curtainTimer.current);
+            curtainTimer.current = null;
         }
     };
 
@@ -86,16 +104,18 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
 
     const startWelcome = useCallback(() => {
         clearWelcomeTimer();
+        clearCurtainTimer();
         welcomeStarted.current = true;
         setWelcome("login");
         setCurtainsOpen(false);
         setWelcomeFading(false);
+        clearCelebrationPendingClass();
 
-        requestAnimationFrame(() => {
+        curtainTimer.current = setTimeout(() => {
             setCurtainsOpen(true);
-        });
+        }, CURTAIN_HANG_MS);
 
-        const fadeDuration = 700;
+        const totalBeforeFade = CURTAIN_HANG_MS + CURTAIN_OPEN_MS + WELCOME_DISPLAY_MS;
         welcomeTimer.current = setTimeout(() => {
             setWelcomeFading(true);
             welcomeTimer.current = setTimeout(() => {
@@ -103,21 +123,30 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
                 setCurtainsOpen(false);
                 setWelcomeFading(false);
                 welcomeStarted.current = false;
-            }, fadeDuration);
-        }, 2600);
+            }, WELCOME_FADE_MS);
+        }, totalBeforeFade);
     }, []);
 
     useLayoutEffect(() => {
-        if (!user || pathname === "/login" || welcomeStarted.current) return;
+        if (pathname === "/login") {
+            clearCelebrationPendingClass();
+            return;
+        }
+
+        if (welcomeStarted.current) return;
 
         if (shouldShowLoginWelcome()) {
             startWelcome();
+            return;
         }
-    }, [user, pathname, startWelcome]);
+
+        clearCelebrationPendingClass();
+    }, [pathname, startWelcome]);
 
     useEffect(() => {
         return () => {
             clearWelcomeTimer();
+            clearCurtainTimer();
             clearWatchedTimer();
         };
     }, []);
@@ -142,7 +171,7 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
 
     return (
         <CelebrationContext.Provider value={{ celebrateWatched }}>
-            <div className={welcome && !curtainsOpen ? "invisible" : undefined}>{children}</div>
+            <div className={welcome && !welcomeFading ? "invisible" : undefined}>{children}</div>
 
             {welcome && (
                 <div
@@ -151,35 +180,41 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
                     }`}
                     aria-live="polite"
                 >
-                    <div className="celebration-welcome__stage absolute inset-0 bg-[#080808]" />
+                    <div className="celebration-welcome__stage absolute inset-0" />
+                    <div className="celebration-welcome__vignette absolute inset-0" />
                     <div
                         className={`celebration-welcome__spotlight absolute inset-0 transition-opacity duration-1000 ${
                             curtainsOpen ? "opacity-100" : "opacity-0"
                         }`}
                     />
+                    <div className="celebration-welcome__proscenium absolute inset-0" aria-hidden />
 
                     <div
-                        className={`relative z-20 flex flex-col items-center px-8 text-center text-white transition-all duration-500 ${
+                        className={`relative z-20 flex flex-col items-center px-8 text-center transition-all duration-500 ${
                             curtainsOpen ? "celebration-welcome__content--in" : "opacity-0"
                         }`}
                     >
-                        <div className="celebration-welcome__logo mb-6 rounded-3xl bg-white/5 p-5 shadow-2xl ring-1 ring-amber-400/25 backdrop-blur-sm">
-                            <FilmlistaLogo className="h-14 w-14 text-white" />
+                        <div className="celebration-welcome__logo mb-8 p-6">
+                            <FilmlistaLogo className="h-16 w-16 text-white" />
                         </div>
 
-                        <div className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-[0.2em] text-amber-200/80">
-                            <Sparkles className="h-4 w-4" />
-                            Velkommen inn
+                        <div className="celebration-welcome__eyebrow mb-4 flex items-center gap-2.5">
+                            <span className="celebration-welcome__rule" aria-hidden />
+                            <Sparkles className="h-3.5 w-3.5 text-white/50" />
+                            <span>Velkommen inn</span>
+                            <Sparkles className="h-3.5 w-3.5 text-white/50" />
+                            <span className="celebration-welcome__rule" aria-hidden />
                         </div>
-                        <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
+                        <h2 className="celebration-welcome__title font-heading text-3xl font-semibold sm:text-4xl">
                             Hei, {displayName}
                         </h2>
-                        <p className="mt-3 max-w-sm text-base text-white/75">
+                        <p className="celebration-welcome__subtitle mt-4 max-w-sm text-base">
                             Filmlista er klar. Utforsk, lag lister og hold styr på hva du har sett.
                         </p>
                     </div>
 
                     <div className="celebration-welcome__valance absolute inset-x-0 top-0 z-40" aria-hidden />
+                    <div className="celebration-welcome__valance-fringe absolute inset-x-0 top-0 z-40" aria-hidden />
                     <div
                         className={`celebration-curtain celebration-curtain--left ${
                             curtainsOpen ? "celebration-curtain--open" : ""

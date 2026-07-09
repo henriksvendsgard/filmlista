@@ -51,6 +51,11 @@ export default async function RootLayout({
         <html lang="no" suppressHydrationWarning>
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `(function(){try{if(sessionStorage.getItem("filmlista-welcome-login")==="1"){document.documentElement.classList.add("celebration-pending")}}catch(e){}})();`,
+                    }}
+                />
             </head>
             <body
                 className={cn(
