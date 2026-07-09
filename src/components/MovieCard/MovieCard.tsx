@@ -1,4 +1,5 @@
 import { useSupabase } from "@/components/SupabaseProvider";
+import { WatchedByIndicator } from "@/components/WatchedBy/WatchedByIndicator";
 import { MediaListPicker } from "@/components/MediaListPicker/MediaListPicker";
 import { MediaRef } from "@/contexts/ListActionsContext";
 import {
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -23,7 +23,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { List } from "@/lib/listRepository";
-import { Check, Ellipsis } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -77,9 +77,7 @@ export function MovieCard({
     showAddedBy = false,
 }: MovieCardProps) {
     const { user } = useSupabase();
-
-    const othersWhoWatched = movie.watched_by?.filter((w) => w.user_id !== user?.id) || [];
-    const hasOthersWatched = othersWhoWatched.length > 0;
+    const hasWatchers = (movie.watched_by?.length ?? 0) > 0;
 
     const mediaRef: MediaRef =
         media ??
@@ -123,36 +121,12 @@ export function MovieCard({
 
             <div className="absolute bottom-0 left-0 right-0 p-2">
                 <div className="flex items-end justify-between">
-                    <div className="flex-1">
-                        {hasOthersWatched && (
-                            <div className="mb-1">
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <Badge
-                                            variant="secondary"
-                                            className="cursor-pointer text-xs hover:bg-secondary/80"
-                                        >
-                                            Sett av {othersWhoWatched.length}{" "}
-                                            {othersWhoWatched.length === 1 ? "annen" : "andre"}
-                                        </Badge>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-sm rounded-lg">
-                                        <DialogHeader>
-                                            <DialogTitle className="mb-2">Sett av</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="space-y-2">
-                                            {othersWhoWatched.map((watcher) => (
-                                                <div key={watcher.user_id} className="text-sm">
-                                                    {watcher.displayname}
-                                                    <span className="ml-2 text-muted-foreground">
-                                                        {new Date(watcher.watched_at).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </DialogContent>
-                                </Dialog>
-                            </div>
+                    <div className="flex-1 space-y-1">
+                        {hasWatchers && (
+                            <WatchedByIndicator
+                                watchers={movie.watched_by}
+                                currentUserId={user?.id}
+                            />
                         )}
                         {showAddedBy && (
                             <p className="w-fit rounded-md bg-black/60 px-2 py-1 text-xs text-white">
@@ -162,12 +136,6 @@ export function MovieCard({
                     </div>
                 </div>
             </div>
-
-            {isWatchList && movie.is_watched_by_me && (
-                <div className="absolute left-2 top-2 rounded-full bg-green-700 p-2 text-white">
-                    <Check className="h-4 w-4" />
-                </div>
-            )}
 
             {isInList && !isWatchList && listCount > 0 && (
                 <div className="absolute left-2 top-2">
