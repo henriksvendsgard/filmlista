@@ -127,7 +127,17 @@ function ProviderStackPopover({
     ringWhenActive?: boolean;
 }) {
     const [open, setOpen] = useState(false);
+    const [supportsHover, setSupportsHover] = useState(false);
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+        const update = () => setSupportsHover(mediaQuery.matches);
+        update();
+        mediaQuery.addEventListener("change", update);
+        return () => mediaQuery.removeEventListener("change", update);
+    }, []);
 
     const scheduleClose = () => {
         closeTimer.current = setTimeout(() => setOpen(false), 120);
@@ -146,31 +156,77 @@ function ProviderStackPopover({
         };
     }, []);
 
+    useEffect(() => {
+        if (!open || supportsHover) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (!rootRef.current?.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        return () => document.removeEventListener("pointerdown", handlePointerDown);
+    }, [open, supportsHover]);
+
+    const stackButton = (
+        <button
+            type="button"
+            aria-label={`Vis ${selectedProviders.length} strømmetjenester`}
+            aria-expanded={open}
+            onClick={(e) => {
+                e.stopPropagation();
+                setOpen((prev) => !prev);
+            }}
+            onPointerEnter={
+                supportsHover
+                    ? () => {
+                          cancelClose();
+                          setOpen(true);
+                      }
+                    : undefined
+            }
+            onPointerLeave={supportsHover ? scheduleClose : undefined}
+            className={cn(
+                "flex shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-filmlista-primary/50",
+                supportsHover && "hover:bg-muted/80"
+            )}
+        >
+            <ProviderStack
+                visibleProviders={visibleProviders}
+                overflowCount={overflowCount}
+                filterActive={filterActive}
+                ringWhenActive={ringWhenActive}
+            />
+        </button>
+    );
+
+    const listContent = (
+        <StreamingServicesList providers={selectedProviders} filterActive={filterActive} />
+    );
+
+    if (!supportsHover) {
+        return (
+            <div ref={rootRef} className="relative shrink-0">
+                {stackButton}
+                {open && (
+                    <div
+                        role="dialog"
+                        aria-label="Dine strømmetjenester"
+                        className="absolute right-0 top-full z-50 mt-2 w-56 rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        {listContent}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <HoverCard open={open} onOpenChange={setOpen} openDelay={0} closeDelay={80}>
-            <HoverCardTrigger asChild>
-                <button
-                    type="button"
-                    aria-label={`Vis ${selectedProviders.length} strømmetjenester`}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setOpen((prev) => !prev);
-                    }}
-                    onPointerEnter={() => {
-                        cancelClose();
-                        setOpen(true);
-                    }}
-                    onPointerLeave={scheduleClose}
-                    className="flex shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors hover:bg-muted/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-filmlista-primary/50"
-                >
-                    <ProviderStack
-                        visibleProviders={visibleProviders}
-                        overflowCount={overflowCount}
-                        filterActive={filterActive}
-                        ringWhenActive={ringWhenActive}
-                    />
-                </button>
-            </HoverCardTrigger>
+            <HoverCardTrigger asChild>{stackButton}</HoverCardTrigger>
             <HoverCardContent
                 align="start"
                 side="bottom"
@@ -179,7 +235,7 @@ function ProviderStackPopover({
                 onPointerLeave={scheduleClose}
                 onClick={(e) => e.stopPropagation()}
             >
-                <StreamingServicesList providers={selectedProviders} filterActive={filterActive} />
+                {listContent}
             </HoverCardContent>
         </HoverCard>
     );
