@@ -145,7 +145,7 @@ function MovieGrid({
     );
 }
 
-export default function Watchlist() {
+export default function Watchlist({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) {
     const [isLoadingMovies, setIsLoadingMovies] = useState(false);
     const [movies, setMovies] = useState<ProcessedMovie[]>([]);
     const [selectedList, setSelectedList] = useState<string | null>(null);
@@ -355,6 +355,10 @@ export default function Watchlist() {
     );
 
     const isLoading = isLoadingLists || isLoadingMovies;
+
+    useEffect(() => {
+        onLoadingChange?.(isLoading);
+    }, [isLoading, onLoadingChange]);
 
     const selectedListName = useMemo(() => {
         if (!selectedList) return null;
