@@ -75,8 +75,10 @@ export function ListActionsProvider({ children }: { children: ReactNode }) {
     const mediaListMapRef = useRef(mediaListMap);
     const refreshRequestIdRef = useRef(0);
 
-    listsRef.current = lists;
-    mediaListMapRef.current = mediaListMap;
+    useEffect(() => {
+        listsRef.current = lists;
+        mediaListMapRef.current = mediaListMap;
+    }, [lists, mediaListMap]);
 
     const setListsState = useCallback((next: { owned: List[]; shared: SharedList[] }) => {
         listsRef.current = next;
