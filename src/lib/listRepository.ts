@@ -84,7 +84,7 @@ async function fetchSharedListsForUser(supabase: SupabaseClient, userId: string)
     if (withCanEdit.error.code === "42703") {
         const fallback = await supabase.from("shared_lists").select("lists(*)").eq("user_id", userId);
         if (fallback.error) throw fallback.error;
-        return mapSharedListRows(fallback.data);
+        return mapSharedListRows(fallback.data, true);
     }
 
     throw withCanEdit.error;
@@ -465,7 +465,7 @@ export async function shareList(
 
     const { error } = await supabase
         .from("shared_lists")
-        .insert([{ list_id: listId, user_id: userData.id }]);
+        .insert([{ list_id: listId, user_id: userData.id, can_edit: true }]);
 
     if (error) throw error;
 }
